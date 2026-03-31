@@ -16,14 +16,14 @@ find_package(hiredis REQUIRED)
 find_package(redis++ REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(SOCI REQUIRED COMPONENTS core postgresql)
+find_package(Threads REQUIRED)
 
 # 设置公共头文件路径变量
-set(COMMON_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/common_include")
+set(COMMON_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/include")
 
 # 添加所有子项目
 add_subdirectory(TubeTrack)
 add_subdirectory(FormDemo)
-
 
 message(STATUS "构建类型: ${CMAKE_BUILD_TYPE}")
 message(STATUS "Build 目录: ${CMAKE_BINARY_DIR}")
