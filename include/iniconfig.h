@@ -39,8 +39,8 @@ public:
             // 去除行首尾空白
             line = Trim(line);
 
-            // 跳过空行和注释行
-            if (line.empty() || line[0] == ';' || line[0] == '#')
+            // 跳过空行、注释行和section头
+            if (line.empty() || line[0] == ';' || line[0] == '#' || line[0] == '[')
             {
                 continue;
             }

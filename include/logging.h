@@ -12,8 +12,7 @@
  *   cfg.level    = "debug";
  *   initLogging(cfg);
  *
- *   getLogger()->info("hello {}", "world");
- *   // 或: spdlog::info("hello {}", "world");
+ *   spdlog::info("hello {}", "world");
  *
  *   shutdownLogging();
  */
@@ -33,9 +32,9 @@
 // ============================================================
 struct LogConfig
 {
-    bool        log_console     = true;                                 // 是否同时输出到控制台
+    bool        log_console     = false;                                // 是否同时输出到控制台
     std::string level           = "info";                               // 日志级别
-    std::string pattern         = "[%Y-%m-%d %H:%M:%S.%e] [%l] %v";    // 日志格式
+    std::string pattern         = "[%Y-%m-%d %H:%M:%S.%e] [%l] %v";     // 日志格式
     std::string filename        = "logs/app.log";                       // 日志文件路径
     bool        immediate_flush = true;                                 // 是否立即刷新
     int         max_size_mb     = 10;                                   // 单个日志文件最大大小(MB)
@@ -61,15 +60,6 @@ inline spdlog::level::level_enum stringToLevel(const std::string &level_str)
 }
 
 } // namespace logging_detail
-
-// ============================================================
-//  获取全局 logger 引用
-// ============================================================
-inline std::shared_ptr<spdlog::logger>& getLogger()
-{
-    static std::shared_ptr<spdlog::logger> instance;
-    return instance;
-}
 
 // ============================================================
 //  初始化日志系统
@@ -118,7 +108,6 @@ inline bool initLogging(const LogConfig &cfg)
 
         // 6. 注册为全局默认 logger
         spdlog::set_default_logger(logger);
-        getLogger() = logger;
 
         return true;
     }
@@ -134,11 +123,5 @@ inline bool initLogging(const LogConfig &cfg)
 // ============================================================
 inline void shutdownLogging()
 {
-    auto &logger = getLogger();
-    if (logger)
-    {
-        logger->flush();
-        logger.reset();
-    }
     spdlog::shutdown();
 }
