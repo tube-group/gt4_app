@@ -26,7 +26,7 @@ static std::string g_pidfile_path;
 
 // 打开PID文件并加锁（daemon化之前调用，验证可写性和单实例）
 // 返回: true=成功, false=失败
-static bool lock_pidfile(const std::string& path)
+static bool lockPidfile(const std::string& path)
 {
     g_pidfile_path = path;
 
@@ -48,7 +48,7 @@ static bool lock_pidfile(const std::string& path)
 }
 
 // 写入PID到已锁定的文件（daemon化之后调用，写子进程PID）
-static bool write_pidfile()
+static bool writePidfile()
 {
     if (g_pidfile_fd == -1) return false;
 
@@ -66,7 +66,7 @@ static bool write_pidfile()
 }
 
 // 清理PID文件
-static void remove_pidfile()
+static void removePidfile()
 {
     if (g_pidfile_fd != -1) {
         flock(g_pidfile_fd, LOCK_UN);
@@ -130,100 +130,104 @@ static int becomeDaemon()
     return 0; // 子进程
 }
 
-int main(int argc, char* argv[])
+// ---- 应用配置 ----
+struct AppConfig {
+    LogConfig logCfg;
+    bool daemonMode = false;
+    std::string pidFile;
+};
+
+// 加载配置文件 + 解析命令行参数
+static bool loadConfig(int argc, char* argv[], AppConfig& app)
 {
-    // 1. 加载配置文件
     auto &config = CConfig::GetInstance();
     std::string configFile = "../config/tubetrack.ini";
     if (!config.Load(configFile))
     {
         fprintf(stderr, "Failed to load config file: %s\n", configFile.c_str());
-        return EXIT_FAILURE;
+        return false;
     }
 
-    LogConfig logCfg;
-    logCfg.log_console     = config.GetBoolDefault("log_console", false);
-    logCfg.level           = config.GetStringDefault("level", logCfg.level);
-    logCfg.pattern         = config.GetStringDefault("pattern", logCfg.pattern);
-    logCfg.filename        = config.GetStringDefault("filename", "log/tubetrack.log");
-    logCfg.immediate_flush = config.GetBoolDefault("immediate_flush", logCfg.immediate_flush);
-    logCfg.max_size_mb     = config.GetIntDefault("max_size", logCfg.max_size_mb);
-    logCfg.max_files       = config.GetIntDefault("max_files", logCfg.max_files);
-    bool daemonMode = config.GetBoolDefault("daemon", false);   // 默认前台运行
-    std::string pid_file= config.GetStringDefault("pid_file", "/var/run/tubetrack.pid");
+    app.logCfg.log_console     = config.GetBoolDefault("log_console", false);
+    app.logCfg.level           = config.GetStringDefault("level", app.logCfg.level);
+    app.logCfg.pattern         = config.GetStringDefault("pattern", app.logCfg.pattern);
+    app.logCfg.filename        = config.GetStringDefault("filename", "log/tubetrack.log");
+    app.logCfg.immediate_flush = config.GetBoolDefault("immediate_flush", app.logCfg.immediate_flush);
+    app.logCfg.max_size_mb     = config.GetIntDefault("max_size", app.logCfg.max_size_mb);
+    app.logCfg.max_files       = config.GetIntDefault("max_files", app.logCfg.max_files);
+    app.daemonMode = config.GetBoolDefault("daemon", false);
+    app.pidFile    = config.GetStringDefault("pid_file", "/var/run/tubetrack.pid");
 
-    // 2. 解析命令行参数
+    // 解析命令行参数（-d 强制守护进程模式）
     int opt;
     while ((opt = getopt(argc, argv, "dc:h")) != -1) {
         switch (opt) {
         case 'd':
-            daemonMode = true;
+            app.daemonMode = true;
             break;
         default:
             break;
         }
     }
-    if (daemonMode) {
+
+    if (app.daemonMode) {
         fprintf(stdout, "以守护进程运行\n");
     } else {
         fprintf(stdout, "以普通进程运行\n");
     }
 
-    // daemon化之前：将相对路径转为绝对路径（daemon后工作目录可能改变）
-    if (daemonMode) {
-        auto to_abspath = [](std::string& path) {
-            if (!path.empty() && path[0] != '/') {
-                char cwd[PATH_MAX];
-                if (getcwd(cwd, sizeof(cwd))) {
-                    path = std::string(cwd) + "/" + path;
-                }
+    return true;
+}
+
+// ---- 守护进程化（统一入口） ----
+// 合并路径转换、PID文件锁定、fork、写PID
+// 返回: 0=子进程继续, 1=父进程应退出, -1=失败
+static int daemonize(AppConfig& app)
+{
+    // 将相对路径转为绝对路径（daemon后工作目录可能改变）
+    auto toAbsPath = [](std::string& path) {
+        if (!path.empty() && path[0] != '/') {
+            char cwd[PATH_MAX];
+            if (getcwd(cwd, sizeof(cwd))) {
+                path = std::string(cwd) + "/" + path;
             }
-        };
-        to_abspath(logCfg.filename);
-        to_abspath(pid_file);
-    }
-
-    // daemon化之前：打开并锁定PID文件（验证可写性和单实例，错误可输出到终端）
-    if (daemonMode) {
-        if (!lock_pidfile(pid_file)) {
-            return 1;
         }
+    };
+    toAbsPath(app.logCfg.filename);
+    toAbsPath(app.pidFile);
+
+    // 打开并锁定PID文件（验证可写性和单实例）
+    if (!lockPidfile(app.pidFile)) {
+        return -1;
     }
 
-    // 守护进程化（在日志初始化之前）
-    if (daemonMode) {
-        int rc = becomeDaemon();
-        if (rc == -1) {
-            fprintf(stderr, "Failed to daemonize. Exiting.\n");
-            return 1;
+    // fork + setsid + 重定向
+    int rc = becomeDaemon();
+    if (rc == -1) {
+        fprintf(stderr, "Failed to daemonize. Exiting.\n");
+        return -1;
+    }
+
+    if (rc == 1) {
+        // 父进程，正常退出（不清理PID文件，由子进程持有锁）
+        fprintf(stdout, "父进程，正常退出\n");
+        if (g_pidfile_fd != -1) {
+            close(g_pidfile_fd);
+            g_pidfile_fd = -1;
         }
-
-        if (rc == 1) {
-            fprintf(stdout, "父进程，正常退出\n");
-            // 父进程，正常退出（不清理PID文件，由子进程持有锁）
-            // 关闭父进程的fd副本，子进程继承了锁
-            if (g_pidfile_fd != -1) {
-                close(g_pidfile_fd);
-                g_pidfile_fd = -1;
-            }
-            return 0;
-        }
-
-        // 子进程继续，写入子进程PID
-        write_pidfile();
+        return 1;
     }
 
-    // 注册信号处理（daemon化之后，确保子进程注册）
-    signal(SIGINT, signalHandler);
-    signal(SIGTERM, signalHandler);
+    // 子进程继续，写入子进程PID
+    writePidfile();
 
-    // 3. 初始化日志系统
-    if (!initLogging(logCfg))
-    {
-        return EXIT_FAILURE;
-    }
+    return 0;
+}
 
-    // 4. 连接 Redis
+// ---- Redis连接 ----
+static bool initRedis()
+{
+    auto &config = CConfig::GetInstance();
     spdlog::info("正在连接 Redis...");
     try {
         sw::redis::ConnectionOptions opts;
@@ -231,20 +235,45 @@ int main(int argc, char* argv[])
         opts.port = config.GetIntDefault("redis_port", 6379);
         opts.password = config.GetStringDefault("redis_password", "");
 
-        // 创建Redis连接并赋值给全局变量
         g_redis = std::make_unique<sw::redis::Redis>(opts);
-
-        // 测试连接
         g_redis->ping();
         spdlog::info("成功连接到 Redis");
+        return true;
 
     } catch (const std::exception& e) {
         spdlog::error("Redis连接失败: {}", e.what());
+        return false;
+    }
+}
+
+int main(int argc, char* argv[])
+{
+    // 1. 加载配置 + 解析命令行
+    AppConfig app;
+    if (!loadConfig(argc, argv, app))
+        return EXIT_FAILURE;
+
+    // 2. 守护进程化
+    if (app.daemonMode) {
+        int rc = daemonize(app);
+        if (rc != 0) return (rc == 1) ? 0 : 1;
+    }
+
+    // 3. 注册信号处理
+    signal(SIGINT, signalHandler);
+    signal(SIGTERM, signalHandler);
+
+    // 4. 初始化日志系统
+    if (!initLogging(app.logCfg))
+        return EXIT_FAILURE;
+
+    // 5. 连接 Redis
+    if (!initRedis()) {
         shutdownLogging();
         return EXIT_FAILURE;
     }
 
-    // 5. 初始化生产计划数据
+    // 6. 初始化生产计划数据
     prodPlan.order_no = "20240001";
     prodPlan.item_no = "ITEM001";
     prodPlan.roll_no = "ROLL1234";
@@ -255,10 +284,10 @@ int main(int argc, char* argv[])
     prodPlan.feed_num = 100;  // 初始投料支数
     prodPlan.tube_no = 0;     // 初始管号
 
-    // 6. 初始同步到Redis
+    // 7. 初始同步到Redis
     prodPlan.UpdateForm();
 
-    // 7. 模拟生产流程
+    // 8. 模拟生产流程
     CTube tube;
     for (int i = 0; i < 100 && g_running; i++)
     {
@@ -282,11 +311,11 @@ int main(int argc, char* argv[])
         sleep(1); // 模拟生产节奏
     }
 
-    // 8. 资源清理
+    // 9. 资源清理
     g_redis.reset();
     shutdownLogging();
-    if (daemonMode) {
-        remove_pidfile();
+    if (app.daemonMode) {
+        removePidfile();
     }
 
     return 0;
