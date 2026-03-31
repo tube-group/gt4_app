@@ -11,12 +11,11 @@ set(SOURCES
     src/CarvePosition.cpp
     src/LengthPosition.cpp
     src/CirclePosition.cpp
-    src/LengthPosition.cpp
     src/PositionBase.cpp
     src/ProductionPlan.cpp
     src/Scrapt.cpp
     src/ScraptRoller.cpp
-    src/TubeTrackObject.cpp
+    src/SprayPosition.cpp
     src/WeightPosition.cpp
 )
 

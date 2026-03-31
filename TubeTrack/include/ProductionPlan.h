@@ -1,6 +1,7 @@
 // ProductionPlan.h 投料计划 类定义
 #pragma once
 #include "Tube.h"
+#include <sw/redis++/redis++.h>
 
 class CProductionPlan
 {
@@ -9,7 +10,7 @@ private:
 
 public:
     bool Pop(CTube *pTube, int mode = 0);
-    void UpdateForm();
+    void UpdateForm(sw::redis::Redis* redis);
 
 public:
     string order_no;        // 合同号

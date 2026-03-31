@@ -1,5 +1,5 @@
 #include <iostream>
-#include "TubeTrackObject.h"
+#include "TubeTrackContext.h"
 #include <sw/redis++/redis++.h>
 #include <unistd.h>    // sleep, fork, setsid, getpid, close, dup2
 #include <fcntl.h>     // open, O_WRONLY, O_CREAT, O_RDWR
@@ -225,7 +225,7 @@ static int daemonize(AppConfig& app)
 }
 
 // ---- Redis连接 ----
-static bool initRedis()
+static bool initRedis(TubeTrackContext& ctx)
 {
     auto &config = CConfig::GetInstance();
     spdlog::info("正在连接 Redis...");
@@ -235,8 +235,8 @@ static bool initRedis()
         opts.port = config.GetIntDefault("redis_port", 6379);
         opts.password = config.GetStringDefault("redis_password", "");
 
-        g_redis = std::make_unique<sw::redis::Redis>(opts);
-        g_redis->ping();
+        ctx.redis = std::make_unique<sw::redis::Redis>(opts);
+        ctx.redis->ping();
         spdlog::info("成功连接到 Redis");
         return true;
 
@@ -267,52 +267,55 @@ int main(int argc, char* argv[])
     if (!initLogging(app.logCfg))
         return EXIT_FAILURE;
 
-    // 5. 连接 Redis
-    if (!initRedis()) {
+    // 5. 创建上下文对象（取代全局变量）
+    TubeTrackContext ctx;
+
+    // 6. 连接 Redis
+    if (!initRedis(ctx)) {
         shutdownLogging();
         return EXIT_FAILURE;
     }
 
-    // 6. 初始化生产计划数据
-    prodPlan.order_no = "20240001";
-    prodPlan.item_no = "ITEM001";
-    prodPlan.roll_no = "ROLL1234";
-    prodPlan.melt_no = "MELT5678";
-    prodPlan.lot_no = "LOT91011";
-    prodPlan.lotno_coupling = "COUPLELOT";
-    prodPlan.meltno_coupling = "COUPLEMELT";
-    prodPlan.feed_num = 100;  // 初始投料支数
-    prodPlan.tube_no = 0;     // 初始管号
+    // 7. 初始化生产计划数据
+    ctx.prodPlan.order_no = "20240001";
+    ctx.prodPlan.item_no = "ITEM001";
+    ctx.prodPlan.roll_no = "ROLL1234";
+    ctx.prodPlan.melt_no = "MELT5678";
+    ctx.prodPlan.lot_no = "LOT91011";
+    ctx.prodPlan.lotno_coupling = "COUPLELOT";
+    ctx.prodPlan.meltno_coupling = "COUPLEMELT";
+    ctx.prodPlan.feed_num = 100;  // 初始投料支数
+    ctx.prodPlan.tube_no = 0;     // 初始管号
 
-    // 7. 初始同步到Redis
-    prodPlan.UpdateForm();
+    // 8. 初始同步到Redis
+    ctx.prodPlan.UpdateForm(ctx.redis.get());
 
-    // 8. 模拟生产流程
+    // 9. 模拟生产流程
     CTube tube;
     for (int i = 0; i < 100 && g_running; i++)
     {
         // 从投料计划中获取管子数据
-        if (prodPlan.Pop(&tube))
+        if (ctx.prodPlan.Pop(&tube))
         {
             // 将管子数据推送到测长工位
-            if (lengthPos.Push(tube))
+            if (ctx.lengthPos.Push(tube))
             {
                 // 成功推送后，输出工位状态
-                lengthPos.DebugOut();
+                ctx.lengthPos.DebugOut();
 
                 // 从测长工位弹出管子数据
-                lengthPos.Pop(&tube);
+                ctx.lengthPos.Pop(&tube);
             }
 
             // 更新Redis数据
-            prodPlan.UpdateForm();
+            ctx.prodPlan.UpdateForm(ctx.redis.get());
         }
 
         sleep(1); // 模拟生产节奏
     }
 
-    // 9. 资源清理
-    g_redis.reset();
+    // 10. 资源清理
+    ctx.redis.reset();
     shutdownLogging();
     if (app.daemonMode) {
         removePidfile();

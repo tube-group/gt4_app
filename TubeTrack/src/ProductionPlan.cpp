@@ -1,6 +1,5 @@
 // ProductionPlan.cpp 投料计划实现
 #include "ProductionPlan.h"
-#include "TubeTrackObject.h" // 访问全局变量
 #include <nlohmann/json.hpp>
 
 // bool CProductionPlan::Pop(CTube *pTube, int /*mode*/)
@@ -78,10 +77,10 @@ string CProductionPlan::convertToJson(const CProductionPlan &plan)
 // 初始化静态常量
 // const char *CProductionPlan::REDIS_KEY = "PlanInfo";
 
-void CProductionPlan::UpdateForm()
+void CProductionPlan::UpdateForm(sw::redis::Redis* redis)
 {
-    // 检查全局Redis连接
-    if (g_redis == nullptr)
+    // 检查Redis连接
+    if (redis == nullptr)
     {
         std::cerr << "错误：Redis连接未初始化" << std::endl;
         return;
@@ -102,10 +101,10 @@ void CProductionPlan::UpdateForm()
         std::cout << "生成的JSON: " << jsonStr << std::endl;
 
         // 写入Redis数据库
-        g_redis->set(REDIS_KEY, jsonStr);
+        redis->set(REDIS_KEY, jsonStr);
 
         // 发布详细消息到 RealDataChanged 主题
-        g_redis->publish("RealDataChanged", REDIS_KEY);
+        redis->publish("RealDataChanged", REDIS_KEY);
 
         std::cout << "✓ 已更新Redis并发布通知:" << REDIS_KEY << std::endl;
     }
