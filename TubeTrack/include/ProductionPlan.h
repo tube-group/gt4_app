@@ -1,16 +1,19 @@
 // ProductionPlan.h 投料计划 类定义
 #pragma once
 #include "Tube.h"
-#include <sw/redis++/redis++.h>
+
+struct TubeTrackContext; // 前向声明
 
 class CProductionPlan
 {
 private:
+    TubeTrackContext* m_ctx = nullptr; // 上下文指针
     string convertToJson(const CProductionPlan &plan);
 
 public:
+    void SetContext(TubeTrackContext& ctx) { m_ctx = &ctx; }
     bool Pop(CTube *pTube, int mode = 0);
-    void UpdateForm(sw::redis::Redis* redis);
+    void UpdateForm();
 
 public:
     string order_no;        // 合同号

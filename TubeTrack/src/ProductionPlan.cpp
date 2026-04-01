@@ -1,5 +1,6 @@
 // ProductionPlan.cpp 投料计划实现
 #include "ProductionPlan.h"
+#include "TubeTrackContext.h"
 #include <nlohmann/json.hpp>
 
 // bool CProductionPlan::Pop(CTube *pTube, int /*mode*/)
@@ -77,14 +78,16 @@ string CProductionPlan::convertToJson(const CProductionPlan &plan)
 // 初始化静态常量
 // const char *CProductionPlan::REDIS_KEY = "PlanInfo";
 
-void CProductionPlan::UpdateForm(sw::redis::Redis* redis)
+void CProductionPlan::UpdateForm()
 {
-    // 检查Redis连接
-    if (redis == nullptr)
+    // 检查上下文和Redis连接
+    if (m_ctx == nullptr || m_ctx->redis == nullptr)
     {
-        std::cerr << "错误：Redis连接未初始化" << std::endl;
+        std::cerr << "错误：上下文或Redis连接未初始化" << std::endl;
         return;
     }
+
+    auto* redis = m_ctx->redis.get();
 
     try
     {

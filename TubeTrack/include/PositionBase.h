@@ -3,6 +3,8 @@
 #include <vector>
 using namespace std;
 
+struct TubeTrackContext; // 前向声明
+
 class CPositionBase
 {
 public:
@@ -16,9 +18,13 @@ private:
 	string convertToJson(const CTube &tube);
 
 protected:
+	TubeTrackContext* m_ctx = nullptr; // 上下文指针
 	bool m_bWbReleased; // 步进梁封锁状态位
 	void GetDateTime(struct tm &t);
 	void GetDateTimeString(string &dateStr, string &timeStr);
+
+public:
+	void SetContext(TubeTrackContext& ctx) { m_ctx = &ctx; }
 
 public:
 	virtual bool Push(CTube &tube, int mode = 0); // 0根据信号自动，1异常情况下干预

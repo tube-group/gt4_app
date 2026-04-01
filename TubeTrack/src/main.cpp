@@ -1,4 +1,6 @@
 #include <iostream>
+#include <thread>
+#include <chrono>
 #include "TubeTrackContext.h"
 #include <sw/redis++/redis++.h>
 #include <unistd.h>    // sleep, fork, setsid, getpid, close, dup2
@@ -11,8 +13,11 @@
 #include "../../include/iniconfig.h" // CConfig
 #include "../../include/logging.h"   // LogConfig
 
+// 前向声明
+void workThread(TubeTrackContext& ctx);
+
 // ---- 信号处理 ----
-static volatile sig_atomic_t g_running = 1;
+volatile sig_atomic_t g_running = 1;
 
 static void signalHandler(int sig)
 {
@@ -228,7 +233,6 @@ static int daemonize(AppConfig& app)
 static bool initRedis(TubeTrackContext& ctx)
 {
     auto &config = CConfig::GetInstance();
-    spdlog::info("正在连接 Redis...");
     try {
         sw::redis::ConnectionOptions opts;
         opts.host = config.GetStringDefault("redis_host", "127.0.0.1");
@@ -242,6 +246,31 @@ static bool initRedis(TubeTrackContext& ctx)
 
     } catch (const std::exception& e) {
         spdlog::error("Redis连接失败: {}", e.what());
+        return false;
+    }
+}
+
+// ---- gplat连接 ----
+static bool initGplat(TubeTrackContext& ctx)
+{
+    auto &config = CConfig::GetInstance();
+    try {
+        std::string host = config.GetStringDefault("gplat_host", "127.0.0.1");
+        int port = config.GetIntDefault("gplat_port", 8777);
+
+        int conn = connectgplat(host.c_str(), port);
+
+        if (conn <= 0) {
+            spdlog::error("gPlat连接失败");
+            return false;
+        }
+
+        ctx.gplatConn = conn;
+        spdlog::info("成功连接到 gPlat");
+        return true;
+
+    } catch (const std::exception& e) {
+        spdlog::error("gPlat连接失败: {}", e.what());
         return false;
     }
 }
@@ -276,7 +305,17 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    // 7. 初始化生产计划数据
+    // 7. 连接 gPlat
+    if (!initGplat(ctx)) {
+        ctx.Cleanup();
+        shutdownLogging();
+        return EXIT_FAILURE;
+    }
+
+    // 8. 统一注入上下文到所有工位
+    ctx.Init();
+
+    // 9. 初始化生产计划数据
     ctx.prodPlan.order_no = "20240001";
     ctx.prodPlan.item_no = "ITEM001";
     ctx.prodPlan.roll_no = "ROLL1234";
@@ -287,35 +326,22 @@ int main(int argc, char* argv[])
     ctx.prodPlan.feed_num = 100;  // 初始投料支数
     ctx.prodPlan.tube_no = 0;     // 初始管号
 
-    // 8. 初始同步到Redis
-    ctx.prodPlan.UpdateForm(ctx.redis.get());
+    // 启动工作线程
+    std::thread workerThread(workThread, std::ref(ctx));
 
-    // 9. 模拟生产流程
-    CTube tube;
-    for (int i = 0; i < 100 && g_running; i++)
-    {
-        // 从投料计划中获取管子数据
-        if (ctx.prodPlan.Pop(&tube))
-        {
-            // 将管子数据推送到测长工位
-            if (ctx.lengthPos.Push(tube))
-            {
-                // 成功推送后，输出工位状态
-                ctx.lengthPos.DebugOut();
-
-                // 从测长工位弹出管子数据
-                ctx.lengthPos.Pop(&tube);
-            }
-
-            // 更新Redis数据
-            ctx.prodPlan.UpdateForm(ctx.redis.get());
-        }
-
-        sleep(1); // 模拟生产节奏
+    // 主线程等待退出命令或信号
+    while (true) {
+        if (!g_running) break;
+        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
-    // 10. 资源清理
-    ctx.redis.reset();
+    // 等待所有线程结束
+    if (workerThread.joinable()) {
+        workerThread.join();
+    }
+
+    // 资源清理
+    ctx.Cleanup();
     shutdownLogging();
     if (app.daemonMode) {
         removePidfile();
