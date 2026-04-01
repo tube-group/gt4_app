@@ -312,19 +312,10 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    // 8. 统一注入上下文到所有工位
-    ctx.Init();
+    // 8. 连接PostgreSQL（如果需要，类似initRedis）
 
-    // 9. 初始化生产计划数据
-    ctx.prodPlan.order_no = "20240001";
-    ctx.prodPlan.item_no = "ITEM001";
-    ctx.prodPlan.roll_no = "ROLL1234";
-    ctx.prodPlan.melt_no = "MELT5678";
-    ctx.prodPlan.lot_no = "LOT91011";
-    ctx.prodPlan.lotno_coupling = "COUPLELOT";
-    ctx.prodPlan.meltno_coupling = "COUPLEMELT";
-    ctx.prodPlan.feed_num = 100;  // 初始投料支数
-    ctx.prodPlan.tube_no = 0;     // 初始管号
+    // 9. 统一注入上下文到所有工位
+    ctx.Init();
 
     // 启动工作线程
     std::thread workerThread(workThread, std::ref(ctx));

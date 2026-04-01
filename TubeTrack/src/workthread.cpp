@@ -17,6 +17,17 @@ extern volatile sig_atomic_t g_running;
 
 void workThread(TubeTrackContext& ctx)
 {
+    // 初始化生产计划数据
+    ctx.prodPlan.order_no = "20240001";
+    ctx.prodPlan.item_no = "ITEM001";
+    ctx.prodPlan.roll_no = "ROLL1234";
+    ctx.prodPlan.melt_no = "MELT5678";
+    ctx.prodPlan.lot_no = "LOT91011";
+    ctx.prodPlan.lotno_coupling = "COUPLELOT";
+    ctx.prodPlan.meltno_coupling = "COUPLEMELT";
+    ctx.prodPlan.feed_num = 100;  // 初始投料支数
+    ctx.prodPlan.tube_no = 0;     // 初始管号
+
     // 初始同步到Redis
     ctx.prodPlan.UpdateForm();
 
@@ -71,5 +82,16 @@ void workThread(TubeTrackContext& ctx)
         if (tagname == "WAIT_TIMEOUT") {
             continue;
         }
+
+        // 处理其他TAG更新
+        spdlog::info("Received gPlat update: {} = {}", tagname, value);
+
+        if(tagname == "some_control_tag") {
+            // 根据控制TAG的值执行相应操作
+        }
+        else if (tagname == "some_data_tag") {
+            // 处理数据TAG更新
+        }
+        //........
     }
 }
