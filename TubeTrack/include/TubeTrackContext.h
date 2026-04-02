@@ -14,6 +14,7 @@
 #include "Scrapt.h"
 #include "Basket.h"
 #include <sw/redis++/redis++.h>
+#include <pqxx/pqxx>
 #include "../include/higplat.h"
 #include <memory>
 
@@ -21,6 +22,7 @@ struct TubeTrackContext {
     // 共享资源
     std::unique_ptr<sw::redis::Redis> redis;
     int gplatConn = -1;
+    std::unique_ptr<pqxx::connection> pgConn;
 
     // 工位对象
     CProductionPlan prodPlan;
@@ -55,5 +57,6 @@ struct TubeTrackContext {
             gplatConn = -1;
         }
         redis.reset();
+        pgConn.reset();
     }
 };

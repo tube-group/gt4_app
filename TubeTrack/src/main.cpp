@@ -275,6 +275,41 @@ static bool initGplat(TubeTrackContext& ctx)
     }
 }
 
+// ---- PostgreSQL连接 ----
+static bool initPostgreSQL(TubeTrackContext& ctx)
+{
+    auto &config = CConfig::GetInstance();
+    try {
+        // 读取PostgreSQL连接参数
+        std::string dbname = config.GetStringDefault("dbname", "mesl2");
+        std::string user = config.GetStringDefault("user", "l2user");
+        std::string password = config.GetStringDefault("password", "");
+        std::string hostaddr = config.GetStringDefault("hostaddr", "127.0.0.1");
+        int port = config.GetIntDefault("port", 5432);
+
+        // 构建连接字符串
+        std::string connStr = "dbname=" + dbname +
+                              " user=" + user +
+                              " password=" + password +
+                              " hostaddr=" + hostaddr +
+                              " port=" + std::to_string(port);
+
+        ctx.pgConn = std::make_unique<pqxx::connection>(connStr);
+        
+        if (ctx.pgConn->is_open()) {
+            spdlog::info("成功连接到 PostgreSQL 数据库: {}", dbname);
+            return true;
+        } else {
+            spdlog::error("PostgreSQL 连接失败: 数据库未打开");
+            return false;
+        }
+
+    } catch (const std::exception& e) {
+        spdlog::error("PostgreSQL 连接失败: {}", e.what());
+        return false;
+    }
+}
+
 int main(int argc, char* argv[])
 {
     // 1. 加载配置 + 解析命令行
@@ -312,7 +347,12 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    // 8. 连接PostgreSQL（如果需要，类似initRedis）
+    // 8. 连接PostgreSQL
+    if (!initPostgreSQL(ctx)) {
+        ctx.Cleanup();
+        shutdownLogging();
+        return EXIT_FAILURE;
+    }
 
     // 9. 统一注入上下文到所有工位
     ctx.Init();
