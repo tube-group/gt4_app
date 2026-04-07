@@ -20,7 +20,7 @@ void handleLenPosOn(TubeTrackContext& ctx,const char* value);
 void workThread(TubeTrackContext& ctx)
 {
     bool a = true;
-    handlePosOn(ctx, reinterpret_cast<const char*>(&a));
+    handleLenPosOn(ctx, reinterpret_cast<const char*>(&a));
 
    unsigned int err;
 
@@ -66,6 +66,7 @@ void workThread(TubeTrackContext& ctx)
 
 void handleLenPosOn(TubeTrackContext& ctx,const char* value) {
     bool isOn = read_value<bool>(value);
+    spdlog::info("isOn: {}", isOn);
     if (isOn) {
         spdlog::info("Length Position ON signal received");
         // 执行测长工位有料状态的相关操作
