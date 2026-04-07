@@ -14,6 +14,7 @@ public:
     void SetContext(TubeTrackContext& ctx) { m_ctx = &ctx; }
     bool Pop(CTube *pTube, int mode = 0);
     void UpdateForm();
+    void Initialize();
 
 public:
     string order_no;        // 合同号

@@ -48,6 +48,8 @@ struct TubeTrackContext {
         backBuffer.SetContext(*this);
         scrapt.SetContext(*this);
         basket.SetContext(*this);
+
+        prodPlan.Initialize(); // 初始化生产计划数据
     }
 
     // 清理资源
