@@ -50,6 +50,8 @@ bool CProductionPlan::Pop(CTube *pTube, int /*mode*/)
         feed_num--;
         tube_no += 1;
 
+        UpdateForm();
+
         return true;
     }
     else
