@@ -9,7 +9,7 @@ set(SOURCES
     src/Basket.cpp
     src/BackBuffer.cpp
     src/CarvePosition.cpp
-    src/LengthPosition.cpp
+    src/AlignPosition.cpp
     src/CirclePosition.cpp
     src/PositionBase.cpp
     src/ProductionPlan.cpp

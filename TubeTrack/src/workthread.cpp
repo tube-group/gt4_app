@@ -15,18 +15,18 @@
 // 声明外部变量
 extern volatile sig_atomic_t g_running;
 
-void handleLenPosOn(TubeTrackContext& ctx,const char* value);
+void handleAlignPosOn(TubeTrackContext& ctx,const char* value);
 
 void workThread(TubeTrackContext& ctx)
 {
     bool a = true;
-    handleLenPosOn(ctx, reinterpret_cast<const char*>(&a));
+    handleAlignPosOn(ctx, reinterpret_cast<const char*>(&a));
 
    unsigned int err;
 
     // 订阅timer用于退出检测
     subscribe(ctx.gplatConn, "timer_500ms", &err);
-    subscribe(ctx.gplatConn, "LEN_POS_ON", &err);
+    subscribe(ctx.gplatConn, "ALIGN_POS_ON", &err);
 
     // 主循环：等待gPlat数据，处理TAG更新
     while (g_running) {
@@ -53,9 +53,9 @@ void workThread(TubeTrackContext& ctx)
         // 处理其他TAG更新
         spdlog::info("Received gPlat update: {} = {}", tagname, value);
 
-        if(tagname == "LEN_POS_ON") {
+        if(tagname == "ALIGN_POS_ON") {
             // 根据控制TAG的值执行相应操作
-            handleLenPosOn(ctx, value);
+            handleAlignPosOn(ctx, value);
         }
         else if (tagname == "some_data_tag") {
             // 处理数据TAG更新
@@ -64,16 +64,16 @@ void workThread(TubeTrackContext& ctx)
     }
 }
 
-void handleLenPosOn(TubeTrackContext& ctx,const char* value) {
+void handleAlignPosOn(TubeTrackContext& ctx,const char* value) {
     bool isOn = read_value<bool>(value);
     spdlog::info("isOn: {}", isOn);
     if (isOn) {
-        spdlog::info("Length Position ON signal received");
-        // 执行测长工位有料状态的相关操作
+        spdlog::info("Align Position ON signal received");
+        // 执行对齐工位有料状态的相关操作
         CTube tube;
         if (ctx.prodPlan.Pop(&tube)) {
-            ctx.lengthPos.Push(tube);
-            ctx.lengthPos.DebugOut();
+            ctx.alignPos.Push(tube);
+            ctx.alignPos.DebugOut();
         }
     }
 }

@@ -4,7 +4,7 @@
 #pragma once
 
 #include "ProductionPlan.h"
-#include "LengthPosition.h"
+#include "AlignPosition.h"
 #include "CarvePosition.h"
 #include "WeightPosition.h"
 #include "SprayPosition.h"
@@ -26,7 +26,7 @@ struct TubeTrackContext {
 
     // 工位对象
     CProductionPlan prodPlan;
-    CLengthPosition lengthPos;
+    CAlignPosition alignPos;
     CCarvePosition  carvePos;
     CWeightPosition weightPos;
     CSprayPosition  sprayPos;
@@ -39,7 +39,7 @@ struct TubeTrackContext {
     // 统一注入上下文到所有工位
     void Init() {
         prodPlan.SetContext(*this);
-        lengthPos.SetContext(*this);
+        alignPos.SetContext(*this);
         carvePos.SetContext(*this);
         weightPos.SetContext(*this);
         sprayPos.SetContext(*this);

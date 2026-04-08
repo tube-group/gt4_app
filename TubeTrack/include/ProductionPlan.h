@@ -8,7 +8,7 @@ class CProductionPlan
 {
 private:
     TubeTrackContext* m_ctx = nullptr; // 上下文指针
-    string convertToJson(const CProductionPlan &plan);
+    string convertToJson();
 
 public:
     void SetContext(TubeTrackContext& ctx) { m_ctx = &ctx; }
