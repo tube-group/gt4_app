@@ -3,10 +3,7 @@
 #include <algorithm>
 #include <chrono>
 #include <csignal>
-#include <thread>
-
 #include <sw/redis++/redis++.h>
-
 #include "MoniterContext.h"
 #include "../../include/logging.h"
 
@@ -42,32 +39,33 @@ void CMoniter::Run()
 	const std::string channel = ctx_.targetChannel.empty() ? "optional_cmd" : ctx_.targetChannel;
 	spdlog::info("Moniter开始监听Redis频道: {}", channel);
 
+	auto sub = ctx_.redis->subscriber();
+
+	try {
+		sub.on_message([this](std::string recvChannel, std::string message) {
+			this->onMessage(recvChannel, message);
+		});
+
+		sub.subscribe(channel);
+	} catch (const std::exception& e) {
+		spdlog::error("Redis订阅异常: {}", e.what());
+		return;
+	}
+
 	while (g_running) {
 		try {
-			auto sub = ctx_.redis->subscriber();
-
-			sub.on_message([this](std::string recvChannel, std::string message) {
-				this->onMessage(recvChannel, message);
-			});
-
-			sub.subscribe(channel);
-
-			while (g_running) {
-				try {
-					sub.consume();
-				} catch (const sw::redis::TimeoutError&) {
-					continue;
-				}
-			}
-
-			try {
-				sub.unsubscribe(channel);
-			} catch (const std::exception&) {
-			}
+			sub.consume();
+		} catch (const sw::redis::TimeoutError&) {
+			continue;
 		} catch (const std::exception& e) {
-			spdlog::error("Redis订阅异常: {}", e.what());
-			std::this_thread::sleep_for(std::chrono::milliseconds(ctx_.reconnectIntervalMs));
+			spdlog::error("Redis消费异常: {}", e.what());
+			break;
 		}
+	}
+
+	try {
+		sub.unsubscribe(channel);
+	} catch (const std::exception&) {
 	}
 
 	spdlog::info("Moniter工作线程退出");

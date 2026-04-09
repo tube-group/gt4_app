@@ -138,7 +138,6 @@ struct AppConfig {
     bool daemonMode = false;
     std::string pidFile;
     std::string targetChannel = "optional_cmd";
-    int reconnectIntervalMs = 3000;
 };
 
 // 加载配置文件 + 解析命令行参数
@@ -162,7 +161,6 @@ static bool loadConfig(int argc, char* argv[], AppConfig& app)
     app.daemonMode = config.GetBoolDefault("daemon", false);
     app.pidFile    = config.GetStringDefault("pid_file", "/var/run/moniterusercmd.pid");
     app.targetChannel = config.GetStringDefault("target_channel", app.targetChannel);
-    app.reconnectIntervalMs = config.GetIntDefault("reconnect_interval", app.reconnectIntervalMs);
 
     // 解析命令行参数（-d 强制守护进程模式）
     int opt;
@@ -326,7 +324,6 @@ int main(int argc, char* argv[])
     // 6. 创建上下文对象（取代全局变量）
     MoniterContext ctx;
     ctx.targetChannel = app.targetChannel;
-    ctx.reconnectIntervalMs = app.reconnectIntervalMs;
 
     // 7. 连接 Redis
     if (!initRedis(ctx)) {

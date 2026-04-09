@@ -13,7 +13,6 @@ struct MoniterContext {
     std::unique_ptr<sw::redis::Redis> redis;
     int gplatConn = -1;
     std::string targetChannel = "optional_cmd";
-    int reconnectIntervalMs = 3000;
 
     // 统一注入上下文到所有工位
     void Init() {
