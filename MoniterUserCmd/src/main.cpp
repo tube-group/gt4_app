@@ -1,152 +1,360 @@
-#include "RedisCommandSubscriber.h"
-#include "iniconfig.h"
-#include "logging.h"
+#include <iostream>
+#include <chrono>
+#include "MoniterContext.h"
+#include "Moniter.h"
+#include <sw/redis++/redis++.h>
+#include <unistd.h>    // sleep, fork, setsid, getpid, close, dup2
+#include <fcntl.h>     // open, O_WRONLY, O_CREAT, O_RDWR
+#include <sys/file.h>  // flock, LOCK_EX, LOCK_NB, LOCK_UN
+#include <sys/stat.h>  // umask
+#include <limits.h>    // PATH_MAX
+#include <getopt.h>    // getopt
+#include <csignal>     // signal, SIGINT, SIGTERM
+#include "../../include/iniconfig.h" // CConfig
+#include "../../include/logging.h"   // LogConfig
 
-#include <csignal>
-#include <exception>
-#include <filesystem>
-#include <string>
-#include <unordered_set>
-#include <vector>
+// ---- 信号处理 ----
+volatile sig_atomic_t g_running = 1;
 
-namespace {
-
-RedisCommandSubscriber* g_subscriber = nullptr;
-
-void HandleSignal(int signalNumber) {
-	spdlog::info("[OperationCmdListener] 收到退出信号: {}", signalNumber);
-	if (g_subscriber != nullptr) {
-		g_subscriber->Stop();
-	}
+static void signalHandler(int sig)
+{
+    (void)sig;
+    g_running = 0;
 }
 
-void RegisterSignalHandlers() {
-	std::signal(SIGINT, HandleSignal);
-	std::signal(SIGTERM, HandleSignal);
+// ---- PID文件管理 ----
+static int g_pidfile_fd = -1;   // PID文件描述符，用于文件锁
+static std::string g_pidfile_path;
+
+// 打开PID文件并加锁（daemon化之前调用，验证可写性和单实例）
+// 返回: true=成功, false=失败
+static bool lockPidfile(const std::string& path)
+{
+    g_pidfile_path = path;
+
+    g_pidfile_fd = open(path.c_str(), O_WRONLY | O_CREAT, 0644);
+    if (g_pidfile_fd == -1) {
+        fprintf(stderr, "Cannot open PID file %s: %s\n", path.c_str(), strerror(errno));
+        return false;
+    }
+
+    // 非阻塞排他锁，如果已被锁定说明有另一个实例在运行
+    if (flock(g_pidfile_fd, LOCK_EX | LOCK_NB) == -1) {
+        fprintf(stderr, "Another instance is already running (PID file locked: %s)\n", path.c_str());
+        close(g_pidfile_fd);
+        g_pidfile_fd = -1;
+        return false;
+    }
+
+    return true;
 }
 
-bool LoadRedisConfigFromIni(const std::string& iniPath, RedisSubscriberConfig& cfg) {
-	auto& config = CConfig::GetInstance();
-	if (!config.Load(iniPath)) {
-		return false;
-	}
+// 写入PID到已锁定的文件（daemon化之后调用，写子进程PID）
+static bool writePidfile()
+{
+    if (g_pidfile_fd == -1) return false;
 
-	cfg.host = config.GetStringDefault("redis_host", cfg.host);
-	cfg.port = config.GetIntDefault("redis_port", cfg.port);
-	cfg.password = config.GetStringDefault("redis_password", cfg.password);
-	cfg.channel = config.GetStringDefault("redis_channel", cfg.channel);
-	cfg.socketTimeoutMs =
-		config.GetIntDefault("redis_socket_timeout_ms", cfg.socketTimeoutMs);
-	cfg.reconnectDelayMs =
-		config.GetIntDefault("redis_reconnect_delay_ms", cfg.reconnectDelayMs);
+    if (ftruncate(g_pidfile_fd, 0) == -1) {
+        return false;
+    }
 
-	return true;
+    char buf[32];
+    int len = snprintf(buf, sizeof(buf), "%d\n", getpid());
+    if (write(g_pidfile_fd, buf, len) != len) {
+        return false;
+    }
+
+    return true;
 }
 
-bool LoadRedisConfigWithAutoPath(const char* argv0, RedisSubscriberConfig& cfg) {
-	namespace fs = std::filesystem;
-
-	std::vector<fs::path> candidates;
-
-	if (argv0 != nullptr && argv0[0] != '\0') {
-		const fs::path exePath = fs::absolute(fs::path(argv0));
-		const fs::path exeDir = exePath.parent_path();
-		candidates.emplace_back(exeDir / "config" / "tubetrack.ini");
-		candidates.emplace_back(exeDir / ".." / "config" / "tubetrack.ini");
-		candidates.emplace_back(exeDir / ".." / ".." / "config" / "tubetrack.ini");
-	}
-
-	const fs::path cwd = fs::current_path();
-	candidates.emplace_back(cwd / "config" / "tubetrack.ini");
-	candidates.emplace_back(cwd / ".." / "config" / "tubetrack.ini");
-	candidates.emplace_back(cwd / ".." / ".." / "config" / "tubetrack.ini");
-
-	std::unordered_set<std::string> visited;
-	std::vector<std::string> tried;
-
-	for (const auto& candidate : candidates) {
-		const fs::path normalized = fs::absolute(candidate).lexically_normal();
-		const std::string pathString = normalized.string();
-
-		if (visited.find(pathString) != visited.end()) {
-			continue;
-		}
-		visited.insert(pathString);
-		tried.push_back(pathString);
-
-		if (!fs::exists(normalized)) {
-			continue;
-		}
-
-		if (LoadRedisConfigFromIni(pathString, cfg)) {
-			spdlog::info("[OperationCmdListener] 已加载配置文件: {}", pathString);
-			return true;
-		}
-	}
-
-	spdlog::error("[OperationCmdListener] 加载配置文件失败，当前工作目录: {}", cwd.string());
-	for (const auto& path : tried) {
-		spdlog::error("[OperationCmdListener] 已尝试路径: {}", path);
-	}
-
-	return false;
+// 清理PID文件
+static void removePidfile()
+{
+    if (g_pidfile_fd != -1) {
+        flock(g_pidfile_fd, LOCK_UN);
+        close(g_pidfile_fd);
+        g_pidfile_fd = -1;
+    }
+    if (!g_pidfile_path.empty()) {
+        unlink(g_pidfile_path.c_str());
+        g_pidfile_path.clear();
+    }
 }
 
-}  // namespace
+// ---- 守护进程 ----
+// 参考 gplat/ngx_daemon.cxx 风格: fork + setsid + umask + 重定向stdio到/dev/null
+// 返回: 0=子进程(成功), 1=父进程(应退出), -1=失败
+static int becomeDaemon()
+{
+    switch (fork()) {
+    case -1:
+        fprintf(stderr, "becomeDaemon(): fork() failed: %s\n", strerror(errno));
+        return -1;
+    case 0:
+        // 子进程
+        break;
+    default:
+        // 父进程，返回1让调用者退出
+        return 1;
+    }
 
-int main(int argc, char* argv[]) {
-	LogConfig logConfig;
-	logConfig.logger_name = "moniter_user_cmd";
-	logConfig.log_console = true;
-	logConfig.level = "info";
-	logConfig.filename = "logs/MoniterUserCmd.log";
+    // 脱离终端，创建新会话
+    if (setsid() == -1) {
+        fprintf(stderr, "becomeDaemon(): setsid() failed: %s\n", strerror(errno));
+        return -1;
+    }
 
-	if (!initLogging(logConfig)) {
-		return 1;
-	}
+    // 不限制文件权限
+    umask(0);
 
-	RedisSubscriberConfig config;
-	if (!LoadRedisConfigWithAutoPath(argv[0], config)) {
-		shutdownLogging();
-		return 1;
-	}
+    // 重定向stdin/stdout/stderr到/dev/null
+    int fd = open("/dev/null", O_RDWR);
+    if (fd == -1) {
+        fprintf(stderr, "becomeDaemon(): open(\"/dev/null\") failed: %s\n", strerror(errno));
+        return -1;
+    }
+    if (dup2(fd, STDIN_FILENO) == -1) {
+        fprintf(stderr, "becomeDaemon(): dup2(STDIN) failed: %s\n", strerror(errno));
+        return -1;
+    }
+    if (dup2(fd, STDOUT_FILENO) == -1) {
+        fprintf(stderr, "becomeDaemon(): dup2(STDOUT) failed: %s\n", strerror(errno));
+        return -1;
+    }
+    if (dup2(fd, STDERR_FILENO) == -1) {
+        fprintf(stderr, "becomeDaemon(): dup2(STDERR) failed: %s\n", strerror(errno));
+        return -1;
+    }
+    if (fd > STDERR_FILENO) {
+        close(fd);
+    }
 
-	try {
-		// 命令行参数仅作为覆盖项，优先级高于 ini 配置。
-		if (argc > 1) {
-			config.host = argv[1];
-		}
-		if (argc > 2) {
-			config.port = std::stoi(argv[2]);
-		}
-		if (argc > 3) {
-			config.password = argv[3];
-		}
-		if (argc > 4) {
-			config.channel = argv[4];
-		}
-	} catch (const std::exception& error) {
-		spdlog::error("[OperationCmdListener] 启动参数错误: {}", error.what());
-		spdlog::error("用法: MoniterUserCmd [host] [port] [password] [channel]");
-		shutdownLogging();
-		return 1;
-	}
+    return 0; // 子进程
+}
 
-	spdlog::info("[OperationCmdListener] Redis={}:{}, channel={}",
-					 config.host,
-					 config.port,
-					 config.channel);
+// ---- 应用配置 ----
+struct AppConfig {
+    LogConfig logCfg;
+    bool daemonMode = false;
+    std::string pidFile;
+    std::string targetChannel = "optional_cmd";
+    int reconnectIntervalMs = 3000;
+};
 
-	RedisCommandSubscriber subscriber(config);
-	g_subscriber = &subscriber;
+// 加载配置文件 + 解析命令行参数
+static bool loadConfig(int argc, char* argv[], AppConfig& app)
+{
+    auto &config = CConfig::GetInstance();
+    std::string configFile = "/home/admin/projects/gt4_app/config/MoniterUserCmd.ini";
+    if (!config.Load(configFile))
+    {
+        fprintf(stderr, "Failed to load config file: %s\n", configFile.c_str());
+        return false;
+    }
 
-	RegisterSignalHandlers();
+    app.logCfg.log_console     = config.GetBoolDefault("log_console", false);
+    app.logCfg.level           = config.GetStringDefault("level", app.logCfg.level);
+    app.logCfg.pattern         = config.GetStringDefault("pattern", app.logCfg.pattern);
+    app.logCfg.filename        = config.GetStringDefault("filename", "log/moniterusercmd.log");
+    app.logCfg.immediate_flush = config.GetBoolDefault("immediate_flush", app.logCfg.immediate_flush);
+    app.logCfg.max_size_mb     = config.GetIntDefault("max_size", app.logCfg.max_size_mb);
+    app.logCfg.max_files       = config.GetIntDefault("max_files", app.logCfg.max_files);
+    app.daemonMode = config.GetBoolDefault("daemon", false);
+    app.pidFile    = config.GetStringDefault("pid_file", "/var/run/moniterusercmd.pid");
+    app.targetChannel = config.GetStringDefault("target_channel", app.targetChannel);
+    app.reconnectIntervalMs = config.GetIntDefault("reconnect_interval", app.reconnectIntervalMs);
 
-	spdlog::info("[OperationCmdListener] 启动监听器，按 Ctrl+C 退出");
-	subscriber.Start();
-	spdlog::info("[OperationCmdListener] 监听器已停止");
+    // 解析命令行参数（-d 强制守护进程模式）
+    int opt;
+    while ((opt = getopt(argc, argv, "dc:h")) != -1) {
+        switch (opt) {
+        case 'd':
+            app.daemonMode = true;
+            break;
+        default:
+            break;
+        }
+    }
 
-	g_subscriber = nullptr;
-	shutdownLogging();
-	return 0;
+    if (app.daemonMode) {
+        fprintf(stdout, "以守护进程运行\n");
+    } else {
+        fprintf(stdout, "以普通进程运行\n");
+    }
+
+    return true;
+}
+
+// ---- 守护进程化（统一入口） ----
+// 将运行时路径转为绝对路径，避免daemon后工作目录变化影响
+static void normalizeRuntimePaths(AppConfig& app)
+{
+    auto toAbsPath = [](std::string& path) {
+        if (!path.empty() && path[0] != '/') {
+            char cwd[PATH_MAX];
+            if (getcwd(cwd, sizeof(cwd))) {
+                path = std::string(cwd) + "/" + path;
+            }
+        }
+    };
+
+    toAbsPath(app.logCfg.filename);
+    toAbsPath(app.pidFile);
+}
+
+// ---- 守护进程化（统一入口） ----
+// fork + setsid + 重定向 + 子进程写PID
+// 返回: 0=子进程继续, 1=父进程应退出, -1=失败
+static int daemonize()
+{
+    // fork + setsid + 重定向
+    int rc = becomeDaemon();
+    if (rc == -1) {
+        fprintf(stderr, "Failed to daemonize. Exiting.\n");
+        return -1;
+    }
+
+    if (rc == 1) {
+        // 父进程，正常退出（不清理PID文件，由子进程持有锁）
+        fprintf(stdout, "父进程，正常退出\n");
+        if (g_pidfile_fd != -1) {
+            close(g_pidfile_fd);
+            g_pidfile_fd = -1;
+        }
+        return 1;
+    }
+
+    // 子进程继续，写入子进程PID
+    if (!writePidfile()) {
+        fprintf(stderr, "Failed to write PID file after daemonize.\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+// ---- Redis连接 ----
+static bool initRedis(MoniterContext& ctx)
+{
+    auto &config = CConfig::GetInstance();
+    try {
+        sw::redis::ConnectionOptions opts;
+        opts.host = config.GetStringDefault("redis_host", "127.0.0.1");
+        opts.port = config.GetIntDefault("redis_port", 6379);
+        opts.password = config.GetStringDefault("redis_password", "");
+        opts.socket_timeout = std::chrono::milliseconds(1000);
+
+        ctx.redis = std::make_unique<sw::redis::Redis>(opts);
+        ctx.redis->ping();
+        spdlog::info("成功连接到 Redis");
+        return true;
+
+    } catch (const std::exception& e) {
+        spdlog::error("Redis连接失败: {}", e.what());
+        return false;
+    }
+}
+
+// ---- gplat连接 ----
+static bool initGplat(MoniterContext& ctx)
+{
+    auto &config = CConfig::GetInstance();
+    try {
+        std::string host = config.GetStringDefault("gplat_server", config.GetStringDefault("gplat_host", "127.0.0.1"));
+        int port = config.GetIntDefault("gplat_port", 8777);
+
+        int conn = connectgplat(host.c_str(), port);
+
+        if (conn <= 0) {
+            spdlog::error("gPlat连接失败");
+            return false;
+        }
+
+        ctx.gplatConn = conn;
+        spdlog::info("成功连接到 gPlat");
+        return true;
+
+    } catch (const std::exception& e) {
+        spdlog::error("gPlat连接失败: {}", e.what());
+        return false;
+    }
+}
+
+int main(int argc, char* argv[])
+{
+    // 1. 加载配置 + 解析命令行
+    AppConfig app;
+    if (!loadConfig(argc, argv, app))
+        return EXIT_FAILURE;
+
+    // 2. 统一路径 + 单实例锁（前台和后台都生效）
+    normalizeRuntimePaths(app);
+
+    if (!lockPidfile(app.pidFile)) {
+        return EXIT_FAILURE;
+    }
+
+    // 前台模式也写PID，便于运维查看
+    if (!app.daemonMode && !writePidfile()) {
+        fprintf(stderr, "Failed to write PID file: %s\n", app.pidFile.c_str());
+        removePidfile();
+        return EXIT_FAILURE;
+    }
+
+    // 3. 守护进程化
+    if (app.daemonMode) {
+        int rc = daemonize();
+        if (rc == 1) {
+            return 0;
+        }
+        if (rc != 0) {
+            removePidfile();
+            return 1;
+        }
+    }
+
+    // 4. 注册信号处理
+    signal(SIGINT, signalHandler);
+    signal(SIGTERM, signalHandler);
+
+    // 5. 初始化日志系统
+    if (!initLogging(app.logCfg)) {
+        removePidfile();
+        return EXIT_FAILURE;
+    }
+
+    // 6. 创建上下文对象（取代全局变量）
+    MoniterContext ctx;
+    ctx.targetChannel = app.targetChannel;
+    ctx.reconnectIntervalMs = app.reconnectIntervalMs;
+
+    // 7. 连接 Redis
+    if (!initRedis(ctx)) {
+        shutdownLogging();
+        removePidfile();
+        return EXIT_FAILURE;
+    }
+
+    // 8. 连接 gPlat
+    if (!initGplat(ctx)) {
+        ctx.Cleanup();
+        shutdownLogging();
+        removePidfile();
+        return EXIT_FAILURE;
+    }
+
+
+    // 9. 初始化Moniter模块
+    ctx.Init();
+
+    // 10. 在主线程直接运行Moniter（收到退出命令或信号后返回）
+    CMoniter moniter(ctx);
+    moniter.Run();
+
+    // 资源清理
+    ctx.Cleanup();
+    shutdownLogging();
+    removePidfile();
+
+    return 0;
 }
