@@ -13,6 +13,7 @@
 #include "BackBuffer.h"
 #include "Scrapt.h"
 #include "Basket.h"
+#include "WalkingBeam.h"
 #include <sw/redis++/redis++.h>
 #include <pqxx/pqxx>
 #include "../include/higplat.h"
@@ -35,6 +36,7 @@ struct TubeTrackContext {
     CBackBuffer     backBuffer;
     CScrapt         scrapt;
     CBasket         basket;
+    WalkingBeam     walkingBeam;
 
     // 统一注入上下文到所有工位
     void Init() {
@@ -48,6 +50,7 @@ struct TubeTrackContext {
         backBuffer.SetContext(*this);
         scrapt.SetContext(*this);
         basket.SetContext(*this);
+        walkingBeam.SetContext(*this);
 
         prodPlan.Initialize(); // 初始化生产计划数据
     }

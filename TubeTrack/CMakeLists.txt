@@ -17,6 +17,7 @@ set(SOURCES
     src/ScraptRoller.cpp
     src/SprayPosition.cpp
     src/WeightPosition.cpp
+    src/WalkingBeam.cpp
     src/workthread.cpp
 )
 
