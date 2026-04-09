@@ -52,7 +52,7 @@ void workThread(TubeTrackContext& ctx)
         }
 
         // 处理其他TAG更新
-        spdlog::info("Received gPlat update: {} = {}", tagname, value);
+        spdlog::info("Received gPlat post: {}", tagname);
 
         if(tagname == "ALIGN_POS_ON") {
             // 根据控制TAG的值执行相应操作
