@@ -1,6 +1,7 @@
 #pragma once
 #include "Tube.h"
-#include <vector>
+#include <deque>
+#include <memory>
 using namespace std;
 
 struct TubeTrackContext; // 前向声明
@@ -11,7 +12,7 @@ public:
 	CPositionBase();
 
 private:
-	vector<CTube> m_tubes;
+	deque<unique_ptr<CTube>> m_tubes;
 	bool m_bOccupied;
 	bool m_bTriggerEnabled;
 	bool m_bUpdateTagEnabled;
@@ -27,9 +28,9 @@ public:
 	void SetContext(TubeTrackContext& ctx) { m_ctx = &ctx; }
 
 public:
-	virtual bool Push(CTube &tube, int mode = 0); // 0根据信号自动，1异常情况下干预
-	virtual bool Pop(CTube *pTube, int mode = 0);
-	virtual bool Peek(CTube *pTube);
+	virtual bool Push(unique_ptr<CTube> tube, int mode = 0); // 0根据信号自动，1异常情况下干预
+	virtual unique_ptr<CTube> Pop(int mode = 0);
+	virtual const CTube *Peek() const;
 	virtual bool IsEmpty();
 	virtual void Clear();
 	virtual void Modify();

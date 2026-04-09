@@ -1,6 +1,7 @@
 // ProductionPlan.h 投料计划 类定义
 #pragma once
 #include "Tube.h"
+#include <memory>
 
 struct TubeTrackContext; // 前向声明
 
@@ -12,7 +13,7 @@ private:
 
 public:
     void SetContext(TubeTrackContext& ctx) { m_ctx = &ctx; }
-    bool Pop(CTube *pTube, int mode = 0);
+    std::unique_ptr<CTube> Pop(int mode = 0);
     void UpdateForm();
     void Initialize();
 

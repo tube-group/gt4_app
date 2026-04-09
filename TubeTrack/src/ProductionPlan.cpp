@@ -1,27 +1,29 @@
 // ProductionPlan.cpp 投料计划实现
 #include "ProductionPlan.h"
 #include "TubeTrackContext.h"
+#include <memory>
 #include <nlohmann/json.hpp>
 #include "../../include/logging.h" // spdlog
 
-bool CProductionPlan::Pop(CTube *pTube, int /*mode*/)
+std::unique_ptr<CTube> CProductionPlan::Pop(int /*mode*/)
 {
 
     if (feed_num > 0)
     {
+        auto tube = std::make_unique<CTube>();
         // 查询当前合同和生产参数，填充管子数据
-        pTube->order_no = order_no;
-        pTube->roll_no = roll_no;
-        pTube->item_no = item_no;
-        pTube->lot_no = lot_no;
-        pTube->melt_no = melt_no;
-        pTube->meltno_coupling = meltno_coupling;
-        pTube->lotno_coupling = lotno_coupling;
-        pTube->tube_no = tube_no;
+        tube->order_no = order_no;
+        tube->roll_no = roll_no;
+        tube->item_no = item_no;
+        tube->lot_no = lot_no;
+        tube->melt_no = melt_no;
+        tube->meltno_coupling = meltno_coupling;
+        tube->lotno_coupling = lotno_coupling;
+        tube->tube_no = tube_no;
 
         // 生成流水号
         static int flow_no = 0;
-        pTube->flow_no = flow_no++;
+        tube->flow_no = flow_no++;
 
         // 更新计数器
         feed_num--;
@@ -29,11 +31,11 @@ bool CProductionPlan::Pop(CTube *pTube, int /*mode*/)
 
         UpdateForm();
 
-        return true;
+        return tube;
     }
     else
     {
-        return false;
+        return nullptr;
     }
 }
 

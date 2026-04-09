@@ -2,6 +2,7 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
+#include <utility>
 #include <nlohmann/json.hpp>
 #include "../../include/logging.h"   // spdlog
 
@@ -34,59 +35,55 @@ void CPositionBase::GetDateTimeString(string & dateStr, string & timeStr)
 	timeStr = ss2.str();
 }
 
-bool CPositionBase::Push(CTube &tube, int /*mode*/)	//0根据信号自动，1异常情况下干预
+bool CPositionBase::Push(unique_ptr<CTube> tube, int /*mode*/)	//0根据信号自动，1异常情况下干预
 {
-
-	if (m_tubes.size() == 0)
+	if (!tube)
 	{
-		if (m_bTriggerEnabled)
-		{
-			EntryTriggerBeforePush(tube);
-		}
-		m_tubes.push_back(tube);
-		UpdateForm();
-		if (m_bTriggerEnabled)
-		{
-			EntryTrigger(tube);
-		}
-		return true;
-	}
-	else
-	{
-		std::cout << "工位上已有管子，无法插入管子数据！" << std::endl;
 		return false;
 	}
+
+	if (m_bTriggerEnabled)
+	{
+		EntryTriggerBeforePush(*tube);
+	}
+	CTube *tubePtr = tube.get();
+	m_tubes.push_back(std::move(tube));
+	UpdateForm();
+	if (m_bTriggerEnabled)
+	{
+		EntryTrigger(*tubePtr);
+	}
+	return true;
 }
 
-bool CPositionBase::Pop(CTube *pTube, int /*mode*/)
+unique_ptr<CTube> CPositionBase::Pop(int /*mode*/)
 {
 	if (m_tubes.size() > 0)
 	{
-		*pTube = m_tubes[0];
-		m_tubes.pop_back();
+		auto tube = std::move(m_tubes.front());
+		m_tubes.pop_front();
 		UpdateForm();
-		if (m_bTriggerEnabled)
+		if (m_bTriggerEnabled && tube)
 		{
-			ExitTrigger(*pTube);
+			ExitTrigger(*tube);
 		}	
-		return true;
+		return tube;
 	}
 	else
 	{
-		return false;
+		return nullptr;
 	}
 }
 
-bool CPositionBase::Peek(CTube *pTube)
+const CTube *CPositionBase::Peek() const
 {
 	if (m_tubes.size() > 0)
 	{
-		*pTube = m_tubes[0];
-		return true;
+		return m_tubes.front().get();
 	}
 	else
 	{
-		return false;
+		return nullptr;
 	}
 }
 
@@ -156,8 +153,8 @@ void CPositionBase::DisableUpdateTag()
 
 void CPositionBase::DebugOut()
 {
-    CTube tube;
-    if (!Peek(&tube))
+	const CTube *tube = Peek();
+	if (!tube)
     {
         std::cout << "没有管子信息" << std::endl;
         return;
@@ -172,15 +169,15 @@ void CPositionBase::DebugOut()
     // std::cout << "流水号    :" << tube.flow_no << std::endl;
     // std::cout << "接箍批号  :" << tube.lotno_coupling << std::endl;
     // std::cout << "接箍炉号  :" << tube.meltno_coupling << std::endl;
-	spdlog::info("合同号    : {}", tube.order_no);
-	spdlog::info("项目号    : {}", tube.item_no);
-	spdlog::info("轧批号    : {}", tube.roll_no);
-	spdlog::info("炉号      : {}", tube.melt_no);
-	spdlog::info("试批号    : {}", tube.lot_no);
-	spdlog::info("管号      : {}", tube.tube_no);
-	spdlog::info("流水号    : {}", tube.flow_no);
-	spdlog::info("接箍批号  : {}", tube.lotno_coupling);
-	spdlog::info("接箍炉号  : {}", tube.meltno_coupling);
+	spdlog::info("合同号    : {}", tube->order_no);
+	spdlog::info("项目号    : {}", tube->item_no);
+	spdlog::info("轧批号    : {}", tube->roll_no);
+	spdlog::info("炉号      : {}", tube->melt_no);
+	spdlog::info("试批号    : {}", tube->lot_no);
+	spdlog::info("管号      : {}", tube->tube_no);
+	spdlog::info("流水号    : {}", tube->flow_no);
+	spdlog::info("接箍批号  : {}", tube->lotno_coupling);
+	spdlog::info("接箍炉号  : {}", tube->meltno_coupling);
 
 
     // 数值格式化输出
@@ -188,16 +185,16 @@ void CPositionBase::DebugOut()
     // std::cout << "长度 (m)  :" << tube.length << std::endl;
     // std::cout << "重量 (kg) :" << tube.weight << std::endl;
     // std::cout << std::defaultfloat; // 恢复默认格式
-	spdlog::info("长度 (m)  : {}", tube.length);
-	spdlog::info("重量 (kg) : {}", tube.weight);
+	spdlog::info("长度 (m)  : {}", tube->length);
+	spdlog::info("重量 (kg) : {}", tube->weight);
 
 
 	// std::cout << "长度合格  :" << (tube.lengthOk ? "是" : "否") << std::endl;
 	// std::cout << "重量合格  :" << (tube.weightOk ? "是" : "否") << std::endl;
 	// std::cout << "是否喷印  :" << (tube.bSprayed ? "是" : "否") << std::endl;
-	spdlog::info("长度合格  : {}", tube.lengthOk ? "是" : "否");
-	spdlog::info("重量合格  : {}", tube.weightOk ? "是" : "否");
-	spdlog::info("是否喷印  : {}", tube.bSprayed ? "是" : "否");
+	spdlog::info("长度合格  : {}", tube->lengthOk ? "是" : "否");
+	spdlog::info("重量合格  : {}", tube->weightOk ? "是" : "否");
+	spdlog::info("是否喷印  : {}", tube->bSprayed ? "是" : "否");
 
     return;
 }

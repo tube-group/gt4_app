@@ -7,6 +7,7 @@
 #include <chrono>
 #include <unistd.h>
 #include <csignal>
+#include <utility>
 
 #include "logging.h"
 #include "../include/higplat.h"
@@ -70,10 +71,15 @@ void handleAlignPosOn(TubeTrackContext& ctx,const char* value) {
     if (isOn) {
         spdlog::info("Align Position ON signal received");
         // 执行对齐工位有料状态的相关操作
-        CTube tube;
-        if (ctx.prodPlan.Pop(&tube)) {
-            ctx.alignPos.Push(tube);
+        auto tube = ctx.prodPlan.Pop();
+        if (tube && ctx.alignPos.Push(std::move(tube))) {
             ctx.alignPos.DebugOut();
+        }
+        else if (!tube) {
+            spdlog::warn("Production plan is empty, no tube to move to align position");
+        }
+        else {
+            spdlog::error("Failed to push tube into align position");
         }
     }
 }
@@ -98,20 +104,20 @@ void handleAlignPosOn(TubeTrackContext& ctx,const char* value) {
     // ctx.prodPlan.UpdateForm();
 
     // // 模拟生产流程
-    // CTube tube;
     // for (int i = 0; i < 100 && g_running; i++)
     // {
     //     // 从投料计划中获取管子数据
-    //     if (ctx.prodPlan.Pop(&tube))
+    //     auto tube = ctx.prodPlan.Pop();
+    //     if (tube)
     //     {
     //         // 将管子数据推送到测长工位
-    //         if (ctx.lengthPos.Push(tube))
+    //         if (ctx.lengthPos.Push(std::move(tube)))
     //         {
     //             // 成功推送后，输出工位状态
     //             ctx.lengthPos.DebugOut();
 
     //             // 从测长工位弹出管子数据
-    //             ctx.lengthPos.Pop(&tube);
+    //             tube = ctx.lengthPos.Pop();
     //         }
 
     //         // 更新Redis数据
