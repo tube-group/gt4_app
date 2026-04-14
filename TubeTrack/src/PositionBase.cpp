@@ -199,26 +199,61 @@ void CPositionBase::DebugOut()
     return;
 }
 
-string CPositionBase::convertToJson(const CTube & tube)
+// string CPositionBase::convertToJson(const CTube & tube)
+// {
+// 	// 使用nlohmann/json库实现生产计划转换为JSON格式字符串
+//     nlohmann::json j;
+//     j["order_no"] = tube.order_no;
+//     j["item_no"] = tube.item_no;
+//     j["roll_no"] = tube.roll_no;
+//     j["melt_no"] = tube.melt_no;
+//     j["lot_no"] = tube.lot_no;
+// 	j["tube_no"] = tube.tube_no;
+// 	j["flow_no"] = tube.flow_no;
+//     j["lotno_coupling"] = tube.lotno_coupling;
+//     j["meltno_coupling"] = tube.meltno_coupling;
+// 	j["length"] = tube.length;
+// 	j["weight"] = tube.weight;
+// 	j["lengthOk"] = tube.lengthOk;
+// 	j["weightOk"] = tube.weightOk;
+// 	j["bSprayed"] = tube.bSprayed;
+
+//     return j.dump(4);
+// }
+
+//直接获取当前工位管子信息并转换为JSON字符串
+string CPositionBase::convertToJson()
 {
+	if (m_tubes.empty())
+	{
+		return "{}"; // 返回空JSON对象
+	}
 
-	// 使用nlohmann/json库实现生产计划转换为JSON格式字符串
-    nlohmann::json j;
-	j["calib_tube"] = tube.calib_tube;
-    j["order_no"] = tube.order_no;
-    j["item_no"] = tube.item_no;
-    j["roll_no"] = tube.roll_no;
-    j["melt_no"] = tube.melt_no;
-    j["lot_no"] = tube.lot_no;
-	j["tube_no"] = tube.tube_no;
-	j["flow_no"] = tube.flow_no;
-    j["lotno_coupling"] = tube.lotno_coupling;
-    j["meltno_coupling"] = tube.meltno_coupling;
-	j["length"] = tube.length;
-	j["weight"] = tube.weight;
-	j["lengthOk"] = tube.lengthOk;
-	j["weightOk"] = tube.weightOk;
-	j["bSprayed"] = tube.bSprayed;
+	// 枚举当前工位的所有管子并转换为JSON数组
+	nlohmann::json j;
+	for (const auto& tubePtr : m_tubes)
+	{
+		if (tubePtr)
+		{
+			nlohmann::json tubeJson;
+			tubeJson["order_no"] = tubePtr->order_no;
+			tubeJson["item_no"] = tubePtr->item_no;
+			tubeJson["roll_no"] = tubePtr->roll_no;
+			tubeJson["melt_no"] = tubePtr->melt_no;
+			tubeJson["lot_no"] = tubePtr->lot_no;
+			tubeJson["tube_no"] = tubePtr->tube_no;
+			tubeJson["flow_no"] = tubePtr->flow_no;
+			tubeJson["lotno_coupling"] = tubePtr->lotno_coupling;
+			tubeJson["meltno_coupling"] = tubePtr->meltno_coupling;
+			tubeJson["length"] = tubePtr->length;
+			tubeJson["weight"] = tubePtr->weight;
+			tubeJson["lengthOk"] = tubePtr->lengthOk;
+			tubeJson["weightOk"] = tubePtr->weightOk;
+			tubeJson["bSprayed"] = tubePtr->bSprayed;
 
-    return j.dump(4);
+			j.push_back(tubeJson);
+		}
+	}
+
+	return j.dump(4);
 }

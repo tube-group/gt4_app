@@ -16,13 +16,14 @@ private:
 	bool m_bOccupied;
 	bool m_bTriggerEnabled;
 	bool m_bUpdateTagEnabled;
-	string convertToJson(const CTube &tube);
 
 protected:
 	TubeTrackContext* m_ctx = nullptr; // 上下文指针
 	bool m_bWbReleased; // 步进梁封锁状态位
 	void GetDateTime(struct tm &t);
 	void GetDateTimeString(string &dateStr, string &timeStr);
+	// string convertToJson(const CTube &tube);
+	string convertToJson();
 
 public:
 	void SetContext(TubeTrackContext& ctx) { m_ctx = &ctx; }

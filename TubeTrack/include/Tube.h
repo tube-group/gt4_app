@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <string>
+#include <nlohmann/json.hpp>
 
 using namespace std;
 
@@ -12,6 +13,26 @@ public:
 	CTube(const CTube &) = default;
 	~CTube() = default; // 也可以省略这一行，默认析构就是空的
 	CTube &operator=(const CTube &) = default;
+
+	std::string convertToJson() const {
+		nlohmann::json j;
+		j["order_no"] = order_no;
+		j["item_no"] = item_no;
+		j["roll_no"] = roll_no;
+		j["melt_no"] = melt_no;
+		j["lot_no"] = lot_no;
+		j["tube_no"] = tube_no;
+		j["flow_no"] = flow_no;
+		j["lotno_coupling"] = lotno_coupling;
+		j["meltno_coupling"] = meltno_coupling;
+		j["length"] = length;
+		j["weight"] = weight;
+		j["lengthOk"] = lengthOk;
+		j["weightOk"] = weightOk;
+		j["bSprayed"] = bSprayed;
+
+		return j.dump(4);
+	}
 
 	bool   calib_tube=false;           //样管
 	string order_no;    	        //合同号

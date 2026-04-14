@@ -4,5 +4,9 @@
 
 class CWeightPosition : public CPositionBase
 {
+    public:
+        CWeightPosition() = default;
+        ~CWeightPosition() = default;
 
+        virtual void UpdateForm() override; // 刷新画面
 };

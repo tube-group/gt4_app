@@ -16,6 +16,7 @@ private:
     vector<unique_ptr<CTube>> m_tubes;  // 6个工位的管子存储
     TubeTrackContext* m_ctx = nullptr;  // 上下文指针
     bool m_bWbReleased;                 // 步进梁封锁状态位
+    bool m_bAtBase;                     // 是否在基座位置
 
 public:
     // 设置上下文
@@ -28,9 +29,19 @@ public:
               unique_ptr<CTube> tube3,
               unique_ptr<CTube> tube4,
               unique_ptr<CTube> tube5);
+
+    // 获取指定工位的管子（只读访问）
+    unique_ptr<CTube> Pop(int position); // 从指定工位弹出管子
     
     // 获取指定工位的管子（只读访问）
     const CTube* GetTubeAt(int position) const;
+
+    // set/get 步进梁状态
+    bool IsAtBase() const { return m_bAtBase; }
+    void SetAtBase(bool atBase) { m_bAtBase = atBase; }
+
+    // 判断步进梁是否为空
+    bool IsEmpty() const;
     
     // 清空所有工位
     void Clear();

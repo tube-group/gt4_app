@@ -4,5 +4,9 @@
 
 class CCirclePosition : public CPositionBase
 {
+    public:
+        CCirclePosition() = default;
+        ~CCirclePosition() = default;
 
+        virtual void UpdateForm() override; // 刷新画面
 };

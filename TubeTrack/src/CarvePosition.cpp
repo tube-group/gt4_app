@@ -1,2 +1,14 @@
-// CarvePosition.cpp 压印工位实现
+// CarvePosition.cpp 刻印工位实现
 #include "CarvePosition.h"
+#include "TubeTrackContext.h"
+#include "logging.h"
+
+void CCarvePosition::UpdateForm()
+{
+    // 刷新刻印工位的界面显示
+    const CTube *tube = Peek();
+    if (m_ctx && m_ctx->redis && tube) {
+        m_ctx->redis->set("CARVE_POS_TUBE_INFO", convertToJson());
+        spdlog::info("CarvePosition: CARVE_POS_TUBE_INFO updated");
+    }
+}

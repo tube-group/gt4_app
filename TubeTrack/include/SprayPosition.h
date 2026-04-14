@@ -4,5 +4,9 @@
 
 class CSprayPosition : public CPositionBase
 {
+    public:
+        CSprayPosition() = default;
+        ~CSprayPosition() = default;
 
+        virtual void UpdateForm() override; // 刷新画面
 };

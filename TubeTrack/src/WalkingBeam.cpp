@@ -14,6 +14,7 @@ WalkingBeam::WalkingBeam()
     }
     
     m_bWbReleased = true; // 初始状态为释放状态
+    m_bAtBase = true; // 初始状态在基座位置
 }
 
 bool WalkingBeam::Push(unique_ptr<CTube> tube0,
@@ -34,9 +35,22 @@ bool WalkingBeam::Push(unique_ptr<CTube> tube0,
     m_tubes[5] = std::move(tube5);
     
     spdlog::info("WalkingBeam: Push operation completed");
-    DebugOut();
+    // DebugOut();
     
     return true;
+}
+
+unique_ptr<CTube> WalkingBeam::Pop(int position)
+{
+    if (position < 0 || position >= 6) {
+        spdlog::error("WalkingBeam: Invalid position {} for Pop", position);
+        return nullptr;
+    }
+    
+    auto tube = std::move(m_tubes[position]);
+    m_tubes[position] = nullptr; // 弹出后工位置空
+    
+    return tube;
 }
 
 const CTube* WalkingBeam::GetTubeAt(int position) const
@@ -45,6 +59,16 @@ const CTube* WalkingBeam::GetTubeAt(int position) const
         return nullptr;
     }
     return m_tubes[position].get();
+}
+
+bool WalkingBeam::IsEmpty() const
+{
+    for (const auto& tube : m_tubes) {
+        if (tube) {
+            return false; // 只要有一个工位有管子，就不是空的
+        }
+    }
+    return true; // 所有工位都没有管子，步进梁为空
 }
 
 void WalkingBeam::Clear()
