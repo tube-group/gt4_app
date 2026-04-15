@@ -144,7 +144,7 @@ struct AppConfig {
 static bool loadConfig(int argc, char* argv[], AppConfig& app)
 {
     auto &config = CConfig::GetInstance();
-    std::string configFile = "/home/admin/projects/gt4_app/config/MoniterUserCmd.ini";
+    std::string configFile = "/home/wy/projects/gt4_app/config/MoniterUserCmd.ini";
     if (!config.Load(configFile))
     {
         fprintf(stderr, "Failed to load config file: %s\n", configFile.c_str());

@@ -13,5 +13,5 @@ private:
 	MoniterContext& ctx_;
 
 	void onMessage(const std::string& channel, const std::string& message);
-	bool handleCommand(const std::string& message, std::string& result);
+	bool handleCommand(const std::string& message);
 };
