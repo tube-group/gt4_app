@@ -92,6 +92,11 @@ bool CPositionBase::IsEmpty()
 	return m_tubes.empty();
 }
 
+size_t CPositionBase::Count() const
+{
+	return m_tubes.size();
+}
+
 void CPositionBase::Clear()
 {
 	m_tubes.clear();

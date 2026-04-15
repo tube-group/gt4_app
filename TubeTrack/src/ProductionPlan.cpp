@@ -70,8 +70,6 @@ void CProductionPlan::UpdateForm()
             return;
         }
 
-        spdlog::info("生成的JSON: {}", jsonStr);
-
         // 写入Redis数据库
         m_ctx->redis->set(REDIS_KEY, jsonStr);
 

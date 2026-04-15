@@ -6,10 +6,10 @@
 
 WalkingBeam::WalkingBeam()
 {
-    // 初始化vector为6个元素，每个元素对应步进梁的六个工位
+    // 下标 0 预留不用，业务工位按 1..5 访问。
     m_tubes.resize(6);
     // 初始化所有工位为空
-    for (int i = 0; i < 6; i++) {
+    for (int i = 1; i < 6; i++) {
         m_tubes[i] = nullptr;
     }
     
@@ -17,8 +17,7 @@ WalkingBeam::WalkingBeam()
     m_bAtBase = true; // 初始状态在基座位置
 }
 
-bool WalkingBeam::Push(unique_ptr<CTube> tube0,
-                       unique_ptr<CTube> tube1,
+bool WalkingBeam::Push(unique_ptr<CTube> tube1,
                        unique_ptr<CTube> tube2,
                        unique_ptr<CTube> tube3,
                        unique_ptr<CTube> tube4,
@@ -27,7 +26,6 @@ bool WalkingBeam::Push(unique_ptr<CTube> tube0,
     spdlog::info("WalkingBeam: Starting push operation");
     
     // 将新管子放入对应工位
-    m_tubes[0] = std::move(tube0);
     m_tubes[1] = std::move(tube1);
     m_tubes[2] = std::move(tube2);
     m_tubes[3] = std::move(tube3);
@@ -42,7 +40,7 @@ bool WalkingBeam::Push(unique_ptr<CTube> tube0,
 
 unique_ptr<CTube> WalkingBeam::Pop(int position)
 {
-    if (position < 0 || position >= 6) {
+    if (position < 1 || position > 5) {
         spdlog::error("WalkingBeam: Invalid position {} for Pop", position);
         return nullptr;
     }
@@ -55,7 +53,7 @@ unique_ptr<CTube> WalkingBeam::Pop(int position)
 
 const CTube* WalkingBeam::GetTubeAt(int position) const
 {
-    if (position < 0 || position >= 6) {
+    if (position < 1 || position > 5) {
         return nullptr;
     }
     return m_tubes[position].get();
@@ -74,7 +72,7 @@ bool WalkingBeam::IsEmpty() const
 void WalkingBeam::Clear()
 {
     spdlog::info("WalkingBeam: Clearing all positions");
-    for (int i = 0; i < 6; i++) {
+    for (int i = 1; i < 6; i++) {
         m_tubes[i] = nullptr;
     }
 }
@@ -84,7 +82,7 @@ void WalkingBeam::DebugOut()
     spdlog::info("=== WalkingBeam Status ===");
     spdlog::info("Released: {}", m_bWbReleased);
     
-    for (int i = 0; i < 6; i++) {
+    for (int i = 1; i < 6; i++) {
         if (m_tubes[i]) {
             spdlog::info("Position {}: Tube {} (Order: {}, Length: {:.2f}m, Weight: {:.2f}kg)", 
                         i, 

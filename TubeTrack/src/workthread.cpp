@@ -41,6 +41,7 @@ void workThread(TubeTrackContext &ctx)
     // // 第 2 步：对齐工位下料，管子被收集到步进梁 1 号位
     // spdlog::info("第 2 步：对齐工位下料，管子被收集到步进梁 1 号位");
     // bool off = false;
+    // handleWbBase(ctx, reinterpret_cast<const char *>(&off));
     // handleAlignPosOn(ctx, reinterpret_cast<const char *>(&off));
 
     // // // 第 3 步：投新管 + 分发，步进梁 1 号位的管子下到称重工位
@@ -49,6 +50,7 @@ void workThread(TubeTrackContext &ctx)
 
     // // 第 3 步：不投新管子+分发，步进梁 1 号位的管子下到称重工位
     // spdlog::info("第 3 步：步进梁 1 号位的管子下到称重工位");
+    // handleWbBase(ctx, reinterpret_cast<const char *>(&off));
     // handleWeiPosOn(ctx, reinterpret_cast<const char *>(&on)); // 用称重信号触发分发
 
     // // 第 4 步：称重工位下料，管子回到步进梁 2 号位
@@ -194,7 +196,7 @@ void moveTubeToWbase(TubeTrackContext &ctx)
     auto tube4 = ctx.sprayPos.Pop();
     auto tube5 = ctx.circlePos.Pop();
 
-    if (ctx.walkingBeam.Push(nullptr, std::move(tube1), std::move(tube2), std::move(tube3), std::move(tube4), std::move(tube5)))
+    if (ctx.walkingBeam.Push(std::move(tube1), std::move(tube2), std::move(tube3), std::move(tube4), std::move(tube5)))
     {
         spdlog::info("Moved tubes to walking beam");
         ctx.walkingBeam.DebugOut();
@@ -225,6 +227,7 @@ void handleAlignPosOn(TubeTrackContext &ctx, const char *value)
 {
     bool isOn = read_value<bool>(value);
     spdlog::info("ALIGN_POS_ON isOn: {}", isOn);
+
     if (isOn)
     {
         // 执行对齐工位有料状态的相关操作
@@ -247,6 +250,11 @@ void handleAlignPosOn(TubeTrackContext &ctx, const char *value)
     }
     else
     {
+        if (ctx.walkingBeam.IsAtBase())
+        {
+            spdlog::warn("Walking beam is at base, ignoring align position signal");
+            return;
+        }
         // 将对齐、称重、刻印、喷印、色环工位的管子弹出到步进梁
         moveTubeToWbase(ctx);
     }
@@ -256,6 +264,11 @@ void handleWeiPosOn(TubeTrackContext &ctx, const char *value)
 {
     bool isOn = read_value<bool>(value);
     spdlog::info("WEI_POS_ON isOn: {}", isOn);
+    if (ctx.walkingBeam.IsAtBase())
+    {
+        spdlog::warn("Walking beam is at base, ignoring weight position signal");
+        return;
+    }
     if (!isOn)
     {
         // 将对齐、称重、刻印、喷印、色环工位的管子弹出到步进梁
@@ -272,6 +285,11 @@ void handlePrtPosOn(TubeTrackContext &ctx, const char *value)
 {
     bool isOn = read_value<bool>(value);
     spdlog::info("PRT_POS_ON isOn: {}", isOn);
+    if (ctx.walkingBeam.IsAtBase())
+    {
+        spdlog::warn("Walking beam is at base, ignoring carve position signal");
+        return;
+    }
     if (!isOn)
     {
         // 将对齐、称重、刻印、喷印、色环工位的管子弹出到步进梁
@@ -288,6 +306,11 @@ void handleSpyPosOn(TubeTrackContext &ctx, const char *value)
 {
     bool isOn = read_value<bool>(value);
     spdlog::info("SPY_POS_ON isOn: {}", isOn);
+    if (ctx.walkingBeam.IsAtBase())
+    {
+        spdlog::warn("Walking beam is at base, ignoring spray position signal");
+        return;
+    }
     if (!isOn)
     {
         // 将对齐、称重、刻印、喷印、色环工位的管子弹出到步进梁
@@ -304,6 +327,11 @@ void handleCirPosOn(TubeTrackContext &ctx, const char *value)
 {
     bool isOn = read_value<bool>(value);
     spdlog::info("CIR_POS_ON isOn: {}", isOn);
+    if (ctx.walkingBeam.IsAtBase())
+    {
+        spdlog::warn("Walking beam is at base, ignoring circle position signal");
+        return;
+    }
     if (!isOn)
     {
         // 将对齐、称重、刻印、喷印、色环工位的管子弹出到步进梁
@@ -322,10 +350,28 @@ void handleScrRollerOn(TubeTrackContext &ctx, const char *value)
     spdlog::info("SCR_ROLLER_ON isOn: {}", isOn);
     if (!isOn)
     {
-        ctx.scraptRoller.Clear();
+        // 从废料辊道弹出管子，推送到缓冲区
+        auto tube = ctx.scraptRoller.Pop();
+        if (tube && ctx.backBuffer.Push(std::move(tube)))
+        {
+            ctx.backBuffer.DebugOut();
+        }
+        else if (!tube)
+        {
+            spdlog::warn("Scrap roller is empty, no tube to move to back buffer");
+        }
+        else
+        {
+            spdlog::error("Failed to push tube into back buffer");
+        }
     }
     else
     {
+        if (ctx.walkingBeam.IsAtBase())
+        {
+            spdlog::warn("Walking beam is at base, ignoring scrap roller signal");
+            return;
+        }
         // 从步进梁弹出管子，推送到称重、刻印、喷印、色环，出废辊道工位
         moveTubeToPosion(ctx);
     }

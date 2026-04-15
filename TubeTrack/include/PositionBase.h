@@ -2,6 +2,7 @@
 #include "Tube.h"
 #include <deque>
 #include <memory>
+#include <cstddef>
 using namespace std;
 
 struct TubeTrackContext; // 前向声明
@@ -33,6 +34,7 @@ public:
 	virtual unique_ptr<CTube> Pop(int mode = 0);
 	virtual const CTube *Peek() const;
 	virtual bool IsEmpty();
+	virtual size_t Count() const;
 	virtual void Clear();
 	virtual void Modify();
 	virtual void RestoreFromTag();
