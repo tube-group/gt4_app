@@ -134,9 +134,10 @@ bool CMoniter::handleCommand(const std::string &message)
 		{
 
 			SetFeedNumCmd cmd;
-			// cmd.feed_num = std::stoi(j_cmd_para["feed_num"].get<std::string>());
 
-			// spdlog::info("处理SetFeedNumCmd命令: feed_num={}", cmd.feed_num);
+			cmd.feed_num = j["cmd_para"]["feed_num"].get<int>();
+
+			spdlog::info("处理SetFeedNumCmd命令: feed_num={}", cmd.feed_num);
 		}
 		else if (j["cmd_name"] == "MoveTubeCmd")
 		{
