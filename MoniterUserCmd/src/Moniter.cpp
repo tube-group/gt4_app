@@ -122,18 +122,9 @@ bool CMoniter::handleCommand(const std::string &message)
 		return false;
 	}
 
-	if (!j.contains("cmd_para") || !j["cmd_para"].is_string())
+	if (!j.contains("cmd_para") || (!j["cmd_para"].is_object()))
 	{
 		spdlog::warn("命令缺少有效的cmd_para字段: {}", message);
-		return false;
-	}
-
-	spdlog::info("解析到命令: cmd_name={}, cmd_para={}", j["cmd_name"].get<std::string>(), j["cmd_para"].get<std::string>());
-
-	json j_cmd_para = json::parse(j["cmd_para"].get<std::string>(), nullptr, false);
-	if (j_cmd_para.is_discarded() || !j_cmd_para.is_object())
-	{
-		spdlog::warn("命令cmd_para不是有效的JSON对象: {}", j["cmd_para"].get<std::string>());
 		return false;
 	}
 
@@ -143,21 +134,20 @@ bool CMoniter::handleCommand(const std::string &message)
 		{
 
 			SetFeedNumCmd cmd;
-			cmd.feed_num = std::stoi(j_cmd_para["feed_num"].get<std::string>());
+			// cmd.feed_num = std::stoi(j_cmd_para["feed_num"].get<std::string>());
 
-			spdlog::info("处理SetFeedNumCmd命令: feed_num={}", cmd.feed_num);
+			// spdlog::info("处理SetFeedNumCmd命令: feed_num={}", cmd.feed_num);
 		}
 		else if (j["cmd_name"] == "MoveTubeCmd")
 		{
 			MoveTubeCmd cmd;
 
-			cmd.from = j_cmd_para["from"].get<std::string>();
-			cmd.to = j_cmd_para["to"].get<std::string>();
+			cmd.from = j["cmd_para"]["from"].get<std::string>();
+			cmd.to = j["cmd_para"]["to"].get<std::string>();
 
 			spdlog::info("处理MoveTubeCmd命令: from={}, to={}", cmd.from.c_str(), cmd.to.c_str());
-
-			unsigned int error;
-			writeb(ctx_.gplatConn, "MOVE_TUBE_CMD", &cmd, sizeof(cmd), &error);
+			// 	unsigned int error;
+			// 	writeb(ctx_.gplatConn, "MOVE_TUBE_CMD", &cmd, sizeof(cmd), &error);
 		}
 		else
 		{
