@@ -8,7 +8,10 @@ void CSprayPosition::UpdateForm()
     // 刷新喷印工位的界面显示
     const CTube *tube = Peek();
     if (m_ctx && m_ctx->redis && tube) {
-        m_ctx->redis->set("SPRAY_POS_TUBE_INFO", convertToJson());
+        m_ctx->redis->set(REDIS_KEY, convertToJson());
         spdlog::info("SprayPosition: SPRAY_POS_TUBE_INFO updated");
+
+        // 发布详细消息到 RealDataChanged 主题
+        m_ctx->redis->publish("RealDataChanged", REDIS_KEY);
     }
 }
