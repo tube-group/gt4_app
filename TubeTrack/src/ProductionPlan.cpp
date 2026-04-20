@@ -125,3 +125,8 @@ void CProductionPlan::Initialize()
     // 初始同步到Redis
     UpdateForm();
 }
+
+bool CProductionPlan::IsEmpty()
+{
+	return feed_num <= 0;
+}

@@ -18,4 +18,9 @@ void CBackBuffer::UpdateForm()
 void CBackBuffer::DebugOut()
 {
     spdlog::info("BackBuffer tube count: {}", Count());
+    // 输出测量点后缓冲区管子数量
+    if (m_ctx && m_ctx->redis)
+    {
+        spdlog::info("BackBuffer: BACK_BUFFER_TUBE_INFO = {}", convertToJson());
+    }
 }

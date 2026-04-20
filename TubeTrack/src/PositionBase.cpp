@@ -35,7 +35,7 @@ void CPositionBase::GetDateTimeString(string & dateStr, string & timeStr)
 	timeStr = ss2.str();
 }
 
-bool CPositionBase::PushFront(unique_ptr<CTube> tube)
+bool CPositionBase::PushFront(unique_ptr<CTube> tube, int /*mode*/)
 {
 	if (!tube)
 	{
@@ -56,7 +56,7 @@ bool CPositionBase::PushFront(unique_ptr<CTube> tube)
 	return true;
 }
 
-bool CPositionBase::PushBack(unique_ptr<CTube> tube)
+bool CPositionBase::PushBack(unique_ptr<CTube> tube, int /*mode*/)
 {
 	if (!tube)
 	{
@@ -80,10 +80,10 @@ bool CPositionBase::PushBack(unique_ptr<CTube> tube)
 //默认从后端插入管子
 bool CPositionBase::Push(unique_ptr<CTube> tube, int mode)
 {
-	return PushBack(std::move(tube));
+	return PushBack(std::move(tube), mode);
 }
 
-bool CPositionBase::PopFront(int /*mode*/)
+unique_ptr<CTube> CPositionBase::PopFront(int /*mode*/)
 {
 	if (m_tubes.size() > 0)
 	{
@@ -102,7 +102,7 @@ bool CPositionBase::PopFront(int /*mode*/)
 	}
 }
 
-bool CPositionBase::PopBack(int /*mode*/)
+unique_ptr<CTube> CPositionBase::PopBack(int /*mode*/)
 {
 	if (m_tubes.size() > 0)
 	{
