@@ -68,7 +68,7 @@ namespace
         }
         if (tag.type == "STRING")
         {
-            return read_value<std::string>(const_cast<char *>(buffer));
+            return read_value<std::string>(buffer);
         }
 
         throw std::runtime_error("不支持的数据类型: " + tag.type + ", tag=" + tag.name);
