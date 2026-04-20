@@ -10,8 +10,9 @@
 #include <utility>
 
 #include "logging.h"
-#include "../include/higplat.h"
+#include "higplat.h"
 #include "TubeTrackContext.h"
+#include "usercmd.h"
 
 // 声明外部变量
 extern volatile sig_atomic_t g_running;
@@ -118,6 +119,7 @@ void workThread(TubeTrackContext &ctx)
     subscribe(ctx.gplatConn, "CIR_POS_ON", &err);
     subscribe(ctx.gplatConn, "SCR_ROLLER_ON", &err);
     subscribe(ctx.gplatConn, "WB_BASE", &err);
+    subscribe(ctx.gplatConn, "MOVE_TUBE_CMD", &err);
 
     // 主循环：等待gPlat数据，处理TAG更新
     while (g_running)
@@ -183,8 +185,22 @@ void workThread(TubeTrackContext &ctx)
             // 处理步进梁基位检测信号
             handleWbBase(ctx, value);
         }
-        //........
+        else if (tagname == "MOVE_TUBE_CMD")
+        {
+            // 处理移动管子命令
+            handleMoveTubeCmd(ctx, value);
+        }
     }
+}
+
+void handleMoveTubeCmd(TubeTrackContext &ctx, const char *value)
+{
+    MoveTubeCmd cmd = read_value<MoveTubeCmd>(value);
+
+    spdlog::info("Handling MOVE_TUBE_CMD: from={}, to={}", cmd.from, cmd.to);
+
+    // 根据命令参数执行移动逻辑
+
 }
 
 void moveTubeToWbase(TubeTrackContext &ctx)

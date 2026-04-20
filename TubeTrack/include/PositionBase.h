@@ -30,7 +30,11 @@ public:
 	void SetContext(TubeTrackContext& ctx) { m_ctx = &ctx; }
 
 public:
+	virtual bool PushFront(unique_ptr<CTube> tube, int mode = 0);
+	virtual bool PushBack(unique_ptr<CTube> tube, int mode = 0);
 	virtual bool Push(unique_ptr<CTube> tube, int mode = 0); // 0根据信号自动，1异常情况下干预
+	virtual unique_ptr<CTube> PopFront(int mode = 0);
+	virtual unique_ptr<CTube> PopBack(int mode = 0);
 	virtual unique_ptr<CTube> Pop(int mode = 0);
 	virtual const CTube *Peek() const;
 	virtual bool IsEmpty();
