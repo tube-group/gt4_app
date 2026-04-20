@@ -197,9 +197,9 @@ void CPositionBase::DebugOut()
 	// std::cout << "长度合格  :" << (tube.lengthOk ? "是" : "否") << std::endl;
 	// std::cout << "重量合格  :" << (tube.weightOk ? "是" : "否") << std::endl;
 	// std::cout << "是否喷印  :" << (tube.bSprayed ? "是" : "否") << std::endl;
-	spdlog::info("长度合格  : {}", tube->lengthOk ? "是" : "否");
-	spdlog::info("重量合格  : {}", tube->weightOk ? "是" : "否");
-	spdlog::info("是否喷印  : {}", tube->bSprayed ? "是" : "否");
+	spdlog::info("长度合格  : {}", tube->length_ok ? "是" : "否");
+	spdlog::info("重量合格  : {}", tube->weight_ok ? "是" : "否");
+	spdlog::info("是否喷印  : {}", tube->sprayed ? "是" : "否");
 
     return;
 }
@@ -252,9 +252,9 @@ string CPositionBase::convertToJson()
 			tubeJson["meltno_coupling"] = tubePtr->meltno_coupling;
 			tubeJson["length"] = tubePtr->length;
 			tubeJson["weight"] = tubePtr->weight;
-			tubeJson["lengthOk"] = tubePtr->lengthOk;
-			tubeJson["weightOk"] = tubePtr->weightOk;
-			tubeJson["bSprayed"] = tubePtr->bSprayed;
+			tubeJson["length_ok"] = tubePtr->length_ok;
+			tubeJson["weight_ok"] = tubePtr->weight_ok;
+			tubeJson["sprayed"] = tubePtr->sprayed;
 
 			j.push_back(tubeJson);
 		}

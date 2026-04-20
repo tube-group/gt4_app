@@ -27,9 +27,9 @@ public:
 		j["meltno_coupling"] = meltno_coupling;
 		j["length"] = length;
 		j["weight"] = weight;
-		j["lengthOk"] = lengthOk;
-		j["weightOk"] = weightOk;
-		j["bSprayed"] = bSprayed;
+		j["length_ok"] = length_ok;
+		j["weight_ok"] = weight_ok;
+		j["sprayed"] = sprayed;
 
 		return j.dump(4);
 	}
@@ -46,9 +46,9 @@ public:
 	string meltno_coupling;		//接箍炉号
 	float  length=0;          	    //长度(米)
 	float  weight=0;				//重量(KG)
-	bool   lengthOk=true;             //长度合格
-	bool   weightOk=true;             //重量合格
-	bool   bSprayed=false;             //是否喷印过
+	bool   length_ok=true;             //长度合格
+	bool   weight_ok=true;             //重量合格
+	bool   sprayed=false;             //是否喷印过
 };
 
 std::string trimString(std::string str);
