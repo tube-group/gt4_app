@@ -28,9 +28,8 @@ void moveTubeToWbase(TubeTrackContext &ctx);
 void moveTubeToPosion(TubeTrackContext &ctx);
 void handleMoveTubeCmd(TubeTrackContext &ctx, const char *value); // 处理移动管子命令
 
-template <typename TSource, typename TTarget>
-bool moveTubeBetween(TSource &source,
-                     TTarget &target,
+bool moveTubeBetween(CPositionBase &source,
+                     CPositionBase &target,
                      const char *sourceName,
                      const char *targetName)
 {
@@ -247,7 +246,32 @@ void handleMoveTubeCmd(TubeTrackContext &ctx, const char *value)
 
     if (cmd.from == "plan" && cmd.to == "align") // 生产计划 -> 对齐工位
     {
-        moveTubeBetween(ctx.prodPlan, ctx.alignPos, "Production plan", "Align position");
+        if (!ctx.alignPos.IsEmpty())
+        {
+            spdlog::warn("Align position is not empty, cannot move tube from Production plan");
+            return;
+        }
+
+        if (ctx.prodPlan.IsEmpty())
+        {
+            spdlog::warn("Production plan is empty, no tube to move to Align position");
+            return;
+        }
+
+        auto tube = ctx.prodPlan.Pop();
+        if (!tube)
+        {
+            spdlog::warn("Production plan returned no tube, cannot move to Align position");
+            return;
+        }
+
+        if (!ctx.alignPos.Push(std::move(tube)))
+        {
+            spdlog::error("Failed to push tube from Production plan to Align position");
+            return;
+        }
+
+        ctx.alignPos.DebugOut();
     }
     else if (cmd.from == "align" && cmd.to == "plan") // 反向：对齐工位 -> 生产计划
     {
@@ -391,6 +415,7 @@ void handleMoveTubeCmd(TubeTrackContext &ctx, const char *value)
     }
 }
 
+//--------将对齐、称重、刻印、喷印、色环工位的管子弹出到步进梁--------
 void moveTubeToWbase(TubeTrackContext &ctx)
 {
     if (ctx.alignPos.IsEmpty() && ctx.weightPos.IsEmpty() && ctx.carvePos.IsEmpty() && ctx.sprayPos.IsEmpty() && ctx.circlePos.IsEmpty())
@@ -416,6 +441,7 @@ void moveTubeToWbase(TubeTrackContext &ctx)
     }
 }
 
+//--------从步进梁弹出管子，推送到对齐、称重、刻印、喷印、色环工位--------
 void moveTubeToPosion(TubeTrackContext &ctx)
 {
     if (ctx.walkingBeam.IsEmpty())
@@ -432,6 +458,7 @@ void moveTubeToPosion(TubeTrackContext &ctx)
     ctx.scraptRoller.Push(ctx.walkingBeam.Pop(5));
 }
 
+//--------处理对齐信号ALIGN_POS_ON--------
 void handleAlignPosOn(TubeTrackContext &ctx, const char *value)
 {
     bool isOn = read_value<bool>(value);
@@ -469,6 +496,7 @@ void handleAlignPosOn(TubeTrackContext &ctx, const char *value)
     }
 }
 
+//--------处理称重信号WEI_POS_ON--------
 void handleWeiPosOn(TubeTrackContext &ctx, const char *value)
 {
     bool isOn = read_value<bool>(value);
@@ -490,6 +518,7 @@ void handleWeiPosOn(TubeTrackContext &ctx, const char *value)
     }
 }
 
+//--------处理刻印信号PRT_POS_ON--------
 void handlePrtPosOn(TubeTrackContext &ctx, const char *value)
 {
     bool isOn = read_value<bool>(value);
@@ -511,6 +540,7 @@ void handlePrtPosOn(TubeTrackContext &ctx, const char *value)
     }
 }
 
+//--------处理喷印信号SPY_POS_ON--------
 void handleSpyPosOn(TubeTrackContext &ctx, const char *value)
 {
     bool isOn = read_value<bool>(value);
@@ -532,6 +562,7 @@ void handleSpyPosOn(TubeTrackContext &ctx, const char *value)
     }
 }
 
+//--------处理色环信号CIR_POS_ON--------
 void handleCirPosOn(TubeTrackContext &ctx, const char *value)
 {
     bool isOn = read_value<bool>(value);
@@ -553,6 +584,7 @@ void handleCirPosOn(TubeTrackContext &ctx, const char *value)
     }
 }
 
+//--------处理废料辊道信号SCR_ROLLER_ON--------
 void handleScrRollerOn(TubeTrackContext &ctx, const char *value)
 {
     bool isOn = read_value<bool>(value);
@@ -586,6 +618,7 @@ void handleScrRollerOn(TubeTrackContext &ctx, const char *value)
     }
 }
 
+//--------处理步进梁基位信号WB_BASE--------
 void handleWbBase(TubeTrackContext &ctx, const char *value)
 {
     bool isOn = read_value<bool>(value);
