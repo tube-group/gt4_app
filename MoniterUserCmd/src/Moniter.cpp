@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <chrono>
 #include <csignal>
+#include <stdexcept>
 #include <sw/redis++/redis++.h>
 #include "MoniterContext.h"
 #include "logging.h"
@@ -130,12 +131,14 @@ bool CMoniter::handleCommand(const std::string &message)
 
 	try
 	{
+		const auto &cmdPara = j["cmd_para"];
+
 		if (j["cmd_name"] == "SetFeedNumCmd")
 		{
 
 			SetFeedNumCmd cmd;
 
-			cmd.feed_num = j["cmd_para"]["feed_num"].get<int>();
+			cmd.feed_num = cmdPara["feed_num"].get<int>();
 
 			spdlog::info("处理SetFeedNumCmd命令: feed_num={}", cmd.feed_num);
 		}
@@ -143,12 +146,88 @@ bool CMoniter::handleCommand(const std::string &message)
 		{
 			MoveTubeCmd cmd;
 
-			cmd.from = j["cmd_para"]["from"].get<std::string>();
-			cmd.to = j["cmd_para"]["to"].get<std::string>();
+			cmd.from = cmdPara["from"].get<std::string>();
+			cmd.to = cmdPara["to"].get<std::string>();
 
 			spdlog::info("处理MoveTubeCmd命令: from={}, to={}", cmd.from.c_str(), cmd.to.c_str());
 			// 	unsigned int error;
 			// 	writeb(ctx_.gplatConn, "MOVE_TUBE_CMD", &cmd, sizeof(cmd), &error);
+		}
+		else if (j["cmd_name"] == "ModifyTubeCmd")
+		{
+			ModifyTubeCmd cmd;
+
+			auto getModifyTubeBoolField = [&cmdPara](const char *primaryKey, const char *fallbackKey, bool defaultValue)
+			{
+				auto readBoolField = [&cmdPara](const char *key, bool &value)
+				{
+					const auto it = cmdPara.find(key);
+
+					if (it == cmdPara.end() || it->is_null())
+					{
+						return false;
+					}
+
+					if (!it->is_boolean())
+					{
+						throw std::runtime_error(std::string(key) + "字段类型错误, 期望bool");
+					}
+
+					value = it->get<bool>();
+					return true;
+				};
+
+				bool value = defaultValue;
+
+				if (readBoolField(primaryKey, value))
+				{
+					return value;
+				}
+
+				if (fallbackKey != nullptr && readBoolField(fallbackKey, value))
+				{
+					return value;
+				}
+
+				return defaultValue;
+			};
+
+			cmd.seq_no = cmdPara["seq_no"].get<int>();
+			cmd.position_name = cmdPara["position_name"].get<std::string>();
+			cmd.order_no = cmdPara["order_no"].get<std::string>();
+			cmd.item_no = cmdPara["item_no"].get<std::string>();
+			cmd.roll_no = cmdPara["roll_no"].get<std::string>();
+			cmd.melt_no = cmdPara["melt_no"].get<std::string>();
+			cmd.lot_no = cmdPara["lot_no"].get<std::string>();
+			cmd.tube_no = cmdPara["tube_no"].get<int>();
+			cmd.flow_no = cmdPara["flow_no"].get<int>();
+			cmd.length = cmdPara["length"].get<double>();
+			cmd.weight = cmdPara["weight"].get<double>();
+			cmd.lengthOk = getModifyTubeBoolField("lengthOk", "length_ok", false);
+			cmd.weightOk = getModifyTubeBoolField("weightOk", "weight_ok", false);
+			cmd.lotno_coupling = cmdPara["lotno_coupling"].get<std::string>();
+			cmd.meltno_coupling = cmdPara["meltno_coupling"].get<std::string>();
+
+			spdlog::info("处理ModifyTubeCmd命令: seq_no={}, position_name={}, order_no={}, item_no={}, roll_no={}, melt_no={}, lot_no={}, tube_no={}, flow_no={}, length={}, weight={}, lengthOk={}, weightOk={}, lotno_coupling={}, meltno_coupling={}",
+						 cmd.seq_no, cmd.position_name.c_str(), cmd.order_no.c_str(), cmd.item_no.c_str(), cmd.roll_no.c_str(), cmd.melt_no.c_str(), cmd.lot_no.c_str(), cmd.tube_no, cmd.flow_no, cmd.length, cmd.weight, cmd.lengthOk, cmd.weightOk, cmd.lotno_coupling.c_str(), cmd.meltno_coupling.c_str());
+		}
+		else if (j["cmd_name"] == "DeleteTubeCmd")
+		{
+			DeleteTubeCmd cmd;
+
+			cmd.seq_no = cmdPara["seq_no"].get<int>();
+			cmd.position_name = cmdPara["position_name"].get<std::string>();
+
+			spdlog::info("处理DeleteTubeCmd命令: seq_no={}, position_name={}", cmd.seq_no, cmd.position_name.c_str());
+		}
+		else if (j["cmd_name"] == "DeleteTubeCmd")
+		{
+			DeleteTubeCmd cmd;
+
+			cmd.seq_no = cmdPara["seq_no"].get<int>();
+			cmd.position_name = cmdPara["position_name"].get<std::string>();
+			
+			spdlog::info("处理DeleteTubeCmd命令: seq_no={}, position_name={}", cmd.seq_no, cmd.position_name.c_str());
 		}
 		else
 		{
