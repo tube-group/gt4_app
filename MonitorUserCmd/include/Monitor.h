@@ -2,15 +2,15 @@
 
 #include <string>
 
-struct MoniterContext;
+struct MonitorContext;
 
-class CMoniter {
+class CMonitor {
 public:
-	explicit CMoniter(MoniterContext& ctx);
+	explicit CMonitor(MonitorContext& ctx);
 	void Run();
 
 private:
-	MoniterContext& ctx_;
+	MonitorContext& ctx_;
 
 	void onMessage(const std::string& channel, const std::string& message);
 	bool handleCommand(const std::string& message);

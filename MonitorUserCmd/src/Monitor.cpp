@@ -1,11 +1,11 @@
-#include "Moniter.h"
+#include "Monitor.h"
 
 #include <algorithm>
 #include <chrono>
 #include <csignal>
 #include <stdexcept>
 #include <sw/redis++/redis++.h>
-#include "MoniterContext.h"
+#include "MonitorContext.h"
 #include "logging.h"
 #include "usercmd.h"
 #include "higplat.h"
@@ -15,38 +15,21 @@ using json = nlohmann::json;
 
 extern volatile sig_atomic_t g_running;
 
-namespace
-{
-
-	std::string Trim(const std::string &s)
-	{
-		const auto begin = s.find_first_not_of(" \t\r\n");
-		if (begin == std::string::npos)
-		{
-			return "";
-		}
-
-		const auto end = s.find_last_not_of(" \t\r\n");
-		return s.substr(begin, end - begin + 1);
-	}
-
-} // namespace
-
-CMoniter::CMoniter(MoniterContext &ctx)
+CMonitor::CMonitor(MonitorContext &ctx)
 	: ctx_(ctx)
 {
 }
 
-void CMoniter::Run()
+void CMonitor::Run()
 {
 	if (!ctx_.redis)
 	{
-		spdlog::error("Moniter启动失败: Redis连接未初始化");
+		spdlog::error("Monitor启动失败: Redis连接未初始化");
 		return;
 	}
 
 	const std::string channel = ctx_.targetChannel.empty() ? "optional_cmd" : ctx_.targetChannel;
-	spdlog::info("Moniter开始监听Redis频道: {}", channel);
+	spdlog::info("Monitor开始监听Redis频道: {}", channel);
 
 	auto sub = ctx_.redis->subscriber();
 
@@ -88,10 +71,10 @@ void CMoniter::Run()
 	{
 	}
 
-	spdlog::info("Moniter工作线程退出");
+	spdlog::info("Monitor工作线程退出");
 }
 
-void CMoniter::onMessage(const std::string &channel, const std::string &message)
+void CMonitor::onMessage(const std::string &channel, const std::string &message)
 {
 	spdlog::info("收到命令消息, channel={}, payload={}", channel, message);
 
@@ -107,7 +90,7 @@ void CMoniter::onMessage(const std::string &channel, const std::string &message)
 	}
 }
 
-bool CMoniter::handleCommand(const std::string &message)
+bool CMonitor::handleCommand(const std::string &message)
 {
 	json j = json::parse(message, nullptr, false);
 
@@ -157,41 +140,6 @@ bool CMoniter::handleCommand(const std::string &message)
 		{
 			ModifyTubeCmd cmd;
 
-			auto getModifyTubeBoolField = [&cmdPara](const char *primaryKey, const char *fallbackKey, bool defaultValue)
-			{
-				auto readBoolField = [&cmdPara](const char *key, bool &value)
-				{
-					const auto it = cmdPara.find(key);
-
-					if (it == cmdPara.end() || it->is_null())
-					{
-						return false;
-					}
-
-					if (!it->is_boolean())
-					{
-						throw std::runtime_error(std::string(key) + "字段类型错误, 期望bool");
-					}
-
-					value = it->get<bool>();
-					return true;
-				};
-
-				bool value = defaultValue;
-
-				if (readBoolField(primaryKey, value))
-				{
-					return value;
-				}
-
-				if (fallbackKey != nullptr && readBoolField(fallbackKey, value))
-				{
-					return value;
-				}
-
-				return defaultValue;
-			};
-
 			cmd.seq_no = cmdPara["seq_no"].get<int>();
 			cmd.position_name = cmdPara["position_name"].get<std::string>();
 			cmd.order_no = cmdPara["order_no"].get<std::string>();
@@ -203,13 +151,13 @@ bool CMoniter::handleCommand(const std::string &message)
 			cmd.flow_no = cmdPara["flow_no"].get<int>();
 			cmd.length = cmdPara["length"].get<double>();
 			cmd.weight = cmdPara["weight"].get<double>();
-			cmd.lengthOk = getModifyTubeBoolField("lengthOk", "length_ok", false);
-			cmd.weightOk = getModifyTubeBoolField("weightOk", "weight_ok", false);
+			cmd.length_ok = cmdPara["length_ok"].get<bool>();
+			cmd.weight_ok = cmdPara["weight_ok"].get<bool>();
 			cmd.lotno_coupling = cmdPara["lotno_coupling"].get<std::string>();
 			cmd.meltno_coupling = cmdPara["meltno_coupling"].get<std::string>();
 
-			spdlog::info("处理ModifyTubeCmd命令: seq_no={}, position_name={}, order_no={}, item_no={}, roll_no={}, melt_no={}, lot_no={}, tube_no={}, flow_no={}, length={}, weight={}, lengthOk={}, weightOk={}, lotno_coupling={}, meltno_coupling={}",
-						 cmd.seq_no, cmd.position_name.c_str(), cmd.order_no.c_str(), cmd.item_no.c_str(), cmd.roll_no.c_str(), cmd.melt_no.c_str(), cmd.lot_no.c_str(), cmd.tube_no, cmd.flow_no, cmd.length, cmd.weight, cmd.lengthOk, cmd.weightOk, cmd.lotno_coupling.c_str(), cmd.meltno_coupling.c_str());
+			spdlog::info("处理ModifyTubeCmd命令: seq_no={}, position_name={}, order_no={}, item_no={}, roll_no={}, melt_no={}, lot_no={}, tube_no={}, flow_no={}, length={}, weight={}, length_ok={}, weight_ok={}, lotno_coupling={}, meltno_coupling={}",
+						 cmd.seq_no, cmd.position_name.c_str(), cmd.order_no.c_str(), cmd.item_no.c_str(), cmd.roll_no.c_str(), cmd.melt_no.c_str(), cmd.lot_no.c_str(), cmd.tube_no, cmd.flow_no, cmd.length, cmd.weight, cmd.length_ok, cmd.weight_ok, cmd.lotno_coupling.c_str(), cmd.meltno_coupling.c_str());
 		}
 		else if (j["cmd_name"] == "DeleteTubeCmd")
 		{

@@ -24,7 +24,7 @@ set(COMMON_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/include")
 # 添加所有子项目
 add_subdirectory(TubeTrack)
 add_subdirectory(FormDemo)
-add_subdirectory(MoniterUserCmd)
+add_subdirectory(MonitorUserCmd)
 add_subdirectory(MonitorPlcData)
 
 message(STATUS "构建类型: ${CMAKE_BUILD_TYPE}")

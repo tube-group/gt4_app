@@ -48,8 +48,8 @@ struct ModifyTubeCmd {
   int flow_no; // 流水号
   double length; // 长度(米)
   double weight; // 重量(KG)
-  bool lengthOk; // 长度合格
-  bool weightOk; // 重量合格
+  bool length_ok; // 长度合格
+  bool weight_ok; // 重量合格
   PodString<20> lotno_coupling; // 接箍批号
   PodString<20> meltno_coupling; // 接箍炉号
 };

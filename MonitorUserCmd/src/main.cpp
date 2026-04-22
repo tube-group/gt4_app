@@ -1,7 +1,7 @@
 #include <iostream>
 #include <chrono>
-#include "MoniterContext.h"
-#include "Moniter.h"
+#include "MonitorContext.h"
+#include "Monitor.h"
 #include <sw/redis++/redis++.h>
 #include <unistd.h>    // sleep, fork, setsid, getpid, close, dup2
 #include <fcntl.h>     // open, O_WRONLY, O_CREAT, O_RDWR
@@ -144,7 +144,7 @@ struct AppConfig {
 static bool loadConfig(int argc, char* argv[], AppConfig& app)
 {
     auto &config = CConfig::GetInstance();
-    std::string configFile = "/home/wy/projects/gt4_app/config/MoniterUserCmd.ini";
+    std::string configFile = "../config/MonitorUserCmd.ini";
     if (!config.Load(configFile))
     {
         fprintf(stderr, "Failed to load config file: %s\n", configFile.c_str());
@@ -154,12 +154,12 @@ static bool loadConfig(int argc, char* argv[], AppConfig& app)
     app.logCfg.log_console     = config.GetBoolDefault("log_console", false);
     app.logCfg.level           = config.GetStringDefault("level", app.logCfg.level);
     app.logCfg.pattern         = config.GetStringDefault("pattern", app.logCfg.pattern);
-    app.logCfg.filename        = config.GetStringDefault("filename", "log/moniterusercmd.log");
+    app.logCfg.filename        = config.GetStringDefault("filename", "log/monitorusercmd.log");
     app.logCfg.immediate_flush = config.GetBoolDefault("immediate_flush", app.logCfg.immediate_flush);
     app.logCfg.max_size_mb     = config.GetIntDefault("max_size", app.logCfg.max_size_mb);
     app.logCfg.max_files       = config.GetIntDefault("max_files", app.logCfg.max_files);
     app.daemonMode = config.GetBoolDefault("daemon", false);
-    app.pidFile    = config.GetStringDefault("pid_file", "/var/run/moniterusercmd.pid");
+    app.pidFile    = config.GetStringDefault("pid_file", "/var/run/monitorusercmd.pid");
     app.targetChannel = config.GetStringDefault("target_channel", app.targetChannel);
 
     // 解析命令行参数（-d 强制守护进程模式）
@@ -232,7 +232,7 @@ static int daemonize()
 }
 
 // ---- Redis连接 ----
-static bool initRedis(MoniterContext& ctx)
+static bool initRedis(MonitorContext& ctx)
 {
     auto &config = CConfig::GetInstance();
     try {
@@ -254,7 +254,7 @@ static bool initRedis(MoniterContext& ctx)
 }
 
 // ---- gplat连接 ----
-static bool initGplat(MoniterContext& ctx)
+static bool initGplat(MonitorContext& ctx)
 {
     auto &config = CConfig::GetInstance();
     try {
@@ -322,7 +322,7 @@ int main(int argc, char* argv[])
     }
 
     // 6. 创建上下文对象（取代全局变量）
-    MoniterContext ctx;
+    MonitorContext ctx;
     ctx.targetChannel = app.targetChannel;
 
     // 7. 连接 Redis
@@ -341,12 +341,12 @@ int main(int argc, char* argv[])
     }
 
 
-    // 9. 初始化Moniter模块
+    // 9. 初始化Monitor模块
     ctx.Init();
 
-    // 10. 在主线程直接运行Moniter（收到退出命令或信号后返回）
-    CMoniter moniter(ctx);
-    moniter.Run();
+    // 10. 在主线程直接运行Monitor（收到退出命令或信号后返回）
+    CMonitor monitor(ctx);
+    monitor.Run();
 
     // 资源清理
     ctx.Cleanup();

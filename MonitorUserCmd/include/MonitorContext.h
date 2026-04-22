@@ -1,4 +1,4 @@
-// MoniterContext.h
+// MonitorContext.h
 // 将所有工位对象和共享资源收敛到一个上下文结构体中，
 // 在 main() 中创建，通过引用传递给需要的模块。
 #pragma once
@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-struct MoniterContext {
+struct MonitorContext {
     // 共享资源
     std::unique_ptr<sw::redis::Redis> redis;
     int gplatConn = -1;
