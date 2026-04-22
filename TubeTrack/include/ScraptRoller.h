@@ -11,5 +11,5 @@ class CScraptRoller : public CPositionBase
     virtual void UpdateForm() override; // 刷新画面
 
     private:
-    const char *REDIS_KEY = "SCR_ROLLER_POS_TUBE_INFO"; //
+    const char *REDIS_KEY = "SCRAPTROLLER_POS_TUBE_INFO"; //
 };

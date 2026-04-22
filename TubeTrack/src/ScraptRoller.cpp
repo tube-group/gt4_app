@@ -9,7 +9,7 @@ void CScraptRoller::UpdateForm()
     const CTube *tube = Peek();
     if (m_ctx && m_ctx->redis) {
         m_ctx->redis->set(REDIS_KEY, convertToJson());
-        spdlog::info("ScraptRoller: SCR_ROLLER_POS_TUBE_INFO updated");
+        spdlog::info("ScraptRoller: SCRAPTROLLER_POS_TUBE_INFO updated");
 
         // 发布详细消息到 RealDataChanged 主题
         m_ctx->redis->publish("RealDataChanged", REDIS_KEY);

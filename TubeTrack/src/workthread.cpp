@@ -147,11 +147,11 @@ void workThread(TubeTrackContext &ctx)
     // 订阅timer用于退出检测
     subscribe(ctx.gplatConn, "timer_500ms", &err);
     subscribe(ctx.gplatConn, "ALIGN_POS_ON", &err);
-    subscribe(ctx.gplatConn, "WEI_POS_ON", &err);
-    subscribe(ctx.gplatConn, "PRT_POS_ON", &err);
-    subscribe(ctx.gplatConn, "SPY_POS_ON", &err);
-    subscribe(ctx.gplatConn, "CIR_POS_ON", &err);
-    subscribe(ctx.gplatConn, "SCR_ROLLER_ON", &err);
+    subscribe(ctx.gplatConn, "WEIGHT_POS_ON", &err);
+    subscribe(ctx.gplatConn, "CARVE_POS_ON", &err);
+    subscribe(ctx.gplatConn, "SPRAY_POS_ON", &err);
+    subscribe(ctx.gplatConn, "CIRCLE_POS_ON", &err);
+    subscribe(ctx.gplatConn, "SCRAPTROLLER_POS_ON", &err);
     subscribe(ctx.gplatConn, "WB_BASE", &err);
     subscribe(ctx.gplatConn, "MOVE_TUBE_CMD", &err);
 
@@ -345,10 +345,10 @@ void handleMoveTubeCmd(TubeTrackContext &ctx, const char *value)
     }
     // 问题在上游发出的 MOVE_TUBE_CMD 参数不包含这个命令，暂时注释掉
     // （需要修正 gPlat 或命令发送端，把 scaptroller 改成 scraptroller）
-    // else if (cmd.from == "backbuffer" && cmd.to == "scraptroller")  // 反向：缓冲区 -> 废料辊道
-    // {
-    //     moveTubeBetween(ctx.backBuffer, ctx.scraptRoller, "Back buffer", "Scrapt roller");
-    // }
+    else if (cmd.from == "backbuffer" && cmd.to == "scraptroller")  // 反向：缓冲区 -> 废料辊道
+    {
+        moveTubeBetween(ctx.backBuffer, ctx.scraptRoller, "Back buffer", "Scrapt roller");
+    }
     // 这里画面按钮还没定义命令
     // else if (cmd.from == "scraptroller" && cmd.to == "scrapt")  // 废料辊道 -> 废料台架
     // {
@@ -496,7 +496,7 @@ void handleAlignPosOn(TubeTrackContext &ctx, const char *value)
     }
 }
 
-//--------处理称重信号WEI_POS_ON--------
+//--------处理称重信号WEIGHT_POS_ON--------
 void handleWeiPosOn(TubeTrackContext &ctx, const char *value)
 {
     bool isOn = read_value<bool>(value);

@@ -310,11 +310,11 @@ static std::vector<TagDefinition> buildStaticTags()
 {
     return {
         {"ALIGN_POS_ON", "BOOL", "S7_GT4_SGAO"},          // 对齐工位占用信号 ALIGN_POS
-        {"WEI_POS_ON", "BOOL", "S7_GT4_SGAO"},            // 称重工位占用信号 WEI_POS
-        {"PRT_POS_ON", "BOOL", "S7_GT4_SGAO"},            // 压印工位占用信号 PRT_POS
-        {"SPY_POS_ON", "BOOL", "S7_GT4_SGAO"},            // 喷涂工位占用信号 SPY_POS
-        {"CIR_POS_ON", "BOOL", "S7_GT4_SGAO"},            // 色环工位占用信号 CIR_POS
-        {"LEN_MEA_FINISH", "BOOL", "S7_GT4_SGAO"},        // 来自PLC的测长完成信号 LEN_MEA_COMP
+        {"WEIGHT_POS_ON", "BOOL", "S7_GT4_SGAO"},            // 称重工位占用信号 WEI_POS
+        {"CARVE_POS_ON", "BOOL", "S7_GT4_SGAO"},            // 压印工位占用信号 PRT_POS
+        {"SPRAY_POS_ON", "BOOL", "S7_GT4_SGAO"},            // 喷涂工位占用信号 SPY_POS
+        {"CIRCLE_POS_ON", "BOOL", "S7_GT4_SGAO"},            // 色环工位占用信号 CIR_POS
+        {"LENGTH_MEASURE_FINISH", "BOOL", "S7_GT4_SGAO"},        // 来自PLC的测长完成信号 LEN_MEA_COMP
         {"WB_BASE", "BOOL", "S7_GT4_SGAO"},               // 测量点步进梁原位信号
         {"LEN_ENABLE", "BOOL", "S7_GT4_SGAO"},            // 测长允许
         {"START_CALIB", "BOOL", "S7_GT4_SGAO"},           // 标定开始
@@ -339,7 +339,7 @@ static std::vector<TagDefinition> buildStaticTags()
         {"SAM_LEN", "REAL", "S7_GT4_SGAO"},               // 样管长度
         {"TUBE_DIA", "REAL", "S7_GT4_SGAO"},              // 钢管外径
         {"WATCHDOG", "DINT", "S7_GT4_SGAO"},              // 通讯看门狗信号（必须是模拟量的最后一个值）
-        {"SCR_ROLLER_ON", "BOOL", "S7_GT4_MainLine"},     // 涂层纵向输送链第1组钢管检测有料
+        {"SCRAPTROLLER_POS_ON", "BOOL", "S7_GT4_MainLine"},     // 涂层纵向输送链第1组钢管检测有料
         {"NBWB_RELEASE", "BOOL", "S7_GT4_MainLine"},      // 内保步进梁释放信号连锁
         {"WASTE_ROLLER_FLAG", "WORD", "S7_GT4_MainLine"}, // 涂层纵向输送链第1组钢管去向
         {"WATCHDOG2", "DINT", "S7_GT4_MainLine"}          // 通讯看门狗信号2
