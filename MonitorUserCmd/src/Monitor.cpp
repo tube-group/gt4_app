@@ -179,6 +179,18 @@ bool CMonitor::handleCommand(const std::string &message)
 
 			spdlog::info("处理DeleteTubeCmd命令: seq_no={}, position_name={}", cmd.seq_no, cmd.position_name.c_str());
 		}
+		else if (j["cmd_name"] == "SetCurrentContractCmd")
+		{
+			SetCurrentContractCmd cmd;
+
+			cmd.order_no = cmdPara["order_no"].get<std::string>();
+			cmd.item_no = cmdPara["item_no"].get<std::string>();
+
+			unsigned int error;
+			writeb(ctx_.gplatConn, "SET_CURRENT_CONTRACT_CMD", &cmd, sizeof(cmd), &error);
+
+			spdlog::info("处理SetCurrentContractCmd命令: order_no={}, item_no={}", cmd.order_no.c_str(), cmd.item_no.c_str());
+		}
 		else
 		{
 			spdlog::warn("未知的命令类型: {}", j["cmd_name"].get<std::string>());

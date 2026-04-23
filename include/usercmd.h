@@ -59,8 +59,10 @@ struct DeleteTubeCmd {
   PodString<20> position_name; // 工位名称
 };
 
-
-
+struct SetCurrentContractCmd {
+  PodString<20> order_no; // 合同号
+  PodString<20> item_no; // 项目号
+};
 
 
 #endif // USERCMD_H
