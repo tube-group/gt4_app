@@ -61,7 +61,3 @@ progress.marks
 ehthumbs.db
 Thumbs.db
 gt4_app.code-workspace
-
-#脚本文件
-*.bat
-*.sh

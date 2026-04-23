@@ -123,7 +123,11 @@ bool CMonitor::handleCommand(const std::string &message)
 
 			cmd.feed_num = cmdPara["feed_num"].get<int>();
 
+			unsigned int error;
+			writeb(ctx_.gplatConn, "SET_FEED_NUM_CMD", &cmd, sizeof(cmd), &error);
+
 			spdlog::info("处理SetFeedNumCmd命令: feed_num={}", cmd.feed_num);
+
 		}
 		else if (j["cmd_name"] == "MoveTubeCmd")
 		{
@@ -131,10 +135,11 @@ bool CMonitor::handleCommand(const std::string &message)
 
 			cmd.from = cmdPara["from"].get<std::string>();
 			cmd.to = cmdPara["to"].get<std::string>();
+			
+			unsigned int error;
+			writeb(ctx_.gplatConn, "MOVE_TUBE_CMD", &cmd, sizeof(cmd), &error);
 
 			spdlog::info("处理MoveTubeCmd命令: from={}, to={}", cmd.from.c_str(), cmd.to.c_str());
-			// 	unsigned int error;
-			// 	writeb(ctx_.gplatConn, "MOVE_TUBE_CMD", &cmd, sizeof(cmd), &error);
 		}
 		else if (j["cmd_name"] == "ModifyTubeCmd")
 		{
@@ -156,6 +161,9 @@ bool CMonitor::handleCommand(const std::string &message)
 			cmd.lotno_coupling = cmdPara["lotno_coupling"].get<std::string>();
 			cmd.meltno_coupling = cmdPara["meltno_coupling"].get<std::string>();
 
+			unsigned int error;
+			writeb(ctx_.gplatConn, "MODIFY_TUBE_CMD", &cmd, sizeof(cmd), &error);
+
 			spdlog::info("处理ModifyTubeCmd命令: seq_no={}, position_name={}, order_no={}, item_no={}, roll_no={}, melt_no={}, lot_no={}, tube_no={}, flow_no={}, length={}, weight={}, length_ok={}, weight_ok={}, lotno_coupling={}, meltno_coupling={}",
 						 cmd.seq_no, cmd.position_name.c_str(), cmd.order_no.c_str(), cmd.item_no.c_str(), cmd.roll_no.c_str(), cmd.melt_no.c_str(), cmd.lot_no.c_str(), cmd.tube_no, cmd.flow_no, cmd.length, cmd.weight, cmd.length_ok, cmd.weight_ok, cmd.lotno_coupling.c_str(), cmd.meltno_coupling.c_str());
 		}
@@ -166,15 +174,9 @@ bool CMonitor::handleCommand(const std::string &message)
 			cmd.seq_no = cmdPara["seq_no"].get<int>();
 			cmd.position_name = cmdPara["position_name"].get<std::string>();
 
-			spdlog::info("处理DeleteTubeCmd命令: seq_no={}, position_name={}", cmd.seq_no, cmd.position_name.c_str());
-		}
-		else if (j["cmd_name"] == "DeleteTubeCmd")
-		{
-			DeleteTubeCmd cmd;
+			unsigned int error;
+			writeb(ctx_.gplatConn, "DELETE_TUBE_CMD", &cmd, sizeof(cmd), &error);
 
-			cmd.seq_no = cmdPara["seq_no"].get<int>();
-			cmd.position_name = cmdPara["position_name"].get<std::string>();
-			
 			spdlog::info("处理DeleteTubeCmd命令: seq_no={}, position_name={}", cmd.seq_no, cmd.position_name.c_str());
 		}
 		else
