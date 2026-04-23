@@ -195,6 +195,69 @@ void CPositionBase::RestoreFromTag()
 {
 }
 
+bool CPositionBase::RestoreFromJson(const string &jsonStr, const char *sourceName)
+{
+	try
+	{
+		// 情况1：redis数据为空(首次启动)
+		if (jsonStr.empty())
+		{
+			spdlog::info("{} 首次启动，初始化为空工位", sourceName ? sourceName : "Position");
+			m_tubes.clear();
+			return true; // 正常状态
+		}
+
+		// 情况2：有数据但为空JSON对象
+		nlohmann::json j = nlohmann::json::parse(jsonStr);
+
+		if (!m_tubes.empty())
+		{
+			spdlog::warn("{} 非空状态下执行恢复，将覆盖现有数据", sourceName);
+			m_tubes.clear();
+		}
+		// 处理空对象 {} 和空数组 [] 两种情况
+		if (j.is_object() && j.empty())
+		{
+			spdlog::info("{} 从Redis恢复为空工位", sourceName ? sourceName : "Position");
+			return true;
+		}
+		// 情况3：数据格式错误
+		if (!j.is_array())
+		{
+			spdlog::warn("{} Redis数据格式不是数组，跳过恢复: {}", sourceName ? sourceName : "Position", jsonStr);
+			return false;
+		}
+		// 情况4：正常恢复数据
+		for (const auto &tubeJson : j)
+		{
+			auto tube = std::make_unique<CTube>();
+			tube->order_no = tubeJson.value("order_no", "");
+			tube->item_no = tubeJson.value("item_no", "");
+			tube->roll_no = tubeJson.value("roll_no", "");
+			tube->melt_no = tubeJson.value("melt_no", "");
+			tube->lot_no = tubeJson.value("lot_no", "");
+			tube->tube_no = tubeJson.value("tube_no", 0);
+			tube->flow_no = tubeJson.value("flow_no", 0);
+			tube->lotno_coupling = tubeJson.value("lotno_coupling", "");
+			tube->meltno_coupling = tubeJson.value("meltno_coupling", "");
+			tube->length = tubeJson.value("length", 0.0f);
+			tube->weight = tubeJson.value("weight", 0.0f);
+			tube->length_ok = tubeJson.value("length_ok", true);
+			tube->weight_ok = tubeJson.value("weight_ok", true);
+			tube->sprayed = tubeJson.value("sprayed", false);
+			m_tubes.push_back(std::move(tube));
+		}
+
+		spdlog::info("{} 从Redis恢复了 {} 根管子", sourceName ? sourceName : "Position", m_tubes.size());
+		return true;
+	}
+	catch (const std::exception &e)
+	{
+		spdlog::error("{} Redis恢复失败: {}", sourceName ? sourceName : "Position", e.what());
+		return false;
+	}
+}
+
 void CPositionBase::UpdateForm()
 {
 }

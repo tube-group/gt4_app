@@ -6,8 +6,7 @@
 void CAlignPosition::UpdateForm()
 {
     // 刷新对齐工位的界面显示
-    const CTube *tube = Peek();
-    if (m_ctx && m_ctx->redis && tube) {
+    if (m_ctx && m_ctx->redis) {
         m_ctx->redis->set(REDIS_KEY, convertToJson());
         spdlog::info("AlignPosition: ALIGN_POS_TUBE_INFO updated");
 

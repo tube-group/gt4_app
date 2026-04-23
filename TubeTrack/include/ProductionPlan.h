@@ -16,6 +16,7 @@ public:
     std::unique_ptr<CTube> Pop(int mode = 0);
     void UpdateForm();
     void Initialize();
+    bool RestoreFromJson(const string &jsonStr);
     bool IsEmpty();
 
 public:

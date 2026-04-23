@@ -126,6 +126,43 @@ void CProductionPlan::Initialize()
     UpdateForm();
 }
 
+bool CProductionPlan::RestoreFromJson(const string &jsonStr)
+{
+    try
+    {
+        if (jsonStr.empty())
+        {
+            spdlog::warn("PlanInfo Redis数据为空，跳过恢复");
+            return false;
+        }
+
+        nlohmann::json j = nlohmann::json::parse(jsonStr);
+        if (!j.is_object() || j.empty())
+        {
+            spdlog::warn("PlanInfo Redis数据为空对象或格式错误，跳过恢复");
+            return false;
+        }
+
+        order_no = j.value("order_no", "");
+        item_no = j.value("item_no", "");
+        roll_no = j.value("roll_no", "");
+        melt_no = j.value("melt_no", "");
+        lot_no = j.value("lot_no", "");
+        lotno_coupling = j.value("lotno_coupling", "");
+        meltno_coupling = j.value("meltno_coupling", "");
+        feed_num = j.value("feed_num", 0);
+        tube_no = j.value("tube_no", 0);
+
+        spdlog::info("从Redis恢复生产计划成功 order_no: {}", order_no);
+        return true;
+    }
+    catch (const std::exception &e)
+    {
+        spdlog::error("从Redis恢复生产计划失败: {}", e.what());
+        return false;
+    }
+}
+
 bool CProductionPlan::IsEmpty()
 {
 	return feed_num <= 0;

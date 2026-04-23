@@ -43,6 +43,7 @@ public:
 	virtual void Clear();
 	virtual bool Modify(const ModifyTubeCmd &cmd);
 	virtual void RestoreFromTag();
+	virtual bool RestoreFromJson(const string &jsonStr, const char *sourceName = nullptr);
 	virtual void UpdateForm(); // 刷新画面
 	virtual void EntryTriggerBeforePush(CTube &tube);
 	virtual void EntryTrigger(const CTube &tube);

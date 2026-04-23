@@ -6,7 +6,6 @@
 void CScraptRoller::UpdateForm()
 {
     // 刷新废料辊道工位的界面显示
-    const CTube *tube = Peek();
     if (m_ctx && m_ctx->redis) {
         m_ctx->redis->set(REDIS_KEY, convertToJson());
         spdlog::info("ScraptRoller: SCRAPTROLLER_POS_TUBE_INFO updated");

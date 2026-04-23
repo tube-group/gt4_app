@@ -16,6 +16,7 @@
 #include "WalkingBeam.h"
 #include <sw/redis++/redis++.h>
 #include <pqxx/pqxx>
+#include "logging.h"   // spdlog
 #include "../include/higplat.h"
 #include <memory>
 
@@ -52,7 +53,53 @@ struct TubeTrackContext {
         basket.SetContext(*this);
         walkingBeam.SetContext(*this);
 
-        prodPlan.Initialize(); // 初始化生产计划数据
+        // 从Redis恢复工位状态
+        // 1. 定义Lambda表达式（复用恢复逻辑）
+        auto restorePosition = [this](CPositionBase &position, const char *redisKey, const char *positionName)
+        {
+            if (!redis)
+            {
+                return false;
+            }
+            // 从Redis获取数据并恢复
+            auto value = redis->get(redisKey);
+            if (!value)
+            {
+                spdlog::info("Redis中未找到{}数据，初始化为空工位", positionName);
+                position.Clear();  // 确保为空
+                return true;  // 返回true表示正常状态
+            }
+            // 调用工位的恢复方法
+            return position.RestoreFromJson(*value, positionName);
+        };
+
+        // 2. 恢复生产计划
+        bool planRestored = false;
+        if (redis)
+        {
+            // 从Redis获取生产计划数据并恢复
+            auto planValue = redis->get("PlanInfo");
+            if (planValue)
+            {
+                planRestored = prodPlan.RestoreFromJson(*planValue);
+            }
+        }
+
+        if (!planRestored)
+        {
+            prodPlan.Initialize(); // 无Redis状态时回退到数据库初始化生产计划
+        }
+
+        // 3. 恢复各个工位状态
+        restorePosition(alignPos, "ALIGN_POS_TUBE_INFO", "对齐工位");
+        restorePosition(weightPos, "WEIGHT_POS_TUBE_INFO", "称重工位");
+        restorePosition(carvePos, "CARVE_POS_TUBE_INFO", "刻印工位");
+        restorePosition(sprayPos, "SPRAY_POS_TUBE_INFO", "喷印工位");
+        restorePosition(circlePos, "CIRCLE_POS_TUBE_INFO", "色环工位");
+        restorePosition(scraptRoller, "SCRAPTROLLER_POS_TUBE_INFO", "废料辊道");
+        restorePosition(backBuffer, "BACKBUFFER_TUBE_INFO", "缓冲区");
+        restorePosition(scrapt, "SCRAPT_POS_TUBE_INFO", "废料台架");
+        restorePosition(basket, "BASKET_TUBE_INFO", "打包区");
     }
 
     // 清理资源

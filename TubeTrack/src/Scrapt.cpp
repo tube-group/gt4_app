@@ -7,7 +7,6 @@
 void CScrapt::UpdateForm()
 {
     // 刷新废料筐工位的界面显示
-    const CTube *tube = Peek();
     if (m_ctx && m_ctx->redis) {
         m_ctx->redis->set(REDIS_KEY, convertToJson());
         spdlog::info("Scrapt: SCRAPT_POS_TUBE_INFO updated");
