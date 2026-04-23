@@ -155,8 +155,39 @@ void CPositionBase::Clear()
 	UpdateForm();
 }
 
-void CPositionBase::Modify()
-{}
+bool CPositionBase::Modify(const ModifyTubeCmd &cmd)
+{
+	for (auto &tube : m_tubes)
+	{
+		if (!tube)
+		{
+			continue;
+		}
+
+		if (tube->flow_no != cmd.flow_no)
+		{
+			continue;
+		}
+
+		tube->order_no = cmd.order_no.c_str();
+		tube->item_no = cmd.item_no.c_str();
+		tube->roll_no = cmd.roll_no.c_str();
+		tube->melt_no = cmd.melt_no.c_str();
+		tube->lot_no = cmd.lot_no.c_str();
+		tube->tube_no = cmd.tube_no;
+		tube->flow_no = cmd.flow_no;
+		tube->length = static_cast<float>(cmd.length);
+		tube->weight = static_cast<float>(cmd.weight);
+		tube->length_ok = cmd.length_ok;
+		tube->weight_ok = cmd.weight_ok;
+		tube->lotno_coupling = cmd.lotno_coupling.c_str();
+		tube->meltno_coupling = cmd.meltno_coupling.c_str();
+		UpdateForm();
+		return true;
+	}
+
+	return false;
+}
 
 void CPositionBase::RestoreFromTag()
 {

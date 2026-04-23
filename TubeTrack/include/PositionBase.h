@@ -1,5 +1,6 @@
 #pragma once
 #include "Tube.h"
+#include "../../include/usercmd.h"
 #include <deque>
 #include <memory>
 #include <cstddef>
@@ -40,7 +41,7 @@ public:
 	virtual bool IsEmpty();
 	virtual size_t Count() const;
 	virtual void Clear();
-	virtual void Modify();
+	virtual bool Modify(const ModifyTubeCmd &cmd);
 	virtual void RestoreFromTag();
 	virtual void UpdateForm(); // 刷新画面
 	virtual void EntryTriggerBeforePush(CTube &tube);

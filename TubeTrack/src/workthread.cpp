@@ -27,6 +27,8 @@ void handleWbBase(TubeTrackContext &ctx, const char *value);
 void moveTubeToWbase(TubeTrackContext &ctx);
 void moveTubeToPosion(TubeTrackContext &ctx);
 void handleMoveTubeCmd(TubeTrackContext &ctx, const char *value); // 处理移动管子命令
+void handleModifyTubeCmd(TubeTrackContext &ctx, const char *value); // 处理修改管子命令
+void handleDeleteTubeCmd(TubeTrackContext &ctx, const char *value); // 处理删除管子命令
 
 bool moveTubeBetween(CPositionBase &source,
                      CPositionBase &target,
@@ -146,14 +148,16 @@ void workThread(TubeTrackContext &ctx)
 
     // 订阅timer用于退出检测
     subscribe(ctx.gplatConn, "timer_500ms", &err);
-    subscribe(ctx.gplatConn, "ALIGN_POS_ON", &err);
-    subscribe(ctx.gplatConn, "WEIGHT_POS_ON", &err);
-    subscribe(ctx.gplatConn, "CARVE_POS_ON", &err);
-    subscribe(ctx.gplatConn, "SPRAY_POS_ON", &err);
-    subscribe(ctx.gplatConn, "CIRCLE_POS_ON", &err);
-    subscribe(ctx.gplatConn, "SCRAPTROLLER_POS_ON", &err);
-    subscribe(ctx.gplatConn, "WB_BASE", &err);
+    // subscribe(ctx.gplatConn, "ALIGN_POS_ON", &err);
+    // subscribe(ctx.gplatConn, "WEIGHT_POS_ON", &err);
+    // subscribe(ctx.gplatConn, "CARVE_POS_ON", &err);
+    // subscribe(ctx.gplatConn, "SPRAY_POS_ON", &err);
+    // subscribe(ctx.gplatConn, "CIRCLE_POS_ON", &err);
+    // subscribe(ctx.gplatConn, "SCRAPTROLLER_POS_ON", &err);
+    // subscribe(ctx.gplatConn, "WB_BASE", &err);
     subscribe(ctx.gplatConn, "MOVE_TUBE_CMD", &err);
+    subscribe(ctx.gplatConn, "MODIFY_TUBE_CMD", &err);
+    subscribe(ctx.gplatConn, "DELETE_TUBE_CMD", &err);
 
     // 主循环：等待gPlat数据，处理TAG更新
     while (g_running)
@@ -173,6 +177,7 @@ void workThread(TubeTrackContext &ctx)
         // timer唤醒，仅用于检查g_running
         if (tagname == "timer_500ms")
         {
+            spdlog::debug("Timer tick, g_running={}", g_running);
             continue;
         }
 
@@ -189,27 +194,27 @@ void workThread(TubeTrackContext &ctx)
             // 处理对齐工位检测信号
             handleAlignPosOn(ctx, value);
         }
-        else if (tagname == "WEI_POS_ON")
+        else if (tagname == "WEIGHT_POS_ON")
         {
             // 处理称重工位检测信号
             handleWeiPosOn(ctx, value);
         }
-        else if (tagname == "PRT_POS_ON")
+        else if (tagname == "CARVE_POS_ON")
         {
             // 处理刻印工位检测信号
             handlePrtPosOn(ctx, value);
         }
-        else if (tagname == "SPY_POS_ON")
+        else if (tagname == "SPRAY_POS_ON")
         {
             // 处理喷印工位检测信号
             handleSpyPosOn(ctx, value);
         }
-        else if (tagname == "CIR_POS_ON")
+        else if (tagname == "CIRCLE_POS_ON")
         {
             // 处理色环工位检测信号
             handleCirPosOn(ctx, value);
         }
-        else if (tagname == "SCR_ROLLER_ON")
+        else if (tagname == "SCRAPTROLLER_POS_ON")
         {
             // 处理废料辊道检测信号
             handleScrRollerOn(ctx, value);
@@ -224,21 +229,22 @@ void workThread(TubeTrackContext &ctx)
             // 处理移动管子命令
             handleMoveTubeCmd(ctx, value);
         }
+        else if (tagname == "MODIFY_TUBE_CMD")
+        {
+            // 处理修改管子命令
+            handleModifyTubeCmd(ctx, value);
+        }
+        else if (tagname == "DELETE_TUBE_CMD")
+        {
+            // 处理删除管子命令
+            handleDeleteTubeCmd(ctx, value);
+        }
+        //.....
+        
     }
 }
 
-// 移动管子命令
-// plan:投料虚拟工位
-// align:对齐工位
-// weight：称重工位
-// carve:刻印工位
-// spray:喷码工位
-// circle:色环工位
-// scraptroller:出废辊道工位
-// scrapt:废料台架工位
-// backbuffer:打包前缓冲区工位
-// basket:打包区工位
-
+// ------------处理移动管子命令-----------------
 void handleMoveTubeCmd(TubeTrackContext &ctx, const char *value)
 {
     MoveTubeCmd cmd = read_value<MoveTubeCmd>(value);
@@ -415,6 +421,74 @@ void handleMoveTubeCmd(TubeTrackContext &ctx, const char *value)
     }
 }
 
+// -----------处理修改管子命令----------
+void handleModifyTubeCmd(TubeTrackContext &ctx, const char *value)
+{    
+    ModifyTubeCmd cmd = read_value<ModifyTubeCmd>(value);
+    spdlog::info("Handling MODIFY_TUBE_CMD: position={}, seq_no={}, flow_no={}", cmd.position_name.c_str(), cmd.seq_no, cmd.flow_no);
+
+    CPositionBase *position = nullptr;
+    if (cmd.position_name == "align")
+    {
+        position = &ctx.alignPos;
+    }
+    else if (cmd.position_name == "weight")
+    {
+        position = &ctx.weightPos;
+    }
+    else if (cmd.position_name == "carve")
+    {
+        position = &ctx.carvePos;
+    }
+    else if (cmd.position_name == "spray")
+    {
+        position = &ctx.sprayPos;
+    }
+    else if (cmd.position_name == "circle")
+    {
+        position = &ctx.circlePos;
+    }
+    else if (cmd.position_name == "scraptroller")
+    {
+        position = &ctx.scraptRoller;
+    }
+    else if (cmd.position_name == "backbuffer")
+    {
+        position = &ctx.backBuffer;
+    }
+    else if (cmd.position_name == "scrapt")
+    {
+        position = &ctx.scrapt;
+    }
+    else if (cmd.position_name == "basket")
+    {
+        position = &ctx.basket;
+    }
+
+    if (!position)
+    {
+        spdlog::warn("Unsupported MODIFY_TUBE_CMD position: {}", cmd.position_name.c_str());
+        return;
+    }
+
+    if (!position->Modify(cmd))
+    {
+        spdlog::warn("Tube not found for MODIFY_TUBE_CMD: position={}, seq_no={}, flow_no={}", cmd.position_name.c_str(), cmd.seq_no, cmd.flow_no);
+        return;
+    }
+
+    position->DebugOut();
+}
+
+
+// -----------处理删除管子命令----------
+void handleDeleteTubeCmd(TubeTrackContext &ctx, const char *value)
+{
+    DeleteTubeCmd cmd = read_value<DeleteTubeCmd>(value);
+    spdlog::info("Handling DELETE_TUBE_CMD: position={}", cmd.position_name.c_str());
+    
+}
+
 //--------将对齐、称重、刻印、喷印、色环工位的管子弹出到步进梁--------
 void moveTubeToWbase(TubeTrackContext &ctx)
 {
@@ -500,7 +574,7 @@ void handleAlignPosOn(TubeTrackContext &ctx, const char *value)
 void handleWeiPosOn(TubeTrackContext &ctx, const char *value)
 {
     bool isOn = read_value<bool>(value);
-    spdlog::info("WEI_POS_ON isOn: {}", isOn);
+    spdlog::info("WEIGHT_POS_ON isOn: {}", isOn);
     if (ctx.walkingBeam.IsAtBase())
     {
         spdlog::warn("Walking beam is at base, ignoring weight position signal");
@@ -522,7 +596,7 @@ void handleWeiPosOn(TubeTrackContext &ctx, const char *value)
 void handlePrtPosOn(TubeTrackContext &ctx, const char *value)
 {
     bool isOn = read_value<bool>(value);
-    spdlog::info("PRT_POS_ON isOn: {}", isOn);
+    spdlog::info("CARVE_POS_ON isOn: {}", isOn);
     if (ctx.walkingBeam.IsAtBase())
     {
         spdlog::warn("Walking beam is at base, ignoring carve position signal");
@@ -544,7 +618,7 @@ void handlePrtPosOn(TubeTrackContext &ctx, const char *value)
 void handleSpyPosOn(TubeTrackContext &ctx, const char *value)
 {
     bool isOn = read_value<bool>(value);
-    spdlog::info("SPY_POS_ON isOn: {}", isOn);
+    spdlog::info("SPRAY_POS_ON isOn: {}", isOn);
     if (ctx.walkingBeam.IsAtBase())
     {
         spdlog::warn("Walking beam is at base, ignoring spray position signal");
@@ -566,7 +640,7 @@ void handleSpyPosOn(TubeTrackContext &ctx, const char *value)
 void handleCirPosOn(TubeTrackContext &ctx, const char *value)
 {
     bool isOn = read_value<bool>(value);
-    spdlog::info("CIR_POS_ON isOn: {}", isOn);
+    spdlog::info("CIRCLE_POS_ON isOn: {}", isOn);
     if (ctx.walkingBeam.IsAtBase())
     {
         spdlog::warn("Walking beam is at base, ignoring circle position signal");
@@ -588,7 +662,7 @@ void handleCirPosOn(TubeTrackContext &ctx, const char *value)
 void handleScrRollerOn(TubeTrackContext &ctx, const char *value)
 {
     bool isOn = read_value<bool>(value);
-    spdlog::info("SCR_ROLLER_ON isOn: {}", isOn);
+    spdlog::info("SCRAPTROLLER_POS_ON isOn: {}", isOn);
     if (!isOn)
     {
         // 从废料辊道弹出管子，推送到缓冲区
