@@ -9,8 +9,8 @@ public:
     ~CBasket() = default;
 
     virtual void UpdateForm() override; // 刷新画面
-    virtual void DebugOut() override;   // 输出缓冲区管子数量
+    virtual void DebugOut() override;   // 输出成品料筐管子数量
 
 private:
-    const char *REDIS_KEY = "BASKET_TUBE_INFO"; // 发布的key名称
+    const char *REDIS_KEY = "BASKET_POS_TUBE_INFO"; // 发布的key名称
 };

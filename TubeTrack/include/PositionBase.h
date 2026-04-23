@@ -42,6 +42,7 @@ public:
 	virtual size_t Count() const;
 	virtual void Clear();
 	virtual bool Modify(const ModifyTubeCmd &cmd);
+	virtual bool Delete(int seqNo);
 	virtual void RestoreFromTag();
 	virtual bool RestoreFromJson(const string &jsonStr, const char *sourceName = nullptr);
 	virtual void UpdateForm(); // 刷新画面

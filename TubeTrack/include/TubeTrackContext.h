@@ -97,9 +97,9 @@ struct TubeTrackContext {
         restorePosition(sprayPos, "SPRAY_POS_TUBE_INFO", "喷印工位");
         restorePosition(circlePos, "CIRCLE_POS_TUBE_INFO", "色环工位");
         restorePosition(scraptRoller, "SCRAPTROLLER_POS_TUBE_INFO", "废料辊道");
-        restorePosition(backBuffer, "BACKBUFFER_TUBE_INFO", "缓冲区");
-        restorePosition(scrapt, "SCRAPT_POS_TUBE_INFO", "废料台架");
-        restorePosition(basket, "BASKET_TUBE_INFO", "打包区");
+        restorePosition(backBuffer, "BACKBUFFER_POS_TUBE_INFO", "缓冲区");
+        restorePosition(scrapt, "SCRAPT_POS_TUBE_INFO", "废料筐");
+        restorePosition(basket, "BASKET_POS_TUBE_INFO", "成品筐");
     }
 
     // 清理资源

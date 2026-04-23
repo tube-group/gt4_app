@@ -485,8 +485,69 @@ void handleModifyTubeCmd(TubeTrackContext &ctx, const char *value)
 void handleDeleteTubeCmd(TubeTrackContext &ctx, const char *value)
 {
     DeleteTubeCmd cmd = read_value<DeleteTubeCmd>(value);
-    spdlog::info("Handling DELETE_TUBE_CMD: position={}", cmd.position_name.c_str());
-    
+    spdlog::info("Handling DELETE_TUBE_CMD: position={}, seq_no={}", cmd.position_name.c_str(), cmd.seq_no);
+
+    CPositionBase *position = nullptr;
+    bool isMultiPosition = false;
+    if (cmd.position_name == "align")
+    {
+        position = &ctx.alignPos;
+    }
+    else if (cmd.position_name == "weight")
+    {
+        position = &ctx.weightPos;
+    }
+    else if (cmd.position_name == "carve")
+    {
+        position = &ctx.carvePos;
+    }
+    else if (cmd.position_name == "spray")
+    {
+        position = &ctx.sprayPos;
+    }
+    else if (cmd.position_name == "circle")
+    {
+        position = &ctx.circlePos;
+    }
+    else if (cmd.position_name == "scraptroller")
+    {
+        position = &ctx.scraptRoller;
+    }
+    else if (cmd.position_name == "backbuffer")
+    {
+        position = &ctx.backBuffer;
+        isMultiPosition = true;
+    }
+    else if (cmd.position_name == "scrapt")
+    {
+        position = &ctx.scrapt;
+        isMultiPosition = true;
+    }
+    else if (cmd.position_name == "basket")
+    {
+        position = &ctx.basket;
+        isMultiPosition = true;
+    }
+
+    if (!position)
+    {
+        spdlog::warn("Unsupported DELETE_TUBE_CMD position: {}", cmd.position_name.c_str());
+        return;
+    }
+
+    if (!isMultiPosition && cmd.seq_no != 0)
+    {
+        spdlog::warn("Single-tube position only supports seq_no=0 for DELETE_TUBE_CMD: position={}, seq_no={}", cmd.position_name.c_str(), cmd.seq_no);
+        return;
+    }
+
+    if (!position->Delete(cmd.seq_no))
+    {
+        spdlog::warn("Tube not found for DELETE_TUBE_CMD: position={}, seq_no={}", cmd.position_name.c_str(), cmd.seq_no);
+        return;
+    }
+
+    position->DebugOut();
 }
 
 //--------将对齐、称重、刻印、喷印、色环工位的管子弹出到步进梁--------

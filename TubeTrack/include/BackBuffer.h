@@ -12,5 +12,5 @@ class CBackBuffer : public CPositionBase
         virtual void DebugOut() override;   // 输出缓冲区管子数量
 
 private:
-    const char *REDIS_KEY = "BACKBUFFER_TUBE_INFO"; // 发布的key名称
+    const char *REDIS_KEY = "BACKBUFFER_POS_TUBE_INFO"; // 发布的key名称
 };

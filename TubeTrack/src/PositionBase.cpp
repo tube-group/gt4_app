@@ -191,6 +191,30 @@ bool CPositionBase::Modify(const ModifyTubeCmd &cmd)
 	return true;
 }
 
+bool CPositionBase::Delete(int seqNo)
+{
+	if (seqNo < 0)
+	{
+		return false;
+	}
+
+	size_t index = static_cast<size_t>(seqNo);
+	if (index >= m_tubes.size())
+	{
+		return false;
+	}
+
+	auto it = m_tubes.begin() + static_cast<ptrdiff_t>(index);
+	auto tube = std::move(*it);
+	m_tubes.erase(it);
+	UpdateForm();
+	if (m_bTriggerEnabled && tube)
+	{
+		ExitTrigger(*tube);
+	}
+	return true;
+}
+
 void CPositionBase::RestoreFromTag()
 {
 }
