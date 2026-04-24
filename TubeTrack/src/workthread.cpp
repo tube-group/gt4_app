@@ -26,9 +26,10 @@ void handleScrRollerOn(TubeTrackContext &ctx, const char *value);
 void handleWbBase(TubeTrackContext &ctx, const char *value);
 void moveTubeToWbase(TubeTrackContext &ctx);
 void moveTubeToPosion(TubeTrackContext &ctx);
-void handleMoveTubeCmd(TubeTrackContext &ctx, const char *value); // 处理移动管子命令
-void handleModifyTubeCmd(TubeTrackContext &ctx, const char *value); // 处理修改管子命令
-void handleDeleteTubeCmd(TubeTrackContext &ctx, const char *value); // 处理删除管子命令
+void handleMoveTubeCmd(TubeTrackContext &ctx, const char *value);           // 处理移动管子命令
+void handleModifyTubeCmd(TubeTrackContext &ctx, const char *value);         // 处理修改管子命令
+void handleDeleteTubeCmd(TubeTrackContext &ctx, const char *value);         // 处理删除管子命令
+void handleSetCurrentContractCmd(TubeTrackContext &ctx, const char *value); // 处理设置当前合同命令
 
 bool moveTubeBetween(CPositionBase &source,
                      CPositionBase &target,
@@ -158,6 +159,7 @@ void workThread(TubeTrackContext &ctx)
     subscribe(ctx.gplatConn, "MOVE_TUBE_CMD", &err);
     subscribe(ctx.gplatConn, "MODIFY_TUBE_CMD", &err);
     subscribe(ctx.gplatConn, "DELETE_TUBE_CMD", &err);
+    subscribe(ctx.gplatConn, "SET_CURRENT_CONTRACT_CMD", &err);
 
     // 主循环：等待gPlat数据，处理TAG更新
     while (g_running)
@@ -239,8 +241,12 @@ void workThread(TubeTrackContext &ctx)
             // 处理删除管子命令
             handleDeleteTubeCmd(ctx, value);
         }
+        else if (tagname == "SET_CURRENT_CONTRACT_CMD")
+        {
+            // 处理设置当前合同命令
+            handleSetCurrentContractCmd(ctx, value);
+        }
         //.....
-        
     }
 }
 
@@ -351,7 +357,7 @@ void handleMoveTubeCmd(TubeTrackContext &ctx, const char *value)
     }
     // 问题在上游发出的 MOVE_TUBE_CMD 参数不包含这个命令，暂时注释掉
     // （需要修正 gPlat 或命令发送端，把 scaptroller 改成 scraptroller）
-    else if (cmd.from == "backbuffer" && cmd.to == "scraptroller")  // 反向：缓冲区 -> 废料辊道
+    else if (cmd.from == "backbuffer" && cmd.to == "scraptroller") // 反向：缓冲区 -> 废料辊道
     {
         moveTubeBetween(ctx.backBuffer, ctx.scraptRoller, "Back buffer", "Scrapt roller");
     }
@@ -423,7 +429,7 @@ void handleMoveTubeCmd(TubeTrackContext &ctx, const char *value)
 
 // -----------处理修改管子命令----------
 void handleModifyTubeCmd(TubeTrackContext &ctx, const char *value)
-{    
+{
     ModifyTubeCmd cmd = read_value<ModifyTubeCmd>(value);
     spdlog::info("Handling MODIFY_TUBE_CMD: position={}, seq_no={}, flow_no={}", cmd.position_name.c_str(), cmd.seq_no, cmd.flow_no);
 
@@ -479,7 +485,6 @@ void handleModifyTubeCmd(TubeTrackContext &ctx, const char *value)
 
     position->DebugOut();
 }
-
 
 // -----------处理删除管子命令----------
 void handleDeleteTubeCmd(TubeTrackContext &ctx, const char *value)
@@ -548,6 +553,27 @@ void handleDeleteTubeCmd(TubeTrackContext &ctx, const char *value)
     }
 
     position->DebugOut();
+}
+
+// -----------处理设置当前合同命令----------
+void handleSetCurrentContractCmd(TubeTrackContext &ctx, const char *value)
+{
+    SetCurrentContractCmd cmd = read_value<SetCurrentContractCmd>(value);
+    const std::string orderNo = cmd.order_no.c_str();
+    const std::string itemNo = cmd.item_no.c_str();
+
+    spdlog::info("Handling SET_CURRENT_CONTRACT_CMD: order_no={}, item_no={}", orderNo, itemNo);
+
+    if (orderNo.empty() || itemNo.empty())
+    {
+        spdlog::warn("SET_CURRENT_CONTRACT_CMD missing order_no or item_no");
+        return;
+    }
+
+    if (!ctx.prodPlan.ApplyCurrentContract(orderNo, itemNo))
+    {
+        spdlog::warn("SET_CURRENT_CONTRACT_CMD failed for order_no={}, item_no={}", orderNo, itemNo);
+    }
 }
 
 //--------将对齐、称重、刻印、喷印、色环工位的管子弹出到步进梁--------

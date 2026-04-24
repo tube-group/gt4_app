@@ -16,10 +16,11 @@ public:
     std::unique_ptr<CTube> Pop(int mode = 0);
     void UpdateForm();
     void Initialize();
+    bool ApplyCurrentContract(const string &orderNo, const string &itemNo);
     bool RestoreFromJson(const string &jsonStr);
     bool IsEmpty();
 
-public:
+private:
     string order_no;        // 合同号
     string item_no;         // 项目号
     string roll_no;         // 轧批号
@@ -30,6 +31,5 @@ public:
     int feed_num;           // 投料支数
     int tube_no;            // 管号
 
-private:
     const char *REDIS_KEY = "PlanInfo"; // 发布的key名称
 };
