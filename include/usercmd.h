@@ -65,4 +65,20 @@ struct SetCurrentContractCmd {
 };
 
 
+struct StartSprayEvent
+{
+    PodString<20> order_no; // 合同号
+    PodString<20> item_no; // 项目号
+    int tube_no; // 管号
+    int flow_no; // 流水号
+    PodString<20> melt_no; // 炉号
+    PodString<20> lot_no; // 试批号
+    double length; // 长度(米)
+    double weight; // 重量(KG)
+    double theory_weight; // 理论重量
+    bool length_ok; // 长度合格
+    bool weight_ok; // 重量合格
+
+};
+
 #endif // USERCMD_H

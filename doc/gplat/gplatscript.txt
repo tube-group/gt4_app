@@ -1,0 +1,6 @@
+# gplat创建tag语句
+create DELETE_TUBE_CMD DeleteTubeCmd
+create MODIFY_TUBE_CMD ModifyTubeCmd
+create MOVE_TUBE_CMD MoveTubeCmd
+create SET_FEED_NUM_CMD SetFeedNumCmd
+create SET_CURRENT_CONTRACT_CMD SetCurrentContractCmd
