@@ -26,6 +26,7 @@ add_subdirectory(TubeTrack)
 add_subdirectory(FormDemo)
 add_subdirectory(MonitorUserCmd)
 add_subdirectory(MonitorPlcData)
+add_subdirectory(SprayWeight)
 
 message(STATUS "构建类型: ${CMAKE_BUILD_TYPE}")
 message(STATUS "Build 目录: ${CMAKE_BINARY_DIR}")
