@@ -183,10 +183,10 @@ void workThread(TubeTrackContext &ctx)
             continue;
         }
 
-        if (tagname == "WAIT_TIMEOUT")
-        {
-            continue;
-        }
+        // if (tagname == "WAIT_TIMEOUT")
+        // {
+        //     continue;
+        // }
 
         // 处理其他TAG更新
         spdlog::info("Received gPlat post: {}", tagname);
@@ -362,13 +362,13 @@ void handleMoveTubeCmd(TubeTrackContext &ctx, const char *value)
         moveTubeBetween(ctx.backBuffer, ctx.scraptRoller, "Back buffer", "Scrapt roller");
     }
     // 这里画面按钮还没定义命令
-    // else if (cmd.from == "scraptroller" && cmd.to == "scrapt")  // 废料辊道 -> 废料台架
-    // {
-    //     moveTubeBetween(ctx.scraptRoller, ctx.scrapt, "Scrapt roller", "Scrapt");
-    // }else if (cmd.from == "scrapt" && cmd.to == "scraptroller")  // 反向：废料台架 -> 废料辊道
-    // {
-    //     moveTubeBetween(ctx.scrapt, ctx.scraptRoller, "Scrapt", "Scrapt roller");
-    // }
+    else if (cmd.from == "scraptroller" && cmd.to == "scrapt")  // 废料辊道 -> 废料台架
+    {
+        moveTubeBetween(ctx.scraptRoller, ctx.scrapt, "Scrapt roller", "Scrapt");
+    }else if (cmd.from == "scrapt" && cmd.to == "scraptroller")  // 反向：废料台架 -> 废料辊道
+    {
+        moveTubeBetween(ctx.scrapt, ctx.scraptRoller, "Scrapt", "Scrapt roller");
+    }
     else if (cmd.from == "backbuffer" && cmd.to == "basket") // 缓冲区 -> 打包区(先进先出)
     {
         // 打包区是多管子的，直接推送即可，无需判断是否有管子
