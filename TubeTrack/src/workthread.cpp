@@ -167,84 +167,92 @@ void workThread(TubeTrackContext &ctx)
         char value[1024] = {0};
         std::string tagname;
 
-        bool ret = waitpostdata(ctx.gplatConn, tagname, value, 1024, -1, &err);
+        try
+        {
+            bool ret = waitpostdata(ctx.gplatConn, tagname, value, 1024, -1, &err);
 
-        if (!ret)
-        {
-            spdlog::warn("waitpostdata failed, reconnecting gPlat...");
-            // 断线重连逻辑
-            continue;
-        }
+            if (!ret)
+            {
+                spdlog::warn("waitpostdata failed, reconnecting gPlat...");
+                // 断线重连逻辑
+                continue;
+            }
 
-        // timer唤醒，仅用于检查g_running
-        if (tagname == "timer_500ms")
-        {
-            spdlog::debug("Timer tick, g_running={}", g_running);
-            continue;
-        }
+            // timer唤醒，仅用于检查g_running
+            if (tagname == "timer_500ms")
+            {
+                spdlog::debug("Timer tick, g_running={}", g_running);
+                continue;
+            }
 
-        // if (tagname == "WAIT_TIMEOUT")
-        // {
-        //     continue;
-        // }
+            if (tagname == "WAIT_TIMEOUT")
+            {
+                continue;
+            }
 
-        // 处理其他TAG更新
-        spdlog::info("Received gPlat post: {}", tagname);
+            // 处理其他TAG更新
+            spdlog::info("Received gPlat post: {}", tagname);
 
-        if (tagname == "ALIGN_POS_ON")
-        {
-            // 处理对齐工位检测信号
-            handleAlignPosOn(ctx, value);
+            if (tagname == "ALIGN_POS_ON")
+            {
+                // 处理对齐工位检测信号
+                handleAlignPosOn(ctx, value);
+            }
+            else if (tagname == "WEIGHT_POS_ON")
+            {
+                // 处理称重工位检测信号
+                handleWeiPosOn(ctx, value);
+            }
+            else if (tagname == "CARVE_POS_ON")
+            {
+                // 处理刻印工位检测信号
+                handlePrtPosOn(ctx, value);
+            }
+            else if (tagname == "SPRAY_POS_ON")
+            {
+                // 处理喷印工位检测信号
+                handleSpyPosOn(ctx, value);
+            }
+            else if (tagname == "CIRCLE_POS_ON")
+            {
+                // 处理色环工位检测信号
+                handleCirPosOn(ctx, value);
+            }
+            else if (tagname == "SCRAPTROLLER_POS_ON")
+            {
+                // 处理废料辊道检测信号
+                handleScrRollerOn(ctx, value);
+            }
+            else if (tagname == "WB_BASE")
+            {
+                // 处理步进梁基位检测信号
+                handleWbBase(ctx, value);
+            }
+            else if (tagname == "MOVE_TUBE_CMD")
+            {
+                // 处理移动管子命令
+                handleMoveTubeCmd(ctx, value);
+            }
+            else if (tagname == "MODIFY_TUBE_CMD")
+            {
+                // 处理修改管子命令
+                handleModifyTubeCmd(ctx, value);
+            }
+            else if (tagname == "DELETE_TUBE_CMD")
+            {
+                // 处理删除管子命令
+                handleDeleteTubeCmd(ctx, value);
+            }
+            else if (tagname == "SET_CURRENT_CONTRACT_CMD")
+            {
+                // 处理设置当前合同命令
+                handleSetCurrentContractCmd(ctx, value);
+            }
         }
-        else if (tagname == "WEIGHT_POS_ON")
+        catch (const std::exception &ex)
         {
-            // 处理称重工位检测信号
-            handleWeiPosOn(ctx, value);
-        }
-        else if (tagname == "CARVE_POS_ON")
-        {
-            // 处理刻印工位检测信号
-            handlePrtPosOn(ctx, value);
-        }
-        else if (tagname == "SPRAY_POS_ON")
-        {
-            // 处理喷印工位检测信号
-            handleSpyPosOn(ctx, value);
-        }
-        else if (tagname == "CIRCLE_POS_ON")
-        {
-            // 处理色环工位检测信号
-            handleCirPosOn(ctx, value);
-        }
-        else if (tagname == "SCRAPTROLLER_POS_ON")
-        {
-            // 处理废料辊道检测信号
-            handleScrRollerOn(ctx, value);
-        }
-        else if (tagname == "WB_BASE")
-        {
-            // 处理步进梁基位检测信号
-            handleWbBase(ctx, value);
-        }
-        else if (tagname == "MOVE_TUBE_CMD")
-        {
-            // 处理移动管子命令
-            handleMoveTubeCmd(ctx, value);
-        }
-        else if (tagname == "MODIFY_TUBE_CMD")
-        {
-            // 处理修改管子命令
-            handleModifyTubeCmd(ctx, value);
-        }
-        else if (tagname == "DELETE_TUBE_CMD")
-        {
-            // 处理删除管子命令
-            handleDeleteTubeCmd(ctx, value);
-        }
-        else if (tagname == "SET_CURRENT_CONTRACT_CMD")
-        {
-            // 处理设置当前合同命令
-            handleSetCurrentContractCmd(ctx, value);
+            // 打印tagname和错误信息，继续循环
+            std::cerr << "Error processing tag: " << tagname << ", error: " << ex.what() << std::endl;
         }
         //.....
     }
@@ -362,10 +370,11 @@ void handleMoveTubeCmd(TubeTrackContext &ctx, const char *value)
         moveTubeBetween(ctx.backBuffer, ctx.scraptRoller, "Back buffer", "Scrapt roller");
     }
     // 这里画面按钮还没定义命令
-    else if (cmd.from == "scraptroller" && cmd.to == "scrapt")  // 废料辊道 -> 废料台架
+    else if (cmd.from == "scraptroller" && cmd.to == "scrapt") // 废料辊道 -> 废料台架
     {
         moveTubeBetween(ctx.scraptRoller, ctx.scrapt, "Scrapt roller", "Scrapt");
-    }else if (cmd.from == "scrapt" && cmd.to == "scraptroller")  // 反向：废料台架 -> 废料辊道
+    }
+    else if (cmd.from == "scrapt" && cmd.to == "scraptroller") // 反向：废料台架 -> 废料辊道
     {
         moveTubeBetween(ctx.scrapt, ctx.scraptRoller, "Scrapt", "Scrapt roller");
     }
