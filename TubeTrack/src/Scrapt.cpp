@@ -15,3 +15,12 @@ void CScrapt::UpdateForm()
         m_ctx->redis->publish("RealDataChanged", REDIS_KEY);
     }
 }
+
+void CScrapt::DebugOut()
+{
+    // 输出废料筐管子数量
+    if (m_ctx && m_ctx->redis)
+    {
+        spdlog::info("Scrapt: SCRAPT_POS_TUBE_INFO = {}", convertToJson());
+    }
+}

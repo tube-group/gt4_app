@@ -193,9 +193,16 @@ bool CPositionBase::Modify(const ModifyTubeCmd &cmd)
 
 bool CPositionBase::Delete(int seqNo)
 {
-	if (seqNo < 0)
+	if (seqNo < -1)
 	{
 		return false;
+	}
+	//如果seqNo=-1,则清空该工位队列所有管子
+	if (seqNo == -1)
+	{
+		//调用Clear()函数清空管子队列并更新画面
+		Clear();
+		return true;
 	}
 
 	size_t index = static_cast<size_t>(seqNo);
@@ -403,11 +410,11 @@ string CPositionBase::convertToJson()
 {
 	if (m_tubes.empty())
 	{
-		return "{}"; // 返回空JSON对象
+		return nlohmann::json::array(); // 统一空工位为数组，便于前端清空列表态
 	}
 
 	// 枚举当前工位的所有管子并转换为JSON数组
-	nlohmann::json j;
+	nlohmann::json j = nlohmann::json::array();
 	for (const auto& tubePtr : m_tubes)
 	{
 		if (tubePtr)

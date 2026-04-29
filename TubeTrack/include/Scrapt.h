@@ -9,6 +9,7 @@ class CScrapt : public CPositionBase
     ~CScrapt() = default;
 
     virtual void UpdateForm() override; // 刷新画面
+    virtual void DebugOut() override;   //输出废料筐管子数量
     private:
     const char *REDIS_KEY = "SCRAPT_POS_TUBE_INFO"; // 发布的key名称
 };

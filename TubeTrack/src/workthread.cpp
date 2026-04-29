@@ -370,13 +370,31 @@ void handleMoveTubeCmd(TubeTrackContext &ctx, const char *value)
         moveTubeBetween(ctx.backBuffer, ctx.scraptRoller, "Back buffer", "Scrapt roller");
     }
     // 这里画面按钮还没定义命令
-    else if (cmd.from == "scraptroller" && cmd.to == "scrapt") // 废料辊道 -> 废料台架
+    else if (cmd.from == "scraptroller" && cmd.to == "scrapt") // 废料辊道 -> 废料筐
     {
-        moveTubeBetween(ctx.scraptRoller, ctx.scrapt, "Scrapt roller", "Scrapt");
-    }
-    else if (cmd.from == "scrapt" && cmd.to == "scraptroller") // 反向：废料台架 -> 废料辊道
-    {
-        moveTubeBetween(ctx.scrapt, ctx.scraptRoller, "Scrapt", "Scrapt roller");
+        // 废料筐是多管子的，直接推送即可，无需判断是否有管子
+        // 判断废料辊道是否有管子
+        if (ctx.scraptRoller.IsEmpty())
+        {
+            spdlog::warn("Scrapt roller is empty, no tube to move to scrapt");
+            return;
+        }
+        else
+        {
+            auto tube = ctx.scraptRoller.Pop();
+            if (!tube)
+            {
+                spdlog::warn("Scrapt roller is empty, no tube to move to scrapt");
+            }
+            else if (!ctx.scrapt.Push(std::move(tube)))
+            {
+                spdlog::error("Failed to push tube from Scrapt roller to scrapt");
+            }
+            else
+            {
+                ctx.scrapt.DebugOut();
+            }
+        }
     }
     else if (cmd.from == "backbuffer" && cmd.to == "basket") // 缓冲区 -> 打包区(先进先出)
     {
