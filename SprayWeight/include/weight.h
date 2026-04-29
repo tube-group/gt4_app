@@ -13,9 +13,8 @@ public:
 	void Run();
 
 private:
-	// 从称重设备读取当前重量，返回值单位为 0.01kg。
-	// 使用整数可以减少串口解析和队列传输过程中的浮点误差。
-	int ReadWeightCentiKg() const;
+	// 从串口读取重量值，单位为0.01kg。
+	double ReadWeightCentiKg() const;
 
 	// 共享运行时上下文，由 main() 创建。
 	SprayWeightContext& ctx_;

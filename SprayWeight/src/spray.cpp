@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <regex>
 #include <sstream>
+#include "logging.h"
 
 namespace
 {

@@ -15,6 +15,14 @@
 #include "iniconfig.h" // CConfig
 #include "logging.h"   // LogConfig
 
+struct AppConfig {
+    LogConfig logCfg;
+    bool daemonMode = false;
+    std::string pidFile = "/tmp/SprayWeight.pid";
+    std::string gplatServer = "127.0.0.1";
+    int gplatPort = 8777;
+};
+
 // ---- 信号处理 ----
 volatile sig_atomic_t g_running = 1;
 
@@ -134,9 +142,6 @@ static int becomeDaemon()
     return 0; // 子进程
 }
 
-// ---- 应用配置 ----
-using AppConfig = SprayWeightAppConfig;
-
 // 加载配置文件 + 解析命令行参数
 static bool loadConfig(int argc, char* argv[], AppConfig& app)
 {
@@ -249,11 +254,11 @@ static bool initRedis(SprayWeightContext& ctx)
 }
 
 // ---- gplat连接 ----
-static bool initGplat(SprayWeightContext& ctx)
+static bool initGplat(SprayWeightContext& ctx, const AppConfig& app)
 {
     try {
-        std::string host = ctx.app.gplatServer;
-        int port = ctx.app.gplatPort;
+        std::string host = app.gplatServer;
+        int port = app.gplatPort;
 
         int conn = connectgplat(host.c_str(), port);
 
@@ -331,8 +336,6 @@ int main(int argc, char* argv[])
     // 5. 创建上下文对象（取代全局变量）
     SprayWeightContext ctx_spray;
     SprayWeightContext ctx_weight;
-    ctx_spray.app = app;
-    ctx_weight.app = app;
 
     // 6. 连接 Redis
     if (!initRedis(ctx_spray)) {
@@ -346,12 +349,12 @@ int main(int argc, char* argv[])
     }
 
     // 7. 连接 gPlat
-    if (!initGplat(ctx_spray)) {
+    if (!initGplat(ctx_spray, app)) {
         ctx_spray.Cleanup();
         shutdownLogging();
         return EXIT_FAILURE;
     }
-    if (!initGplat(ctx_weight)) {
+    if (!initGplat(ctx_weight, app)) {
         ctx_weight.Cleanup();
         shutdownLogging();
         return EXIT_FAILURE;
@@ -375,11 +378,11 @@ int main(int argc, char* argv[])
 
     // 启动工作线程
     SprayWorker sprayWorker(ctx_spray);
-    // WeightWorker weightWorker(ctx_weight);
+    WeightWorker weightWorker(ctx_weight);
 
     // std::thread sprayTestThread(&SprayWorker::test, &sprayWorker);
     std::thread sprayThread(&SprayWorker::Run, &sprayWorker);
-    // std::thread weightThread(&WeightWorker::Run, &weightWorker);
+    std::thread weightThread(&WeightWorker::Run, &weightWorker);
 
     // 主线程等待退出命令或信号
     while (true) {
@@ -398,9 +401,9 @@ int main(int argc, char* argv[])
     if (sprayThread.joinable()) {
         sprayThread.join();
     }
-    // if (weightThread.joinable()) {
-    //     weightThread.join();
-    // }
+    if (weightThread.joinable()) {
+        weightThread.join();
+    }
 
     // 资源清理
     ctx_spray.Cleanup();

@@ -7,7 +7,6 @@
 #include <pqxx/pqxx>
 
 #include "higplat.h"
-#include "types.h"
 
 
 struct SprayWeightContext {
@@ -16,8 +15,6 @@ struct SprayWeightContext {
     int gplatConn = -1;
     std::unique_ptr<pqxx::connection> pgConn;
     std::atomic_bool running{true};
-    // 模块完整配置快照。
-    SprayWeightAppConfig app;
 
     // 统一初始化入口。
     // 当前留空，便于后续把分散初始化逻辑收敛到上下文层。
