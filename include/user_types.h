@@ -181,5 +181,16 @@ REGISTER_STRUCT(StartSprayEvent,
 )
 
 
+struct AddTubeCmd
+{
+  int seq_no; // 在此位置前插入管子，0表示第一个位置，1表示第二个位置，以此类推，-1代表在末尾添加
+  PodString<20> position_name; // 工位名称
+};
+
+REGISTER_STRUCT(AddTubeCmd,
+	FIELD_DESC(Int32, AddTubeCmd, seq_no),
+	FIELD_DESC_STRING(AddTubeCmd, position_name)
+)
+
 
 #endif // USER_TYPES_H_

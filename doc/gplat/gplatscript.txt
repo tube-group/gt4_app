@@ -4,3 +4,5 @@ create MODIFY_TUBE_CMD ModifyTubeCmd
 create MOVE_TUBE_CMD MoveTubeCmd
 create SET_FEED_NUM_CMD SetFeedNumCmd
 create SET_CURRENT_CONTRACT_CMD SetCurrentContractCmd
+create START_SPRAY_EVENT StartSprayEvent
+create ADD_TUBE_CMD AddTubeCmd

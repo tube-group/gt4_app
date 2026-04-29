@@ -22,6 +22,7 @@ inline const std::unordered_map<std::string, const StructInfo*>& GetStructRegist
 		REG(DeleteTubeCmd),
 		REG(SetCurrentContractCmd),
 		REG(StartSprayEvent),
+		REG(AddTubeCmd),
 		// 新增类型在此添加一行
 	};
 	return table;
