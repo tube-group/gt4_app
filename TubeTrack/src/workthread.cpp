@@ -621,25 +621,54 @@ void handleAddTubeCmd(TubeTrackContext &ctx, const char *value)
     {
         auto tube = std::make_unique<CTube>();
 
-        // //模拟插入管子的数据
-        tube->calib_tube = false;                    // 不是样管
-        tube->order_no = "G2A0000000";               // 合同号
-        tube->item_no = "0";                          // 项目号
-        tube->roll_no = "W21250";                    // 轧批号
-        tube->melt_no = "12345678";                  // 炉号
-        tube->lot_no = "123456";                     // 试批号
-        tube->lotno_coupling = "123456";              // 接箍批号
-        tube->meltno_coupling = "12345679";          // 接箍炉号
-        static int s_nextTubeNo = 123466;            // 静态变量，每次调用自增
-        tube->tube_no = s_nextTubeNo++;              // 管号（自增）
-        static int s_nextFlowNo = 1;                 // 流水号自增
-        tube->flow_no = s_nextFlowNo++;              // 使用自增流水号
-        tube->length = 100.0;                         // 长度（米）
-        tube->weight = 0.0;                           // 重量（KG）
-        tube->length_ok = true;                       // 长度合格
-        tube->weight_ok = true;                       // 重量合格
-        tube->sprayed = false;                        // 是否喷印过
+        // // //模拟插入管子的数据
+        // tube->calib_tube = false;                    // 不是样管
+        // tube->order_no = "G2A0000000";               // 合同号
+        // tube->item_no = "0";                          // 项目号
+        // tube->roll_no = "W21250";                    // 轧批号
+        // tube->melt_no = "12345678";                  // 炉号
+        // tube->lot_no = "123456";                     // 试批号
+        // tube->lotno_coupling = "123456";              // 接箍批号
+        // tube->meltno_coupling = "12345679";          // 接箍炉号
+        // static int s_nextTubeNo = 123466;            // 静态变量，每次调用自增
+        // tube->tube_no = s_nextTubeNo++;              // 管号（自增）
+        // static int s_nextFlowNo = 1;                 // 流水号自增
+        // tube->flow_no = s_nextFlowNo++;              // 使用自增流水号
+        // tube->length = 100.0;                         // 长度（米）
+        // tube->weight = 0.0;                           // 重量（KG）
+        // tube->length_ok = true;                       // 长度合格
+        // tube->weight_ok = true;                       // 重量合格
+        // tube->sprayed = false;                        // 是否喷印过
 
+        // 查找pg数据库，获取管子数据，填充到tube对象中
+        pqxx::nontransaction ntx(*ctx.pgConn);
+        const pqxx::result result = ntx.exec(
+            "SELECT tube_no, order_no, item_no, roll_no, melt_no, lot_no, "
+            "lot_no_coupling, melt_no_coupling "
+            "FROM parameter_set "
+            "LIMIT 1");
+        if (result.empty())
+        {
+            spdlog::warn("No tube data found in database, cannot add tube to back buffer");
+            return;
+        }
+        else
+        {
+            const pqxx::row row = result[0];
+            tube->tube_no = row["tube_no"].as<int>();
+            tube->order_no = row["order_no"].as<std::string>();
+            tube->item_no = row["item_no"].as<std::string>();
+            tube->roll_no = row["roll_no"].as<std::string>();
+            tube->melt_no = row["melt_no"].as<std::string>();
+            tube->lot_no = row["lot_no"].as<std::string>();
+            tube->lotno_coupling = row["lot_no_coupling"].as<std::string>();
+            tube->meltno_coupling = row["melt_no_coupling"].as<std::string>();
+
+            // 其他字段使用默认值
+            tube->flow_no = -1; // 流水号为0,提示需要手动修改
+            tube->length = 0.0; // 长度（米）
+            tube->weight = 0.0; // 重量（KG）
+        }
 
         if (!ctx.backBuffer.PushAt(std::move(tube), cmd.seq_no))
         {
@@ -652,25 +681,35 @@ void handleAddTubeCmd(TubeTrackContext &ctx, const char *value)
     {
         auto tube = std::make_unique<CTube>();
 
-        //模拟插入管子的数据
-        tube->calib_tube = false;                    // 不是样管
-        tube->order_no = "G2A0000000";               // 合同号
-        tube->item_no = "0";                          // 项目号
-        tube->roll_no = "W21250";                    // 轧批号
-        tube->melt_no = "12345678";                  // 炉号
-        tube->lot_no = "123456";                     // 试批号
-        tube->lotno_coupling = "123456";              // 接箍批号
-        tube->meltno_coupling = "12345679";          // 接箍炉号
-        static int s_nextTubeNo = 123466;            // 静态变量，每次调用自增
-        tube->tube_no = s_nextTubeNo++;              // 管号（自增）
-        static int s_nextFlowNo = 1;                 // 流水号自增
-        tube->flow_no = s_nextFlowNo++;              // 使用自增流水号
-        tube->length = 100.0;                         // 长度（米）
-        tube->weight = 0.0;                           // 重量（KG）
-        tube->length_ok = true;                       // 长度合格
-        tube->weight_ok = true;                       // 重量合格
-        tube->sprayed = false;                        // 是否喷印过
+        // 查找pg数据库，获取管子数据，填充到tube对象中
+        pqxx::nontransaction ntx(*ctx.pgConn);
+        const pqxx::result result = ntx.exec(
+            "SELECT tube_no, order_no, item_no, roll_no, melt_no, lot_no, "
+            "lot_no_coupling, melt_no_coupling "
+            "FROM parameter_set "
+            "LIMIT 1");
+        if (result.empty())
+        {
+            spdlog::warn("No tube data found in database, cannot add tube to back buffer");
+            return;
+        }
+        else
+        {
+            const pqxx::row row = result[0];
+            tube->tube_no = row["tube_no"].as<int>();
+            tube->order_no = row["order_no"].as<std::string>();
+            tube->item_no = row["item_no"].as<std::string>();
+            tube->roll_no = row["roll_no"].as<std::string>();
+            tube->melt_no = row["melt_no"].as<std::string>();
+            tube->lot_no = row["lot_no"].as<std::string>();
+            tube->lotno_coupling = row["lot_no_coupling"].as<std::string>();
+            tube->meltno_coupling = row["melt_no_coupling"].as<std::string>();
 
+            // 其他字段使用默认值
+            tube->flow_no = -1; // 流水号为-1,提示需要手动修改
+            tube->length = 0.0; // 长度（米）
+            tube->weight = 0.0; // 重量（KG）
+        }
 
         if (!ctx.basket.PushAt(std::move(tube), cmd.seq_no))
         {
