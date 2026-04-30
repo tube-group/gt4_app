@@ -77,6 +77,61 @@ bool CPositionBase::PushBack(unique_ptr<CTube> tube, int /*mode*/)
 	return true;
 }
 
+bool CPositionBase::PushAt(unique_ptr<CTube> tube, int seqNo)
+{
+	// seqNo >= 0 时按头部正向计数；seqNo < 0 时按尾部插入位反向计数。
+	// 例如：0 表示第一个位置，1 表示第二个位置；-1 表示末尾，-2 表示末尾前一个位置。
+
+	if (!tube)
+	{
+		return false;
+	}
+
+	// 计算插入位置的索引
+	ptrdiff_t insertIndex = 0;// 使用有符号整数，支持负数计算结果
+	if (seqNo >= 0)
+	{
+		// 正向插入：0→第一个位置，1→第二个位置，2→第三个位置...
+		insertIndex = static_cast<ptrdiff_t>(seqNo);
+	}
+	else
+	{
+		// 反向插入：-1→末尾，-2→倒数第二个，-3→倒数第三个...
+		// 转换公式：实际位置 = 当前大小 + 负索引 + 1
+		insertIndex = static_cast<ptrdiff_t>(m_tubes.size()) + static_cast<ptrdiff_t>(seqNo) + 1;
+	}
+
+	// 检查插入位置是否合法,insertIndex 必须在 [0, size()] 范围内
+	if (insertIndex < 0 || insertIndex > static_cast<ptrdiff_t>(m_tubes.size()))
+	{
+		return false;
+	}
+
+	//末尾插入直接调用 PushBack函数
+	if (insertIndex == static_cast<ptrdiff_t>(m_tubes.size()))
+	{
+		return PushBack(std::move(tube));
+	}
+
+	if (m_bTriggerEnabled)
+	{
+		EntryTriggerBeforePush(*tube);
+	}
+
+	// 在指定位置插入管子
+	CTube *tubePtr = tube.get();
+	auto it = m_tubes.begin() + insertIndex;
+	m_tubes.insert(it, std::move(tube));
+	UpdateForm();
+
+	if (m_bTriggerEnabled)
+	{
+		EntryTrigger(*tubePtr);
+	}
+
+	return true;
+}
+
 //默认从后端插入管子
 bool CPositionBase::Push(unique_ptr<CTube> tube, int mode)
 {
@@ -410,7 +465,7 @@ string CPositionBase::convertToJson()
 {
 	if (m_tubes.empty())
 	{
-		return nlohmann::json::array(); // 统一空工位为数组，便于前端清空列表态
+		return nlohmann::json::array().dump(); // 统一空工位为空数组字符串，避免运行时类型转换异常
 	}
 
 	// 枚举当前工位的所有管子并转换为JSON数组

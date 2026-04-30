@@ -33,6 +33,7 @@ public:
 public:
 	virtual bool PushFront(unique_ptr<CTube> tube, int mode = 0);
 	virtual bool PushBack(unique_ptr<CTube> tube, int mode = 0);
+	virtual bool PushAt(unique_ptr<CTube> tube, int seqNo);
 	virtual bool Push(unique_ptr<CTube> tube, int mode = 0); // 0根据信号自动，1异常情况下干预
 	virtual unique_ptr<CTube> PopFront(int mode = 0);
 	virtual unique_ptr<CTube> PopBack(int mode = 0);
