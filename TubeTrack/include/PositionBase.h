@@ -1,7 +1,7 @@
 #pragma once
 #include "Tube.h"
 #include "../../include/usercmd.h"
-#indeque<unique_ptr<CTube>> m_tubes;clude <deque>
+#include <deque>
 #include <memory>
 #include <cstddef>
 using namespace std;
@@ -14,7 +14,7 @@ public:
 	CPositionBase();
 
 private:
-	
+	deque<unique_ptr<CTube>> m_tubes;
 	bool m_bOccupied;
 	bool m_bTriggerEnabled;
 	bool m_bUpdateTagEnabled;

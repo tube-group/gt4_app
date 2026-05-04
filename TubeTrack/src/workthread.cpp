@@ -424,23 +424,27 @@ void handleMoveTubeCmd(TubeTrackContext &ctx, const char *value)
     {
         // 打包区是多管子的，直接推送即可，无需判断是否有管子
         // 判断缓冲区是否有管子
-        if (ctx.backBuffer.IsEmpty())
-        {
-            spdlog::warn("Back buffer is empty, no tube to move to basket");
-            return;
-        }
-        else
-        {
-
-            else if (!ctx.basket.Push(std::move(tube))) // PushBack() - 追加到末尾
-            {
-                spdlog::error("Failed to push tube from back buffer to basket");
-            }
-            else
-            {
-                ctx.basket.DebugOut();
-            }
-        }
+        // if (ctx.backBuffer.IsEmpty())
+        // {
+        //     spdlog::warn("Back buffer is empty, no tube to move to basket");
+        //     return;
+        // }
+        // else
+        // {
+        //     auto tube = ctx.backBuffer.Pop(); // PopFront() - 取出最早进入的
+        //     if (!tube)
+        //     {
+        //         spdlog::warn("Back buffer is empty, no tube to move to basket");
+        //     }
+        //     else if (!ctx.basket.Push(std::move(tube))) // PushBack() - 追加到末尾
+        //     {
+        //         spdlog::error("Failed to push tube from back buffer to basket");
+        //     }
+        //     else
+        //     {
+        //         ctx.basket.DebugOut();
+        //     }
+        // }
 
         auto tube = ctx.backBuffer.Pop(); // PopFront() - 取出最早进入的
         if (!tube)

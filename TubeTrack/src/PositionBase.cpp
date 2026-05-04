@@ -119,7 +119,7 @@ bool CPositionBase::PushAt(unique_ptr<CTube> tube, int seqNo)
 	// }
 
 	// 在指定位置插入管子
-	CTube *tubePtr = tube.get();
+	// CTube *tubePtr = tube.get();
 	auto it = m_tubes.begin() + insertIndex;
 	m_tubes.insert(it, std::move(tube));
 	UpdateForm();
