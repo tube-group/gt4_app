@@ -113,10 +113,10 @@ bool CPositionBase::PushAt(unique_ptr<CTube> tube, int seqNo)
 		return PushBack(std::move(tube));
 	}
 
-	if (m_bTriggerEnabled)
-	{
-		EntryTriggerBeforePush(*tube);
-	}
+	// if (m_bTriggerEnabled)
+	// {
+	// 	EntryTriggerBeforePush(*tube);
+	// }
 
 	// 在指定位置插入管子
 	CTube *tubePtr = tube.get();
@@ -124,10 +124,10 @@ bool CPositionBase::PushAt(unique_ptr<CTube> tube, int seqNo)
 	m_tubes.insert(it, std::move(tube));
 	UpdateForm();
 
-	if (m_bTriggerEnabled)
-	{
-		EntryTrigger(*tubePtr);
-	}
+	// if (m_bTriggerEnabled)
+	// {
+	// 	EntryTrigger(*tubePtr);
+	// }
 
 	return true;
 }
@@ -266,14 +266,15 @@ bool CPositionBase::Delete(int seqNo)
 		return false;
 	}
 
-	auto it = m_tubes.begin() + static_cast<ptrdiff_t>(index);
-	auto tube = std::move(*it);
+	// auto it = m_tubes.begin() + static_cast<ptrdiff_t>(index);
+	auto it = m_tubes.begin() + index;
+	// auto tube = std::move(*it);
 	m_tubes.erase(it);
 	UpdateForm();
-	if (m_bTriggerEnabled && tube)
-	{
-		ExitTrigger(*tube);
-	}
+	// if (m_bTriggerEnabled && tube)
+	// {
+	// 	ExitTrigger(*tube);
+	// }
 	return true;
 }
 

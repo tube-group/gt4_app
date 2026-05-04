@@ -258,8 +258,9 @@ void workThread(TubeTrackContext &ctx)
         }
         catch (const std::exception &ex)
         {
-            // 打印tagname和错误信息，继续循环
-            std::cerr << "Error processing tag: " << tagname << ", error: " << ex.what() << std::endl;
+            // std::cerr << "Error processing tag: " << tagname << ", error: " << ex.what() << std::endl;
+            spdlog::error("Error processing tag: {}, error: {}", tagname, ex.what());
+            throw; // 继续抛出异常，交由上层处理（可能导致线程退出）
         }
         //.....
     }
@@ -275,29 +276,31 @@ void handleMoveTubeCmd(TubeTrackContext &ctx, const char *value)
     {
         if (!ctx.alignPos.IsEmpty())
         {
-            spdlog::warn("Align position is not empty, cannot move tube from Production plan");
+            spdlog::warn("Align position is not empty, cannot move tube to Align position");
             return;
         }
 
-        if (ctx.prodPlan.IsEmpty())
-        {
-            spdlog::warn("Production plan is empty, no tube to move to Align position");
-            return;
-        }
+        // 和Pop逻辑上重复
+        // if (ctx.prodPlan.IsEmpty())
+        // {
+        //     spdlog::warn("Production plan is empty, no tube to move to Align position");
+        //     return;
+        // }
 
         auto tube = ctx.prodPlan.Pop();
         if (!tube)
         {
-            spdlog::warn("Production plan returned no tube, cannot move to Align position");
+            spdlog::warn("Production plan returned no tube, cannot move tube to Align position");
             return;
         }
 
-        if (!ctx.alignPos.Push(std::move(tube)))
-        {
-            spdlog::error("Failed to push tube from Production plan to Align position");
-            return;
-        }
+        // if (!ctx.alignPos.Push(std::move(tube)))
+        // {
+        //     spdlog::error("Failed to push tube from Production plan to Align position");
+        //     return;
+        // }
 
+        ctx.alignPos.Push(std::move(tube));
         ctx.alignPos.DebugOut();
     }
     else if (cmd.from == "align" && cmd.to == "plan") // 反向：对齐工位 -> 生产计划
@@ -348,27 +351,38 @@ void handleMoveTubeCmd(TubeTrackContext &ctx, const char *value)
     {
         // 缓冲区是多管子的，直接推送即可，无需判断是否有管子
         // 判断废料辊道是否有管子
-        if (ctx.scraptRoller.IsEmpty())
+        // if (ctx.scraptRoller.IsEmpty())
+        // {
+        //     spdlog::warn("Scrapt roller is empty, no tube to move to back buffer");
+        //     return;
+        // }
+        // else
+        // {
+        //     auto tube = ctx.scraptRoller.Pop();
+
+        //     if (!tube)
+        //     {
+        //         spdlog::warn("Scrapt roller is empty, no tube to move to back buffer");
+        //         return;
+        //     }
+        //     else if (!ctx.backBuffer.Push(std::move(tube)))
+        //     {
+        //         spdlog::error("Failed to push tube from Scrapt roller to back buffer");
+        //     }
+        //     else
+        //     {
+        //         ctx.backBuffer.DebugOut();
+        //     }
+        // }
+        auto tube = ctx.scraptRoller.Pop();
+
+        if (!tube)
         {
             spdlog::warn("Scrapt roller is empty, no tube to move to back buffer");
             return;
         }
-        else
-        {
-            auto tube = ctx.scraptRoller.Pop();
-            if (!tube)
-            {
-                spdlog::warn("Scrapt roller is empty, no tube to move to back buffer");
-            }
-            else if (!ctx.backBuffer.Push(std::move(tube)))
-            {
-                spdlog::error("Failed to push tube from Scrapt roller to back buffer");
-            }
-            else
-            {
-                ctx.backBuffer.DebugOut();
-            }
-        }
+        ctx.backBuffer.Push(std::move(tube));
+        ctx.backBuffer.DebugOut();
     }
     // 问题在上游发出的 MOVE_TUBE_CMD 参数不包含这个命令，暂时注释掉
     // （需要修正 gPlat 或命令发送端，把 scaptroller 改成 scraptroller）
@@ -381,27 +395,30 @@ void handleMoveTubeCmd(TubeTrackContext &ctx, const char *value)
     {
         // 废料筐是多管子的，直接推送即可，无需判断是否有管子
         // 判断废料辊道是否有管子
-        if (ctx.scraptRoller.IsEmpty())
+        // if (ctx.scraptRoller.IsEmpty())
+        // {
+        //     spdlog::warn("Scrapt roller is empty, no tube to move to scrapt");
+        //     return;
+        // }
+        // else
+        // {
+        //     else if (!ctx.scrapt.Push(std::move(tube)))
+        //     {
+        //         spdlog::error("Failed to push tube from Scrapt roller to scrapt");
+        //     }
+        //     else
+        //     {
+        //         ctx.scrapt.DebugOut();
+        //     }
+        // }
+        auto tube = ctx.scraptRoller.Pop();
+        if (!tube)
         {
             spdlog::warn("Scrapt roller is empty, no tube to move to scrapt");
             return;
         }
-        else
-        {
-            auto tube = ctx.scraptRoller.Pop();
-            if (!tube)
-            {
-                spdlog::warn("Scrapt roller is empty, no tube to move to scrapt");
-            }
-            else if (!ctx.scrapt.Push(std::move(tube)))
-            {
-                spdlog::error("Failed to push tube from Scrapt roller to scrapt");
-            }
-            else
-            {
-                ctx.scrapt.DebugOut();
-            }
-        }
+        ctx.scrapt.Push(std::move(tube));
+        ctx.scrapt.DebugOut();
     }
     else if (cmd.from == "backbuffer" && cmd.to == "basket") // 缓冲区 -> 打包区(先进先出)
     {
@@ -414,11 +431,7 @@ void handleMoveTubeCmd(TubeTrackContext &ctx, const char *value)
         }
         else
         {
-            auto tube = ctx.backBuffer.Pop(); // PopFront() - 取出最早进入的
-            if (!tube)
-            {
-                spdlog::warn("Back buffer is empty, no tube to move to basket");
-            }
+
             else if (!ctx.basket.Push(std::move(tube))) // PushBack() - 追加到末尾
             {
                 spdlog::error("Failed to push tube from back buffer to basket");
@@ -428,32 +441,50 @@ void handleMoveTubeCmd(TubeTrackContext &ctx, const char *value)
                 ctx.basket.DebugOut();
             }
         }
+
+        auto tube = ctx.backBuffer.Pop(); // PopFront() - 取出最早进入的
+        if (!tube)
+        {
+            spdlog::warn("Back buffer is empty, no tube to move to basket");
+            return;
+        }
+        ctx.basket.Push(std::move(tube));
+        ctx.basket.DebugOut();
     }
     else if (cmd.from == "basket" && cmd.to == "backbuffer") // 反向：打包区 -> 缓冲区（后进先出）
     {
         // 缓冲区是多管子的，直接推送即可，无需判断是否有管子
         // 判断打包区是否有管子
-        if (ctx.basket.IsEmpty())
+        // if (ctx.basket.IsEmpty())
+        // {
+        //     spdlog::warn("Basket is empty, no tube to move to back buffer");
+        //     return;
+        // }
+        // else
+        // {
+        //     auto tube = ctx.basket.PopBack(); // PopBack() - 取出最后进入的
+
+        //     if (!tube)
+        //     {
+        //         spdlog::warn("Basket is empty, no tube to move to back buffer");
+        //     }
+        //     else if (!ctx.backBuffer.PushFront(std::move(tube))) //  PushFront() - 插入到最前面
+        //     {
+        //         spdlog::error("Failed to push tube from basket to back buffer");
+        //     }
+        //     else
+        //     {
+        //         ctx.backBuffer.DebugOut();
+        //     }
+        // }
+        auto tube = ctx.basket.PopBack(); // PopBack() - 取出最后进入的
+        if (!tube)
         {
             spdlog::warn("Basket is empty, no tube to move to back buffer");
             return;
         }
-        else
-        {
-            auto tube = ctx.basket.PopBack(); // PopBack() - 取出最后进入的
-            if (!tube)
-            {
-                spdlog::warn("Basket is empty, no tube to move to back buffer");
-            }
-            else if (!ctx.backBuffer.PushFront(std::move(tube))) //  PushFront() - 插入到最前面
-            {
-                spdlog::error("Failed to push tube from basket to back buffer");
-            }
-            else
-            {
-                ctx.backBuffer.DebugOut();
-            }
-        }
+        ctx.backBuffer.PushFront(std::move(tube));
+        ctx.backBuffer.DebugOut();
     }
     else
     {
@@ -527,7 +558,7 @@ void handleDeleteTubeCmd(TubeTrackContext &ctx, const char *value)
     spdlog::info("Handling DELETE_TUBE_CMD: position={}, seq_no={}", cmd.position_name.c_str(), cmd.seq_no);
 
     CPositionBase *position = nullptr;
-    bool isMultiPosition = false;
+    // bool isMultiPosition = false;
     if (cmd.position_name == "align")
     {
         position = &ctx.alignPos;
@@ -555,17 +586,17 @@ void handleDeleteTubeCmd(TubeTrackContext &ctx, const char *value)
     else if (cmd.position_name == "backbuffer")
     {
         position = &ctx.backBuffer;
-        isMultiPosition = true;
+        // isMultiPosition = true;
     }
     else if (cmd.position_name == "scrapt")
     {
         position = &ctx.scrapt;
-        isMultiPosition = true;
+        // isMultiPosition = true;
     }
     else if (cmd.position_name == "basket")
     {
         position = &ctx.basket;
-        isMultiPosition = true;
+        // isMultiPosition = true;
     }
 
     if (!position)
@@ -574,17 +605,19 @@ void handleDeleteTubeCmd(TubeTrackContext &ctx, const char *value)
         return;
     }
 
-    if (!isMultiPosition && cmd.seq_no != 0)
-    {
-        spdlog::warn("Single-tube position only supports seq_no=0 for DELETE_TUBE_CMD: position={}, seq_no={}", cmd.position_name.c_str(), cmd.seq_no);
-        return;
-    }
+    // if (!isMultiPosition && cmd.seq_no != 0)
+    // {
+    //     spdlog::warn("Single-tube position only supports seq_no=0 for DELETE_TUBE_CMD: position={}, seq_no={}", cmd.position_name.c_str(), cmd.seq_no);
+    //     return;
+    // }
 
-    if (!position->Delete(cmd.seq_no))
-    {
-        spdlog::warn("Tube not found for DELETE_TUBE_CMD: position={}, seq_no={}", cmd.position_name.c_str(), cmd.seq_no);
-        return;
-    }
+    // if (!position->Delete(cmd.seq_no))
+    // {
+    //     spdlog::warn("Tube not found for DELETE_TUBE_CMD: position={}, seq_no={}", cmd.position_name.c_str(), cmd.seq_no);
+    //     return;
+    // }
+
+    position->Delete(cmd.seq_no);
 
     position->DebugOut();
 }
@@ -604,10 +637,12 @@ void handleSetCurrentContractCmd(TubeTrackContext &ctx, const char *value)
         return;
     }
 
-    if (!ctx.prodPlan.ApplyCurrentContract(orderNo, itemNo))
-    {
-        spdlog::warn("SET_CURRENT_CONTRACT_CMD failed for order_no={}, item_no={}", orderNo, itemNo);
-    }
+    // if (!ctx.prodPlan.ApplyCurrentContract(orderNo, itemNo))
+    // {
+    //     spdlog::warn("SET_CURRENT_CONTRACT_CMD failed for order_no={}, item_no={}", orderNo, itemNo);
+    // }
+
+    ctx.prodPlan.ApplyCurrentContract(orderNo, itemNo);
 }
 
 // -----------处理添加管子命令----------
@@ -670,11 +705,12 @@ void handleAddTubeCmd(TubeTrackContext &ctx, const char *value)
             tube->weight = 0.0; // 重量（KG）
         }
 
-        if (!ctx.backBuffer.PushAt(std::move(tube), cmd.seq_no))
-        {
-            spdlog::error("Failed to push tube into back buffer at insert position {}", cmd.seq_no);
-            return;
-        }
+        // if (!ctx.backBuffer.PushAt(std::move(tube), cmd.seq_no))
+        // {
+        //     spdlog::error("Failed to push tube into back buffer at insert position {}", cmd.seq_no);
+        //     return;
+        // }
+        ctx.backBuffer.PushAt(std::move(tube), cmd.seq_no);
         ctx.backBuffer.DebugOut();
     }
     else if (cmd.position_name == "basket")
@@ -711,11 +747,12 @@ void handleAddTubeCmd(TubeTrackContext &ctx, const char *value)
             tube->weight = 0.0; // 重量（KG）
         }
 
-        if (!ctx.basket.PushAt(std::move(tube), cmd.seq_no))
-        {
-            spdlog::error("Failed to push tube into basket at insert position {}", cmd.seq_no);
-            return;
-        }
+        // if (!ctx.basket.PushAt(std::move(tube), cmd.seq_no))
+        // {
+        //     spdlog::error("Failed to push tube into basket at insert position {}", cmd.seq_no);
+        //     return;
+        // }
+        ctx.basket.PushAt(std::move(tube), cmd.seq_no);
         ctx.basket.DebugOut();
     }
     else
@@ -739,15 +776,18 @@ void moveTubeToWbase(TubeTrackContext &ctx)
     auto tube4 = ctx.sprayPos.Pop();
     auto tube5 = ctx.circlePos.Pop();
 
-    if (ctx.walkingBeam.Push(std::move(tube1), std::move(tube2), std::move(tube3), std::move(tube4), std::move(tube5)))
-    {
-        spdlog::info("Moved tubes to walking beam");
-        ctx.walkingBeam.DebugOut();
-    }
-    else
-    {
-        spdlog::error("Failed to move tubes to walking beam");
-    }
+    // if (ctx.walkingBeam.Push(std::move(tube1), std::move(tube2), std::move(tube3), std::move(tube4), std::move(tube5)))
+    // {
+    //     spdlog::info("Moved tubes to walking beam");
+    //     ctx.walkingBeam.DebugOut();
+    // }
+    // else
+    // {
+    //     spdlog::error("Failed to move tubes to walking beam");
+    // }
+
+    ctx.walkingBeam.Push(std::move(tube1), std::move(tube2), std::move(tube3), std::move(tube4), std::move(tube5));
+    ctx.walkingBeam.DebugOut();
 }
 
 //--------从步进梁弹出管子，推送到对齐、称重、刻印、喷印、色环工位--------
@@ -777,18 +817,34 @@ void handleAlignPosOn(TubeTrackContext &ctx, const char *value)
     {
         // 执行对齐工位有料状态的相关操作
         auto tube = ctx.prodPlan.Pop();
-        if (tube && ctx.alignPos.Push(std::move(tube)))
-        {
-            ctx.alignPos.DebugOut();
-        }
-        else if (!tube)
+
+        if (!tube)
         {
             spdlog::warn("Production plan is empty, no tube to move to align position");
+            return;
         }
-        else
+
+        if (!ctx.alignPos.IsEmpty())
         {
-            spdlog::error("Failed to push tube into align position");
+            spdlog::warn("Align position is not empty, cannot move tube from Production plan");
+            return;
         }
+
+        ctx.alignPos.Push(std::move(tube));
+        ctx.alignPos.DebugOut();
+
+        // if (tube && ctx.alignPos.Push(std::move(tube)))
+        // {
+        //     ctx.alignPos.DebugOut();
+        // }
+        // else if (!tube)
+        // {
+        //     spdlog::warn("Production plan is empty, no tube to move to align position");
+        // }
+        // else
+        // {
+        //     spdlog::error("Failed to push tube into align position");
+        // }
 
         // 从步进梁弹出管子，推送到称重、刻印、喷印、色环，出废辊道工位
         moveTubeToPosion(ctx);
@@ -902,18 +958,36 @@ void handleScrRollerOn(TubeTrackContext &ctx, const char *value)
     {
         // 从废料辊道弹出管子，推送到缓冲区
         auto tube = ctx.scraptRoller.Pop();
-        if (tube && ctx.backBuffer.Push(std::move(tube)))
-        {
-            ctx.backBuffer.DebugOut();
-        }
-        else if (!tube)
+
+        if (!tube)
         {
             spdlog::warn("Scrap roller is empty, no tube to move to back buffer");
+            return;
+        }
+
+        if (tube->weight_ok && tube->length_ok)
+        {
+            ctx.backBuffer.Push(std::move(tube));
+            ctx.backBuffer.DebugOut();
         }
         else
         {
-            spdlog::error("Failed to push tube into back buffer");
+            ctx.scrapt.Push(std::move(tube));
+            ctx.scrapt.DebugOut();
         }
+
+        // if (tube && ctx.backBuffer.Push(std::move(tube)))
+        // {
+        //     ctx.backBuffer.DebugOut();
+        // }
+        // else if (!tube)
+        // {
+        //     spdlog::warn("Scrap roller is empty, no tube to move to back buffer");
+        // }
+        // else
+        // {
+        //     spdlog::error("Failed to push tube into back buffer");
+        // }
     }
     else
     {

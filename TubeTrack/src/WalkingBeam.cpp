@@ -32,7 +32,7 @@ bool WalkingBeam::Push(unique_ptr<CTube> tube1,
     m_tubes[4] = std::move(tube4);
     m_tubes[5] = std::move(tube5);
     
-    spdlog::info("WalkingBeam: Push operation completed");
+    // spdlog::info("WalkingBeam: Push operation completed");
     // DebugOut();
     
     return true;
