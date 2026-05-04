@@ -9,15 +9,19 @@ class CProductionPlan
 {
 private:
     TubeTrackContext* m_ctx = nullptr; // 上下文指针
+    string m_redisKey; // Redis键名称
+	string m_positionName; // 工位名称（用于日志）
     string convertToJson();
 
 public:
+    CProductionPlan(string redisKey, string positionName) : m_redisKey(redisKey), m_positionName(positionName) {}
     void SetContext(TubeTrackContext& ctx) { m_ctx = &ctx; }
     std::unique_ptr<CTube> Pop(int mode = 0);
     void UpdateForm();
     void Initialize();
     bool ApplyCurrentContract(const string &orderNo, const string &itemNo);
-    bool RestoreFromJson(const string &jsonStr);
+    void RestoreFromRedis();
+    void RestoreFromJson(const string &jsonStr);
     bool IsEmpty();
 
 private:
@@ -30,6 +34,4 @@ private:
     string meltno_coupling; // 接箍炉号
     int feed_num;           // 投料支数
     int tube_no;            // 管号
-
-    const char *REDIS_KEY = "PlanInfo"; // 发布的key名称
 };

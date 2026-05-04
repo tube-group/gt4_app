@@ -5,11 +5,7 @@
 class CCarvePosition : public CPositionBase
 {
 public:
-    CCarvePosition() = default;
-    ~CCarvePosition() = default;
+    CCarvePosition(string redisKey, string positionName) : CPositionBase(redisKey, positionName) {}
 
     virtual void UpdateForm() override; // 刷新画面
-
-private:
-    const char *REDIS_KEY = "CARVE_POS_TUBE_INFO"; // 发布的key名称
 };

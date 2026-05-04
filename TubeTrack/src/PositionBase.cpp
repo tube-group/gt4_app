@@ -1,31 +1,25 @@
 #include "PositionBase.h"
+#include "TubeTrackContext.h"
 #include <iostream>
 #include <sstream>
 #include <iomanip>
 #include <utility>
 #include <nlohmann/json.hpp>
-#include "../../include/logging.h"   // spdlog
+#include "../../include/logging.h" // spdlog
 
-CPositionBase::CPositionBase()
+void CPositionBase::GetDateTime(struct tm &t)
 {
-	m_bTriggerEnabled	= true;
-	m_bUpdateTagEnabled = true;
-	m_bWbReleased = true;
+	time_t now;			   // 声明time_t类型变量
+	time(&now);			   // 获取系统日期和时间
+	localtime_r(&now, &t); // 获取当地日期和时间
 }
 
-void CPositionBase::GetDateTime(struct tm & t)
+void CPositionBase::GetDateTimeString(string &dateStr, string &timeStr)
 {
-	time_t now;             //声明time_t类型变量
-	time(&now);				//获取系统日期和时间
-	localtime_r(&now, &t);  //获取当地日期和时间
-}
-
-void CPositionBase::GetDateTimeString(string & dateStr, string & timeStr)
-{
-	struct tm t;			//tm结构指针
-	time_t now;             //声明time_t类型变量
-	time(&now);				//获取系统日期和时间
-	localtime_r(&now, &t);  //获取当地日期和时间
+	struct tm t;		   // tm结构指针
+	time_t now;			   // 声明time_t类型变量
+	time(&now);			   // 获取系统日期和时间
+	localtime_r(&now, &t); // 获取当地日期和时间
 
 	// 输出 tm 结构的各个组成部分
 	std::stringstream ss1, ss2;
@@ -88,7 +82,7 @@ bool CPositionBase::PushAt(unique_ptr<CTube> tube, int seqNo)
 	}
 
 	// 计算插入位置的索引
-	ptrdiff_t insertIndex = 0;// 使用有符号整数，支持负数计算结果
+	ptrdiff_t insertIndex = 0; // 使用有符号整数，支持负数计算结果
 	if (seqNo >= 0)
 	{
 		// 正向插入：0→第一个位置，1→第二个位置，2→第三个位置...
@@ -107,7 +101,7 @@ bool CPositionBase::PushAt(unique_ptr<CTube> tube, int seqNo)
 		return false;
 	}
 
-	//末尾插入直接调用 PushBack函数
+	// 末尾插入直接调用 PushBack函数
 	if (insertIndex == static_cast<ptrdiff_t>(m_tubes.size()))
 	{
 		return PushBack(std::move(tube));
@@ -132,7 +126,7 @@ bool CPositionBase::PushAt(unique_ptr<CTube> tube, int seqNo)
 	return true;
 }
 
-//默认从后端插入管子
+// 默认从后端插入管子
 bool CPositionBase::Push(unique_ptr<CTube> tube, int mode)
 {
 	return PushBack(std::move(tube), mode);
@@ -148,7 +142,7 @@ unique_ptr<CTube> CPositionBase::PopFront(int /*mode*/)
 		if (m_bTriggerEnabled && tube)
 		{
 			ExitTrigger(*tube);
-		}	
+		}
 		return tube;
 	}
 	else
@@ -167,7 +161,7 @@ unique_ptr<CTube> CPositionBase::PopBack(int /*mode*/)
 		if (m_bTriggerEnabled && tube)
 		{
 			ExitTrigger(*tube);
-		}	
+		}
 		return tube;
 	}
 	else
@@ -176,7 +170,7 @@ unique_ptr<CTube> CPositionBase::PopBack(int /*mode*/)
 	}
 }
 
-//默认从前端弹出管子
+// 默认从前端弹出管子
 unique_ptr<CTube> CPositionBase::Pop(int /*mode*/)
 {
 	return PopFront();
@@ -252,10 +246,10 @@ bool CPositionBase::Delete(int seqNo)
 	{
 		return false;
 	}
-	//如果seqNo=-1,则清空该工位队列所有管子
+	// 如果seqNo=-1,则清空该工位队列所有管子
 	if (seqNo == -1)
 	{
-		//调用Clear()函数清空管子队列并更新画面
+		// 调用Clear()函数清空管子队列并更新画面
 		Clear();
 		return true;
 	}
@@ -282,37 +276,57 @@ void CPositionBase::RestoreFromTag()
 {
 }
 
-bool CPositionBase::RestoreFromJson(const string &jsonStr, const char *sourceName)
+void CPositionBase::RestoreFromRedis()
+{
+	if (!m_ctx || !m_ctx->redis)
+	{
+		return;
+	}
+
+	// 从Redis获取数据并恢复
+	auto value = m_ctx->redis->get(m_redisKey);
+	if (!value)
+	{
+		spdlog::info("Redis中未找到{}数据，初始化为空工位", m_redisKey);
+		Clear();	 // 确保为空
+		return; // 返回true表示正常状态
+	}
+	// 调用工位的恢复方法
+	return RestoreFromJson(*value);
+}
+
+void CPositionBase::RestoreFromJson(const string &jsonStr)
 {
 	try
 	{
 		// 情况1：redis数据为空(首次启动)
 		if (jsonStr.empty())
 		{
-			spdlog::info("{} 首次启动，初始化为空工位", sourceName ? sourceName : "Position");
+			spdlog::info("{} 首次启动，初始化为空工位", m_positionName);
 			m_tubes.clear();
-			return true; // 正常状态
+			return; // 正常状态
 		}
 
 		// 情况2：有数据但为空JSON对象
 		nlohmann::json j = nlohmann::json::parse(jsonStr);
 
-		if (!m_tubes.empty())
-		{
-			spdlog::warn("{} 非空状态下执行恢复，将覆盖现有数据", sourceName);
-			m_tubes.clear();
-		}
+		// if (!m_tubes.empty())
+		// {
+		// 	spdlog::warn("{} 非空状态下执行恢复，将覆盖现有数据", m_positionName);
+		// 	m_tubes.clear();
+		// }
+		m_tubes.clear();
 		// 处理空对象 {} 和空数组 [] 两种情况
 		if (j.is_object() && j.empty())
 		{
-			spdlog::info("{} 从Redis恢复为空工位", sourceName ? sourceName : "Position");
-			return true;
+			spdlog::info("{} 从Redis恢复为空工位", m_positionName);
+			return;
 		}
 		// 情况3：数据格式错误
 		if (!j.is_array())
 		{
-			spdlog::warn("{} Redis数据格式不是数组，跳过恢复: {}", sourceName ? sourceName : "Position", jsonStr);
-			return false;
+			spdlog::error("{} Redis数据格式不是数组，跳过恢复: {}", m_positionName, jsonStr);
+			return;
 		}
 		// 情况4：正常恢复数据
 		for (const auto &tubeJson : j)
@@ -335,13 +349,11 @@ bool CPositionBase::RestoreFromJson(const string &jsonStr, const char *sourceNam
 			m_tubes.push_back(std::move(tube));
 		}
 
-		spdlog::info("{} 从Redis恢复了 {} 根管子", sourceName ? sourceName : "Position", m_tubes.size());
-		return true;
+		spdlog::info("{} 从Redis恢复了 {} 根管子", m_positionName, m_tubes.size());
 	}
 	catch (const std::exception &e)
 	{
-		spdlog::error("{} Redis恢复失败: {}", sourceName ? sourceName : "Position", e.what());
-		return false;
+		spdlog::error("{} Redis恢复失败: {}", m_positionName, e.what());
 	}
 }
 
@@ -395,20 +407,20 @@ void CPositionBase::DebugOut()
 {
 	const CTube *tube = Peek();
 	if (!tube)
-    {
-        std::cout << "没有管子信息" << std::endl;
-        return;
-    }
+	{
+		std::cout << "没有管子信息" << std::endl;
+		return;
+	}
 
-    // std::cout << "合同号    :" << tube.order_no << std::endl;
-    // std::cout << "项目号    :" << tube.item_no << std::endl;
-    // std::cout << "轧批号    :" << tube.roll_no << std::endl;
-    // std::cout << "炉号      :" << tube.melt_no << std::endl;
-    // std::cout << "试批号    :" << tube.lot_no << std::endl;
-    // std::cout << "管号      :" << tube.tube_no << std::endl;
-    // std::cout << "流水号    :" << tube.flow_no << std::endl;
-    // std::cout << "接箍批号  :" << tube.lotno_coupling << std::endl;
-    // std::cout << "接箍炉号  :" << tube.meltno_coupling << std::endl;
+	// std::cout << "合同号    :" << tube.order_no << std::endl;
+	// std::cout << "项目号    :" << tube.item_no << std::endl;
+	// std::cout << "轧批号    :" << tube.roll_no << std::endl;
+	// std::cout << "炉号      :" << tube.melt_no << std::endl;
+	// std::cout << "试批号    :" << tube.lot_no << std::endl;
+	// std::cout << "管号      :" << tube.tube_no << std::endl;
+	// std::cout << "流水号    :" << tube.flow_no << std::endl;
+	// std::cout << "接箍批号  :" << tube.lotno_coupling << std::endl;
+	// std::cout << "接箍炉号  :" << tube.meltno_coupling << std::endl;
 	spdlog::info("合同号    : {}", tube->order_no);
 	spdlog::info("项目号    : {}", tube->item_no);
 	spdlog::info("轧批号    : {}", tube->roll_no);
@@ -419,15 +431,13 @@ void CPositionBase::DebugOut()
 	spdlog::info("接箍批号  : {}", tube->lotno_coupling);
 	spdlog::info("接箍炉号  : {}", tube->meltno_coupling);
 
-
-    // 数值格式化输出
-    // std::cout << std::fixed << std::setprecision(3);
-    // std::cout << "长度 (m)  :" << tube.length << std::endl;
-    // std::cout << "重量 (kg) :" << tube.weight << std::endl;
-    // std::cout << std::defaultfloat; // 恢复默认格式
+	// 数值格式化输出
+	// std::cout << std::fixed << std::setprecision(3);
+	// std::cout << "长度 (m)  :" << tube.length << std::endl;
+	// std::cout << "重量 (kg) :" << tube.weight << std::endl;
+	// std::cout << std::defaultfloat; // 恢复默认格式
 	spdlog::info("长度 (m)  : {}", tube->length);
 	spdlog::info("重量 (kg) : {}", tube->weight);
-
 
 	// std::cout << "长度合格  :" << (tube.lengthOk ? "是" : "否") << std::endl;
 	// std::cout << "重量合格  :" << (tube.weightOk ? "是" : "否") << std::endl;
@@ -436,7 +446,7 @@ void CPositionBase::DebugOut()
 	spdlog::info("重量合格  : {}", tube->weight_ok ? "是" : "否");
 	spdlog::info("是否喷印  : {}", tube->sprayed ? "是" : "否");
 
-    return;
+	return;
 }
 
 // string CPositionBase::convertToJson(const CTube & tube)
@@ -461,7 +471,7 @@ void CPositionBase::DebugOut()
 //     return j.dump(4);
 // }
 
-//直接获取当前工位管子信息并转换为JSON字符串
+// 直接获取当前工位管子信息并转换为JSON字符串
 string CPositionBase::convertToJson()
 {
 	if (m_tubes.empty())
@@ -471,7 +481,7 @@ string CPositionBase::convertToJson()
 
 	// 枚举当前工位的所有管子并转换为JSON数组
 	nlohmann::json j = nlohmann::json::array();
-	for (const auto& tubePtr : m_tubes)
+	for (const auto &tubePtr : m_tubes)
 	{
 		if (tubePtr)
 		{

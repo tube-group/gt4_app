@@ -4,12 +4,8 @@
 
 class CScraptRoller : public CPositionBase
 {
-    public:
-    CScraptRoller() = default;
-    ~CScraptRoller() = default;
+public:
+    CScraptRoller(string redisKey, string positionName) : CPositionBase(redisKey, positionName) {}
 
     virtual void UpdateForm() override; // 刷新画面
-
-    private:
-    const char *REDIS_KEY = "SCRAPTROLLER_POS_TUBE_INFO"; //
 };

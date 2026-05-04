@@ -11,13 +11,22 @@ struct TubeTrackContext; // 前向声明
 class CPositionBase
 {
 public:
-	CPositionBase();
+	CPositionBase(string redisKey, string positionName) : m_redisKey(redisKey), m_positionName(positionName)
+	{
+		m_bTriggerEnabled	= true;
+		m_bUpdateTagEnabled = true;
+		m_bWbReleased = true;
+	}
 
 private:
 	deque<unique_ptr<CTube>> m_tubes;
 	bool m_bOccupied;
 	bool m_bTriggerEnabled;
 	bool m_bUpdateTagEnabled;
+
+protected:
+	string m_redisKey; // Redis键名称
+	string m_positionName; // 工位名称（用于日志）
 
 protected:
 	TubeTrackContext* m_ctx = nullptr; // 上下文指针
@@ -45,7 +54,8 @@ public:
 	virtual bool Modify(const ModifyTubeCmd &cmd);
 	virtual bool Delete(int seqNo);
 	virtual void RestoreFromTag();
-	virtual bool RestoreFromJson(const string &jsonStr, const char *sourceName = nullptr);
+	virtual void RestoreFromRedis();
+	virtual void RestoreFromJson(const string &jsonStr);
 	virtual void UpdateForm(); // 刷新画面
 	virtual void EntryTriggerBeforePush(CTube &tube);
 	virtual void EntryTrigger(const CTube &tube);

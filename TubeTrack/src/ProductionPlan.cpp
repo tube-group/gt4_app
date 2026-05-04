@@ -71,10 +71,10 @@ void CProductionPlan::UpdateForm()
         }
 
         // 写入Redis数据库
-        m_ctx->redis->set(REDIS_KEY, jsonStr);
+        m_ctx->redis->set(m_redisKey, jsonStr);
 
         // 发布详细消息到 RealDataChanged 主题
-        m_ctx->redis->publish("RealDataChanged", REDIS_KEY);
+        m_ctx->redis->publish("RealDataChanged", m_redisKey);
 
         spdlog::info("生产计划已更新并发布到Redis: {}", jsonStr);
     }
@@ -103,19 +103,18 @@ void CProductionPlan::Initialize()
         {
             const auto &row = result[0];
 
-            this->order_no = row["order_no"].as<string>();                       // 合同号
-            this->item_no = row["item_no"].as<string>();                          // 项目号
-            this->roll_no = row["roll_no"].as<string>();                          // 轧批号
-            this->melt_no = row["melt_no"].as<string>();                          // 炉号
-            this->lot_no = row["lot_no"].as<string>();                             // 试批号
-            this->lotno_coupling = row["lot_no_coupling"].as<string>();    // 接箍批号
+            this->order_no = row["order_no"].as<string>();                // 合同号
+            this->item_no = row["item_no"].as<string>();                  // 项目号
+            this->roll_no = row["roll_no"].as<string>();                  // 轧批号
+            this->melt_no = row["melt_no"].as<string>();                  // 炉号
+            this->lot_no = row["lot_no"].as<string>();                    // 试批号
+            this->lotno_coupling = row["lot_no_coupling"].as<string>();   // 接箍批号
             this->meltno_coupling = row["melt_no_coupling"].as<string>(); // 接箍炉号
-            this->feed_num = row["feed_number"].as<int>();                       // 投料支数
-            this->tube_no = row["tube_no"].as<int>();                             // 管号
-        
+            this->feed_num = row["feed_number"].as<int>();                // 投料支数
+            this->tube_no = row["tube_no"].as<int>();                     // 管号
+
             spdlog::info("从数据库加载生产计划参数成功  order_no: {}", this->order_no);
         }
-
     }
     catch (const std::exception &e)
     {
@@ -130,7 +129,7 @@ bool CProductionPlan::ApplyCurrentContract(const string &orderNo, const string &
 {
     try
     {
-        //根据合同号、项目号查询批号、外径、壁厚等生产参数
+        // 根据合同号、项目号查询批号、外径、壁厚等生产参数
         pqxx::work txn(*m_ctx->pgConn);
         const pqxx::result queryResult = txn.exec(
             "SELECT roll_no, diameter, wall_thickness FROM api_order_data_t "
@@ -143,13 +142,14 @@ bool CProductionPlan::ApplyCurrentContract(const string &orderNo, const string &
             return false;
         }
 
-        //更新生产参数表相关字段
+        // 更新生产参数表相关字段
         const std::string rollNo = queryResult[0]["roll_no"].as<std::string>("");
         const double Diameter = queryResult[0]["diameter"].as<double>(0.0);
         const double wallThickness = queryResult[0]["wall_thickness"].as<double>(0.0);
         const auto updatedRows = txn.exec(
-            "UPDATE parameter_set SET order_no = $1, item_no = $2, roll_no = $3, diameter = $4, wall_thickness = $5",
-            pqxx::params{orderNo, itemNo, rollNo, Diameter, wallThickness}).affected_rows();
+                                        "UPDATE parameter_set SET order_no = $1, item_no = $2, roll_no = $3, diameter = $4, wall_thickness = $5",
+                                        pqxx::params{orderNo, itemNo, rollNo, Diameter, wallThickness})
+                                     .affected_rows();
 
         if (updatedRows == 0)
         {
@@ -159,7 +159,7 @@ bool CProductionPlan::ApplyCurrentContract(const string &orderNo, const string &
 
         txn.commit();
 
-        //更新内部状态并刷新画面
+        // 更新内部状态并刷新画面
         order_no = orderNo;
         item_no = itemNo;
         roll_no = rollNo;
@@ -177,21 +177,36 @@ bool CProductionPlan::ApplyCurrentContract(const string &orderNo, const string &
     }
 }
 
-bool CProductionPlan::RestoreFromJson(const string &jsonStr)
+void CProductionPlan::RestoreFromRedis()
+{
+    if (m_ctx && m_ctx->redis)
+    {
+        // 从Redis获取生产计划数据并恢复
+        auto planValue = m_ctx->redis->get("PlanInfo");
+        if (planValue)
+        {
+            RestoreFromJson(*planValue);
+        }
+    }
+}
+
+void CProductionPlan::RestoreFromJson(const string &jsonStr)
 {
     try
     {
         if (jsonStr.empty())
         {
             spdlog::warn("PlanInfo Redis数据为空，跳过恢复");
-            return false;
+            Initialize(); // 无Redis状态时回退到数据库初始化生产计划
+            return;
         }
 
         nlohmann::json j = nlohmann::json::parse(jsonStr);
         if (!j.is_object() || j.empty())
         {
-            spdlog::warn("PlanInfo Redis数据为空对象或格式错误，跳过恢复");
-            return false;
+            spdlog::error("PlanInfo Redis数据为空对象或格式错误，跳过恢复");
+            Initialize(); // 无Redis状态时回退到数据库初始化生产计划
+            return;
         }
 
         order_no = j.value("order_no", "");
@@ -205,16 +220,14 @@ bool CProductionPlan::RestoreFromJson(const string &jsonStr)
         tube_no = j.value("tube_no", 0);
 
         spdlog::info("从Redis恢复生产计划成功 order_no: {}", order_no);
-        return true;
     }
     catch (const std::exception &e)
     {
         spdlog::error("从Redis恢复生产计划失败: {}", e.what());
-        return false;
     }
 }
 
 bool CProductionPlan::IsEmpty()
 {
-	return feed_num <= 0;
+    return feed_num <= 0;
 }
