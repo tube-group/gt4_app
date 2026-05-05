@@ -355,6 +355,7 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
     if (!initGplat(ctx_weight, app)) {
+        ctx_spray.Cleanup();
         ctx_weight.Cleanup();
         shutdownLogging();
         return EXIT_FAILURE;
@@ -363,10 +364,12 @@ int main(int argc, char* argv[])
     // 8. 连接PostgreSQL
     if (!initPostgreSQL(ctx_spray)) {
         ctx_spray.Cleanup();
+        ctx_weight.Cleanup();
         shutdownLogging();
         return EXIT_FAILURE;
     }
     if (!initPostgreSQL(ctx_weight)) {
+        ctx_spray.Cleanup();
         ctx_weight.Cleanup();
         shutdownLogging();
         return EXIT_FAILURE;
@@ -408,7 +411,6 @@ int main(int argc, char* argv[])
     // 资源清理
     ctx_spray.Cleanup();
     ctx_weight.Cleanup();
-
     shutdownLogging();
     if (app.daemonMode) {
         removePidfile();
