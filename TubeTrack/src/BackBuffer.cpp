@@ -9,7 +9,7 @@ void CBackBuffer::UpdateForm()
     if (m_ctx && m_ctx->redis)
     {
         m_ctx->redis->set(m_redisKey, convertToJson());
-        spdlog::info("BackBuffer: BACKBUFFER_POS_TUBE_INFO updated");
+        spdlog::info("{}: {} updated", m_positionName, m_redisKey);
         // 发布详细消息到 RealDataChanged 主题
         m_ctx->redis->publish("RealDataChanged", m_redisKey);
     }
@@ -17,10 +17,10 @@ void CBackBuffer::UpdateForm()
 
 void CBackBuffer::DebugOut()
 {
-    spdlog::info("BackBuffer tube count: {}", Count());
+    spdlog::info("{} tube count: {}", m_positionName, Count());
     // 输出测量点后缓冲区管子数量
     if (m_ctx && m_ctx->redis)
     {
-        spdlog::info("BackBuffer: BACKBUFFER_POS_TUBE_INFO = {}", convertToJson());
+        spdlog::info("{}: {} = {}", m_positionName, m_redisKey, convertToJson());
     }
 }

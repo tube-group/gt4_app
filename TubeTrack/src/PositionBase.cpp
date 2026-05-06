@@ -107,21 +107,10 @@ bool CPositionBase::PushAt(unique_ptr<CTube> tube, int seqNo)
 		return PushBack(std::move(tube));
 	}
 
-	// if (m_bTriggerEnabled)
-	// {
-	// 	EntryTriggerBeforePush(*tube);
-	// }
-
 	// 在指定位置插入管子
-	// CTube *tubePtr = tube.get();
 	auto it = m_tubes.begin() + insertIndex;
 	m_tubes.insert(it, std::move(tube));
 	UpdateForm();
-
-	// if (m_bTriggerEnabled)
-	// {
-	// 	EntryTrigger(*tubePtr);
-	// }
 
 	return true;
 }
@@ -260,15 +249,10 @@ bool CPositionBase::Delete(int seqNo)
 		return false;
 	}
 
-	// auto it = m_tubes.begin() + static_cast<ptrdiff_t>(index);
 	auto it = m_tubes.begin() + index;
-	// auto tube = std::move(*it);
 	m_tubes.erase(it);
 	UpdateForm();
-	// if (m_bTriggerEnabled && tube)
-	// {
-	// 	ExitTrigger(*tube);
-	// }
+
 	return true;
 }
 
@@ -288,8 +272,8 @@ void CPositionBase::RestoreFromRedis()
 	if (!value)
 	{
 		spdlog::info("Redis中未找到{}数据，初始化为空工位", m_redisKey);
-		Clear();	 // 确保为空
-		return; // 返回true表示正常状态
+		Clear(); // 确保为空
+		return;	 // 返回true表示正常状态
 	}
 	// 调用工位的恢复方法
 	return RestoreFromJson(*value);
@@ -310,14 +294,9 @@ void CPositionBase::RestoreFromJson(const string &jsonStr)
 		// 情况2：有数据但为空JSON对象
 		nlohmann::json j = nlohmann::json::parse(jsonStr);
 
-		// if (!m_tubes.empty())
-		// {
-		// 	spdlog::warn("{} 非空状态下执行恢复，将覆盖现有数据", m_positionName);
-		// 	m_tubes.clear();
-		// }
 		m_tubes.clear();
-		// 处理空对象 {} 和空数组 [] 两种情况
-		if (j.is_object() && j.empty())
+
+		if (j.is_object() && j.empty()) // 处理空对象 {} 和空数组 [] 两种情况
 		{
 			spdlog::info("{} 从Redis恢复为空工位", m_positionName);
 			return;
@@ -412,15 +391,6 @@ void CPositionBase::DebugOut()
 		return;
 	}
 
-	// std::cout << "合同号    :" << tube.order_no << std::endl;
-	// std::cout << "项目号    :" << tube.item_no << std::endl;
-	// std::cout << "轧批号    :" << tube.roll_no << std::endl;
-	// std::cout << "炉号      :" << tube.melt_no << std::endl;
-	// std::cout << "试批号    :" << tube.lot_no << std::endl;
-	// std::cout << "管号      :" << tube.tube_no << std::endl;
-	// std::cout << "流水号    :" << tube.flow_no << std::endl;
-	// std::cout << "接箍批号  :" << tube.lotno_coupling << std::endl;
-	// std::cout << "接箍炉号  :" << tube.meltno_coupling << std::endl;
 	spdlog::info("合同号    : {}", tube->order_no);
 	spdlog::info("项目号    : {}", tube->item_no);
 	spdlog::info("轧批号    : {}", tube->roll_no);
@@ -432,16 +402,9 @@ void CPositionBase::DebugOut()
 	spdlog::info("接箍炉号  : {}", tube->meltno_coupling);
 
 	// 数值格式化输出
-	// std::cout << std::fixed << std::setprecision(3);
-	// std::cout << "长度 (m)  :" << tube.length << std::endl;
-	// std::cout << "重量 (kg) :" << tube.weight << std::endl;
-	// std::cout << std::defaultfloat; // 恢复默认格式
 	spdlog::info("长度 (m)  : {}", tube->length);
 	spdlog::info("重量 (kg) : {}", tube->weight);
 
-	// std::cout << "长度合格  :" << (tube.lengthOk ? "是" : "否") << std::endl;
-	// std::cout << "重量合格  :" << (tube.weightOk ? "是" : "否") << std::endl;
-	// std::cout << "是否喷印  :" << (tube.bSprayed ? "是" : "否") << std::endl;
 	spdlog::info("长度合格  : {}", tube->length_ok ? "是" : "否");
 	spdlog::info("重量合格  : {}", tube->weight_ok ? "是" : "否");
 	spdlog::info("是否喷印  : {}", tube->sprayed ? "是" : "否");

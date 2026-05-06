@@ -182,7 +182,7 @@ void CProductionPlan::RestoreFromRedis()
     if (m_ctx && m_ctx->redis)
     {
         // 从Redis获取生产计划数据并恢复
-        auto planValue = m_ctx->redis->get("PlanInfo");
+        auto planValue = m_ctx->redis->get(m_redisKey);
         if (planValue)
         {
             RestoreFromJson(*planValue);
@@ -196,7 +196,7 @@ void CProductionPlan::RestoreFromJson(const string &jsonStr)
     {
         if (jsonStr.empty())
         {
-            spdlog::warn("PlanInfo Redis数据为空，跳过恢复");
+            spdlog::warn("{} Redis数据为空，跳过恢复", m_redisKey);
             Initialize(); // 无Redis状态时回退到数据库初始化生产计划
             return;
         }
@@ -204,7 +204,7 @@ void CProductionPlan::RestoreFromJson(const string &jsonStr)
         nlohmann::json j = nlohmann::json::parse(jsonStr);
         if (!j.is_object() || j.empty())
         {
-            spdlog::error("PlanInfo Redis数据为空对象或格式错误，跳过恢复");
+            spdlog::error("{} Redis数据为空对象或格式错误，跳过恢复", m_redisKey);
             Initialize(); // 无Redis状态时回退到数据库初始化生产计划
             return;
         }
