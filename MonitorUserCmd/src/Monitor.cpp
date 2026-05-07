@@ -203,6 +203,12 @@ bool CMonitor::handleCommand(const std::string &message)
 
 			spdlog::info("处理AddTubeCmd命令: seq_no={}, position_name={}", cmd.seq_no, cmd.position_name.c_str());
 		}
+		else if (j["cmd_name"] == "parameter_set_updated")
+		{
+			unsigned int error;
+			int a = 0; // 这个命令没有参数，value可以是任意数据
+			writeb(ctx_.gplatConn, "PARAMETER_SET_UPDATED", &a, sizeof(a), &error);
+		}
 		else
 		{
 			spdlog::warn("未知的命令类型: {}", j["cmd_name"].get<std::string>());

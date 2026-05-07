@@ -39,8 +39,10 @@ struct TubeTrackContext {
     CBasket         basket{"BASKET_POS_TUBE_INFO", "成品筐工位"}; // 成品筐工位
     WalkingBeam     walkingBeam; // 步进梁工位
 
-    // 统一注入上下文到所有工位
-    void Init() {
+    
+    void Init() 
+    {
+        // 统一注入上下文到所有工位
         prodPlan.SetContext(*this);
         alignPos.SetContext(*this);
         carvePos.SetContext(*this);
@@ -65,6 +67,25 @@ struct TubeTrackContext {
         scrapt.RestoreFromRedis();
         basket.RestoreFromRedis();
 
+        // 从数据库读取设置本工位需要的参数信息
+        prodPlan.ReadParameterSet();
+        weightPos.ReadParameterSet();
+        carvePos.ReadParameterSet();
+        sprayPos.ReadParameterSet();
+        circlePos.ReadParameterSet();
+        basket.ReadParameterSet();
+        
+        // 刷新画面
+        prodPlan.UpdateForm(); 
+        alignPos.UpdateForm();
+        weightPos.UpdateForm();   
+        carvePos.UpdateForm();
+        sprayPos.UpdateForm();
+        circlePos.UpdateForm();
+        scraptRoller.UpdateForm();
+        backBuffer.UpdateForm();
+        scrapt.UpdateForm();
+        basket.UpdateForm();
     }
 
     // 清理资源

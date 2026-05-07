@@ -24,3 +24,34 @@ void CBasket::DebugOut()
         spdlog::info("{}: {} = {}", m_positionName, m_redisKey, convertToJson());
     }
 }
+
+void CBasket::ReadParameterSet()
+{
+    try
+    {
+        pqxx::nontransaction ntx(*m_ctx->pgConn);
+        const pqxx::result result = ntx.exec(
+            "SELECT bundle_number, bundle_flow_no, bundle_first_type "
+            "FROM parameter_set "
+            "LIMIT 1");
+
+        if (result.empty())
+        {
+            spdlog::warn("parameter_set表无数据，使用默认成品料筐参数");
+        }
+        else
+        {
+            const auto &row = result[0];
+
+            this->bundle_number_ = row["bundle_number"].as<int>();     // 打捆根数
+            this->bundle_flow_no_ = row["bundle_flow_no"].as<int>();    // 管捆流水号
+            this->bundle_first_type_ = row["bundle_first_type"].as<int>(); // 管捆号首位(1油管2套管）
+
+            spdlog::info("成品料筐工位从数据库加载生产计划参数成功");
+        }
+    }
+    catch (const std::exception &e)
+    {
+        spdlog::error("读取parameter_set失败，使用默认值: {}", e.what());
+    }
+}

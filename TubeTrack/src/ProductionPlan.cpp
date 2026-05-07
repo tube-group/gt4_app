@@ -84,7 +84,7 @@ void CProductionPlan::UpdateForm()
     }
 }
 
-void CProductionPlan::Initialize()
+void CProductionPlan::ReadParameterSet()
 {
     try
     {
@@ -121,9 +121,9 @@ void CProductionPlan::Initialize()
         spdlog::error("读取parameter_set失败，使用默认值: {}", e.what());
     }
 
-    // 初始同步到Redis
-    UpdateForm();
+    UpdateForm(); // 加载参数后更新画面显示
 }
+
 // 设置当前合同，更新生产计划参数
 bool CProductionPlan::ApplyCurrentContract(const string &orderNo, const string &itemNo)
 {
@@ -197,7 +197,6 @@ void CProductionPlan::RestoreFromJson(const string &jsonStr)
         if (jsonStr.empty())
         {
             spdlog::warn("{} Redis数据为空，跳过恢复", m_redisKey);
-            Initialize(); // 无Redis状态时回退到数据库初始化生产计划
             return;
         }
 
@@ -205,7 +204,6 @@ void CProductionPlan::RestoreFromJson(const string &jsonStr)
         if (!j.is_object() || j.empty())
         {
             spdlog::error("{} Redis数据为空对象或格式错误，跳过恢复", m_redisKey);
-            Initialize(); // 无Redis状态时回退到数据库初始化生产计划
             return;
         }
 

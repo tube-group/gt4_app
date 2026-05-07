@@ -18,10 +18,10 @@ public:
     void SetContext(TubeTrackContext& ctx) { m_ctx = &ctx; }
     std::unique_ptr<CTube> Pop(int mode = 0);
     void UpdateForm();
-    void Initialize();
     bool ApplyCurrentContract(const string &orderNo, const string &itemNo);
     void RestoreFromRedis();
     void RestoreFromJson(const string &jsonStr);
+    void ReadParameterSet();
     bool IsEmpty();
 
 private:
