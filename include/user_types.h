@@ -192,5 +192,21 @@ REGISTER_STRUCT(AddTubeCmd,
 	FIELD_DESC_STRING(AddTubeCmd, position_name)
 )
 
+struct StartWeightEvent
+{
+	int is_start; // 1表示开始称重，0表示结束称重
+};
 
+REGISTER_STRUCT(StartWeightEvent,
+	FIELD_DESC(Int32, StartWeightEvent, is_start)
+)
+
+struct FinishWeightEvent
+{
+	int weight; // 称重结果，单位为0.01kg
+};
+
+REGISTER_STRUCT(FinishWeightEvent,
+	FIELD_DESC(Int32, FinishWeightEvent, weight)
+)
 #endif // USER_TYPES_H_

@@ -14,7 +14,7 @@ public:
 
 private:
 	// 从串口读取重量值，单位为0.01kg。
-	double ReadWeightCentiKg() const;
+	int ReadWeightCentiKg() const;
 
 	// 共享运行时上下文，由 main() 创建。
 	SprayWeightContext& ctx_;

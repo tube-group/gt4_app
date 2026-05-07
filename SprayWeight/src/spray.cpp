@@ -53,7 +53,7 @@ namespace
 
 		if (ctx.pgConn == nullptr || !ctx.pgConn->is_open())
 		{
-			spdlog::warn("PostgreSQL 连接不可用，禁止喷印！");
+			spdlog::error("PostgreSQL 连接不可用，禁止喷印！");
 			return false;
 		}
 
@@ -221,21 +221,21 @@ void SprayWorker::Run()
 {
 	spdlog::info("喷印线程启动");
 
-	unsigned int err = 0;
-	if (!subscribe(ctx_.gplatConn, "START_SPRAY_EVENT", &err))
+	try
 	{
-		spdlog::error("subscribe START_SPRAY_EVENT failed, err={}", err);
-		return;
+		unsigned int err = 0;
+		subscribe(ctx_.gplatConn, "START_SPRAY_EVENT", &err);
+		subscribe(ctx_.gplatConn, "timer_500ms", &err);
 	}
-	if (!subscribe(ctx_.gplatConn, "timer_500ms", &err))
+	catch (const std::exception &e)
 	{
-		spdlog::error("subscribe timer_500ms failed, err={}", err);
-		return;
+		spdlog::error("订阅gPlat事件失败: {}", e.what());
+		throw; // 让Run函数的调用者决定如何处理订阅失败的情况
 	}
 
 	while (ctx_.running.load())
 	{
-
+		unsigned int err = 0;
 		char value[kWaitPostBufferSize] = {0};
 		std::string tagname;
 
@@ -252,40 +252,46 @@ void SprayWorker::Run()
 				// 断线重连逻辑
 				continue;
 			}
+
+			if (tagname == "WAIT_TIMEOUT")
+			{
+				continue;
+			}
+
+			if (tagname == "timer_500ms")
+			{
+				continue;
+			}
+
+			if (tagname == "START_SPRAY_EVENT")
+			{
+
+				SprayJob job;
+				StartSprayEvent sprayEvent = read_value<StartSprayEvent>(value);
+
+				job.orderNo = sprayEvent.order_no.c_str();
+				job.itemNo = sprayEvent.item_no.c_str();
+				job.tubeNo = sprayEvent.tube_no;
+				job.flowNo = sprayEvent.flow_no;
+				job.meltNo = sprayEvent.melt_no.c_str();
+				job.lotNo = sprayEvent.lot_no.c_str();
+				job.length = sprayEvent.length;
+				job.weight = sprayEvent.weight;
+				job.theory_weight = sprayEvent.theory_weight;
+				job.length_ok = sprayEvent.length_ok;
+				job.weight_ok = sprayEvent.weight_ok;
+
+				if (LoadSprayRuntimeConfig(ctx_, job))
+				{
+					SendSprayCommand(job);
+				}
+			}
 		}
 		catch (const std::exception &ex)
 		{
 			// 捕获异常后的处理逻辑，以打印异常内容到 cerr 为例
 			std::cerr << "error: " << ex.what() << std::endl;
-		}
-
-		if (tagname == "timer_500ms")
-		{
-			continue;
-		}
-
-		if (tagname == "START_SPRAY_EVENT")
-		{
-
-			SprayJob job;
-			StartSprayEvent sprayEvent = read_value<StartSprayEvent>(value);
-
-			job.orderNo = sprayEvent.order_no.c_str();
-			job.itemNo = sprayEvent.item_no.c_str();
-			job.tubeNo = sprayEvent.tube_no;
-			job.flowNo = sprayEvent.flow_no;
-			job.meltNo = sprayEvent.melt_no.c_str();
-			job.lotNo = sprayEvent.lot_no.c_str();
-			job.length = sprayEvent.length;
-			job.weight = sprayEvent.weight;
-			job.theory_weight = sprayEvent.theory_weight;
-			job.length_ok = sprayEvent.length_ok;
-			job.weight_ok = sprayEvent.weight_ok;
-
-			if (LoadSprayRuntimeConfig(ctx_, job))
-			{
-				SendSprayCommand(job);
-			}
+			throw; // 让Run函数的调用者决定如何处理waitpostdata异常
 		}
 	}
 

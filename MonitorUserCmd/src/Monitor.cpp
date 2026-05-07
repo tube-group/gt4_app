@@ -209,6 +209,18 @@ bool CMonitor::handleCommand(const std::string &message)
 			int a = 0; // 这个命令没有参数，value可以是任意数据
 			writeb(ctx_.gplatConn, "PARAMETER_SET_UPDATED", &a, sizeof(a), &error);
 		}
+		else if (j["cmd_name"] == "start_weight_cmd")
+		{
+			unsigned int error;
+			int value = 1;
+			writeb(ctx_.gplatConn, "START_WEIGHT_EVENT", &value, sizeof(value), &error);
+		}
+		else if (j["cmd_name"] == "stop_weight_cmd")
+		{
+			unsigned int error;
+			int value = 0;
+			writeb(ctx_.gplatConn, "START_WEIGHT_EVENT", &value, sizeof(value), &error);
+		}
 		else
 		{
 			spdlog::warn("未知的命令类型: {}", j["cmd_name"].get<std::string>());

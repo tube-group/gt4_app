@@ -87,4 +87,14 @@ struct AddTubeCmd
   int seq_no;                  // 在此位置前插入管子，0表示第一个位置，1表示第二个位置，以此类推，-1代表在末尾添加
   PodString<20> position_name; // 工位名称
 };
+
+struct StartWeightEvent
+{
+  int is_start; // 1表示开始称重，0表示结束称重
+};
+
+struct FinishWeightEvent
+{
+  int weight; // 称重结果，单位为0.01kg
+};
 #endif // USERCMD_H
