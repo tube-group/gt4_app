@@ -36,18 +36,27 @@ namespace
 		ConnectionError,
 	};
 
+	bool TryParseWeightFromPayload(std::string &payload, int &weightValue);
+
 	std::string FormatTcpPayload(const char *data, std::size_t size)
 	{
 		std::string formatted;
-		formatted.reserve(size);
+		formatted.reserve(size * 2);
 
 		constexpr char hexDigits[] = "0123456789ABCDEF";
 		for (std::size_t index = 0; index < size; ++index)
 		{
 			unsigned char ch = static_cast<unsigned char>(data[index]);
-			if (std::isprint(ch) != 0 || ch == '\r' || ch == '\n' || ch == '\t')
+			if (std::isprint(ch) != 0 && ch != '\r' && ch != '\n' && ch != '\t')
 			{
 				formatted.push_back(static_cast<char>(ch));
+				continue;
+			}
+
+			if (ch == '\r' || ch == '\n' || ch == '\t')
+			{
+				formatted.push_back('\\');
+				formatted.push_back(ch == '\r' ? 'r' : (ch == '\n' ? 'n' : 't'));
 				continue;
 			}
 
@@ -202,7 +211,7 @@ namespace
 		return socketFd;
 	}
 
-	WeightReadStatus ReadAvailableWeightPayload(SocketHandle socketFd, const SprayWeightContext &ctx, std::string &payload)
+	WeightReadStatus ReadAvailableWeightPayload(SocketHandle socketFd, const SprayWeightContext &ctx, std::string &payload, int &weightValue, bool &receivedAnyPayload)
 	{
 		std::array<char, 1024> buffer{};
 		const auto deadline = std::chrono::steady_clock::now() + kWeightReadTimeout;
@@ -233,12 +242,18 @@ namespace
 			int received = static_cast<int>(recv(socketFd, buffer.data(), static_cast<int>(buffer.size()), 0));
 			if (received > 0)
 			{
+				receivedAnyPayload = true;
 				payload.append(buffer.data(), static_cast<std::size_t>(received));
 				spdlog::info("称重 TCP 收到数据: {}", FormatTcpPayload(buffer.data(), static_cast<std::size_t>(received)));
 
 				if (payload.size() > kMaxPendingPayloadBytes)
 				{
 					payload.erase(0, payload.size() - kMaxPendingPayloadBytes);
+				}
+
+				if (TryParseWeightFromPayload(payload, weightValue))
+				{
+					return WeightReadStatus::Success;
 				}
 				continue;
 			}
@@ -259,7 +274,7 @@ namespace
 			return WeightReadStatus::ConnectionError;
 		}
 
-		return payload.empty() ? WeightReadStatus::Timeout : WeightReadStatus::Success;
+		return WeightReadStatus::Timeout;
 	}
 
 	bool TryExtractWeightText(std::string &payload, std::string &weightText)
@@ -333,6 +348,24 @@ namespace
 
 		weightValue = rawWeight < 0.001 ? 0 : static_cast<int>(rawWeight / 10.0 + 0.5);
 		return true;
+	}
+
+	bool TryParseWeightFromPayload(std::string &payload, int &weightValue)
+	{
+		std::string weightText;
+		while (TryExtractWeightText(payload, weightText))
+		{
+			// 设备上送的是十进制 ASCII 字符串，沿用现有规则换算为 centi-kg 整数值。
+			if (TryConvertWeightTextToCentiKg(weightText, weightValue))
+			{
+				spdlog::info("称重结果解析完成, raw='{}', weight={}", weightText, weightValue);
+				return true;
+			}
+
+			spdlog::warn("称重数字转换失败, raw='{}'", weightText);
+		}
+
+		return false;
 	}
 
 } // namespace
@@ -426,34 +459,22 @@ int WeightWorker::ReadWeightCentiKg() const
 
 	std::string pendingPayload;
 	bool receivedAnyPayload = false;
+	int parsedWeight = 0;
 
 	try
 	{
 		std::this_thread::sleep_for(kWeightStableDelay);
 
-		const WeightReadStatus readStatus = ReadAvailableWeightPayload(socketFd, ctx_, pendingPayload);
-		receivedAnyPayload = !pendingPayload.empty();
+		const WeightReadStatus readStatus = ReadAvailableWeightPayload(socketFd, ctx_, pendingPayload, parsedWeight, receivedAnyPayload);
 		if (readStatus == WeightReadStatus::ConnectionError)
 		{
 			CloseSocket(socketFd);
 			return kConnectTimeoutError;
 		}
 
-		std::string weightText;
-		while (TryExtractWeightText(pendingPayload, weightText))
+		if (readStatus == WeightReadStatus::Success)
 		{
-			int parsedWeight = 0;
-			// 设备上送的是十进制 ASCII 字符串，沿用现有规则换算为 centi-kg 整数值。
-			if (TryConvertWeightTextToCentiKg(weightText, parsedWeight))
-			{
-				spdlog::info("称重结果解析完成, raw='{}', weight={}", weightText, parsedWeight);
-				weight_data = parsedWeight;
-				break;
-			}
-			else
-			{
-				spdlog::warn("称重数字转换失败, raw='{}'", weightText);
-			}
+			weight_data = parsedWeight;
 		}
 
 		if (weight_data >= 0)
