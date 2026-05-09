@@ -7,6 +7,6 @@ class CBackBuffer : public CPositionBase
     public:
         CBackBuffer(string redisKey, string positionName) : CPositionBase(redisKey, positionName) {}
 
-        virtual void UpdateForm() override; // 刷新画面
-        virtual void DebugOut() override;   // 输出缓冲区管子数量
+        void UpdateForm() override; // 刷新画面
+        void DebugOut() override;   // 输出缓冲区管子数量
 };

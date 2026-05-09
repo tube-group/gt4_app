@@ -7,7 +7,7 @@ class CCirclePosition : public CPositionBase
 public:
     CCirclePosition(string redisKey, string positionName) : CPositionBase(redisKey, positionName) {}
 
-    virtual void UpdateForm() override; // 刷新画面
+    void UpdateForm() override; // 刷新画面
     void ReadParameterSet();            // 从数据库读取色环工位参数
 private:
     int circle_enable_; // 色环允许

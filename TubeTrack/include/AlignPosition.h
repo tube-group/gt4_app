@@ -7,5 +7,5 @@ class CAlignPosition : public CPositionBase
 public:
     CAlignPosition(string redisKey, string positionName) : CPositionBase(redisKey, positionName) {}
 
-    virtual void UpdateForm() override; // 刷新画面
+    void UpdateForm() override; // 刷新画面
 };

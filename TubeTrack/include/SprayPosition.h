@@ -7,7 +7,7 @@ class CSprayPosition : public CPositionBase
 public:
     CSprayPosition(string redisKey, string positionName) : CPositionBase(redisKey, positionName) {}
 
-    virtual void UpdateForm() override; // 刷新画面
+    void UpdateForm() override; // 刷新画面
     void ReadParameterSet();            // 从数据库读取喷印工位参数
 private:
     int length_enable_;          // 测长允许
