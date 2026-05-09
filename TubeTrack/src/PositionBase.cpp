@@ -36,17 +36,17 @@ bool CPositionBase::PushFront(unique_ptr<CTube> tube, int /*mode*/)
 		return false;
 	}
 
-	if (m_bTriggerEnabled)
-	{
-		EntryTriggerBeforePush(*tube);
-	}
-	CTube *tubePtr = tube.get();
+	// if (m_bTriggerEnabled)
+	// {
+	// 	EntryTriggerBeforePush(*tube);
+	// }
+	// CTube *tubePtr = tube.get();
 	m_tubes.push_front(std::move(tube));
 	UpdateForm();
-	if (m_bTriggerEnabled)
-	{
-		EntryTrigger(*tubePtr);
-	}
+	// if (m_bTriggerEnabled)
+	// {
+	// 	EntryTrigger(*tubePtr);
+	// }
 	return true;
 }
 

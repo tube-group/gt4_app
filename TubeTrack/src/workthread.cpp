@@ -13,6 +13,7 @@
 #include "higplat.h"
 #include "TubeTrackContext.h"
 #include "usercmd.h"
+#include "WeightPosition.h"
 
 // 声明外部变量
 extern volatile sig_atomic_t g_running;
@@ -162,6 +163,7 @@ void workThread(TubeTrackContext &ctx)
     subscribe(ctx.gplatConn, "DELETE_TUBE_CMD", &err);
     subscribe(ctx.gplatConn, "SET_CURRENT_CONTRACT_CMD", &err);
     subscribe(ctx.gplatConn, "ADD_TUBE_CMD", &err);
+    subscribe(ctx.gplatConn, "FINISH_WEIGHT_EVENT", &err);
 
     // 主循环：等待gPlat数据，处理TAG更新
     while (g_running)
@@ -254,6 +256,14 @@ void workThread(TubeTrackContext &ctx)
             {
                 // 处理添加管子命令
                 handleAddTubeCmd(ctx, value);
+            }
+            else if (tagname == "FINISH_WEIGHT_EVENT")
+            {
+                // 调用称重工位的SetTubeWeight函数
+                spdlog::info("Handling FINISH_WEIGHT_EVENT, setting tube weight in WeightPosition");
+                int weight = read_value<int>(value);
+                // ctx.weightPos.SetTubeWeight(weight);
+                ctx.weightPos.SetTubeWeight(1001);
             }
         }
         catch (const std::exception &ex)
@@ -801,7 +811,6 @@ void handleScrRollerOn(TubeTrackContext &ctx, const char *value)
             ctx.scrapt.Push(std::move(tube));
             ctx.scrapt.DebugOut();
         }
-
     }
     else
     {
