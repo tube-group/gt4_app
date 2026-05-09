@@ -7,7 +7,7 @@ class CWeightPosition : public CPositionBase
 public:
     CWeightPosition(string redisKey, string positionName) : CPositionBase(redisKey, positionName) {}
 
-    virtual void UpdateForm() override; // 刷新画面
+    void UpdateForm() override; // 刷新画面
     void ReadParameterSet();            // 从数据库读取称重工位参数
 
 private:

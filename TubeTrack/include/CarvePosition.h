@@ -8,7 +8,7 @@ class CCarvePosition : public CPositionBase
 public:
     CCarvePosition(string redisKey, string positionName) : CPositionBase(redisKey, positionName) { carve_enable_ = 0; }; // 构造函数
 
-    virtual void UpdateForm() override; // 刷新画面
+    void UpdateForm() override; // 刷新画面
     void ReadParameterSet(); // 从数据库读取刻印工位参数
     bool IsCarveEnabled() const { return carve_enable_; } // 判断刻印是否允许
     bool PushBack(unique_ptr<CTube> tube, int mode = 0) override; // 重写PushBack方法，增加刻印工位特有的逻辑
