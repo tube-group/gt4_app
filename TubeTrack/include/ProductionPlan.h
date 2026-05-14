@@ -32,6 +32,7 @@ private:
     string lot_no;          // 试批号
     string lotno_coupling;  // 接箍批号
     string meltno_coupling; // 接箍炉号
-    int feed_num;           // 投料支数
-    int tube_no;            // 管号
+    int feed_num = 0;       // 投料支数
+    int tube_no = 0;        // 管号
+    int flow_no = 0;        // 流水号
 };

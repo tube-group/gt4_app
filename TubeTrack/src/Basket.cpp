@@ -2,6 +2,7 @@
 #include "Basket.h"
 #include "TubeTrackContext.h"
 #include "logging.h"
+#include "cmath"
 
 void CBasket::UpdateForm()
 {
@@ -21,7 +22,7 @@ void CBasket::DebugOut()
     if (m_ctx && m_ctx->redis)
     {
         spdlog::info("{} tube count: {}", m_positionName, Count());
-        spdlog::info("{}: {} = {}", m_positionName, m_redisKey, convertToJson());
+        // spdlog::info("{}: {} = {}", m_positionName, m_redisKey, convertToJson());
     }
 }
 
@@ -31,9 +32,11 @@ void CBasket::ReadParameterSet()
     {
         pqxx::nontransaction ntx(*m_ctx->pgConn);
         const pqxx::result result = ntx.exec(
-            "SELECT bundle_number, bundle_flow_no, bundle_first_type "
-            "FROM parameter_set "
-            "LIMIT 1");
+            "SELECT bundle_number, bundle_flow_no, bundle_first_type, "
+            "bundle_type, "
+            "weight_packaging "
+            /*"j_language_p, j_count_p, j_count_em "*/
+            "FROM parameter_set LIMIT 1");
 
         if (result.empty())
         {
@@ -43,15 +46,349 @@ void CBasket::ReadParameterSet()
         {
             const auto &row = result[0];
 
-            this->bundle_number_ = row["bundle_number"].as<int>();     // 打捆根数
-            this->bundle_flow_no_ = row["bundle_flow_no"].as<int>();    // 管捆流水号
+            // 打捆参数
+            this->bundle_number_ = row["bundle_number"].as<int>();         // 打捆根数
+            this->bundle_flow_no_ = row["bundle_flow_no"].as<int>();       // 管捆流水号
             this->bundle_first_type_ = row["bundle_first_type"].as<int>(); // 管捆号首位(1油管2套管）
 
-            spdlog::info("成品料筐工位从数据库加载生产计划参数成功");
+            // 生产参数
+            bundle_type = row["bundle_type"].as<string>("TUB"); // 管捆类型
+            weight_packaging = row["weight_packaging"].as<double>(0); // 包装材料重量
+
+            // // L3电文参数
+            // j_language_p = row["j_language_p"].as<string>("");
+            // j_count_p = row["j_count_p"].as<int>(0);
+            // j_count_em = row["j_count_em"].as<int>(0);
+
+            spdlog::info("成品筐工位从数据库加载生产计划参数成功");
+            spdlog::info("bundle_number_ 读取结果: {}", bundle_number_);
         }
     }
     catch (const std::exception &e)
     {
         spdlog::error("读取parameter_set失败，使用默认值: {}", e.what());
+    }
+}
+
+//---------------计算打捆根数---------------
+int CBasket::BundleCount()
+{
+    return bundle_number_;
+}
+
+//---------------判断成品料筐是否有空间放置新管子---------------
+bool CBasket::HasSpace()
+{
+    return Count() < static_cast<size_t>(max_count_) && Count() < static_cast<size_t>(bundle_number_);
+}
+
+//---------------PushBack时触发打捆逻辑---------------
+void CBasket::EntryTrigger(const CTube &tube)
+{
+    spdlog::info("=== EntryTrigger 被调用 ===");
+    spdlog::info("当前管子数量: {}, 打捆根数: {}", Count(), BundleCount());
+    spdlog::info("条件判断: {} > 0 && {} >= {}", BundleCount(), Count(), BundleCount());
+    // 当成品料筐内管子数量达到打捆根数时，执行打捆操作
+    if (BundleCount() > 0 && Count() >= static_cast<size_t>(BundleCount()))
+    {
+        spdlog::info("成品料筐内管子数量 {} 已达到打捆根数 {}, 执行打捆操作", Count(), BundleCount());
+        if (Bundle())
+        {
+            UpdateForm();
+        }
+        else
+        {
+            spdlog::warn("成品料筐打捆失败，保留当前筐内管子，等待后续处理");
+        }
+    }
+    else
+    {
+        spdlog::info("成品料筐内管子数量 {} 未达到打捆根数 {}, 继续等待", Count(), BundleCount());
+    }
+}
+
+//---------------PushFront时触发打捆逻辑---------------
+bool CBasket::PushFront(unique_ptr<CTube> tube, int mode)
+{
+    return PushBack(std::move(tube), 0);
+}
+
+//---------------执行打捆操作，生成管捆信息并清空成品料筐---------------
+bool CBasket::Bundle()
+{
+    // 管捆信息初始化
+    string bundleno;                                         // 管捆号
+    double lengthsum = 0.0, weightsum = 0.0;                 // 打捆总长度和总重量
+    double lengthmin = 100.0, lengthmax = 0.0;               // 管长极值
+    int tubecount = 0, flow_no = 0;                          // 管子数量和流水号
+    string order_no, melt_no, lot_no, item_no, roll_no = ""; // 订单号、炉号、试批号、项目号、轧批号
+
+    tubecount = Count();
+    if (tubecount == 0)
+    {
+        spdlog::warn("成品料筐内无管子，无法打捆");
+        return false;
+    }
+
+    ReadParameterSet();
+
+    // 统计管捆信息
+    for (const auto &tubePtr : Tubes())
+    {
+        const auto &tube = *tubePtr;
+        lengthsum += tube.length;
+        weightsum += tube.weight;
+        order_no = tube.order_no;
+        melt_no = tube.melt_no;
+        lot_no = tube.lot_no;
+        item_no = tube.item_no;
+        roll_no = tube.roll_no;
+        if (tube.flow_no > flow_no)
+        {
+            flow_no = tube.flow_no; // 以流水号最大的管子为准
+        }
+        if (tube.length > lengthmax)
+        {
+            lengthmax = tube.length;
+        }
+        if (tube.length < lengthmin)
+        {
+            lengthmin = tube.length;
+        }
+        spdlog::info("统计管子: roll_no={}", tube.roll_no);
+    }
+
+    // 查询班次————————暂时取固定值：甲班，后续需要补充
+    int ban_ci = 1; // 当前班次
+
+    // 获取当前日期时间
+    struct tm t;
+    GetDateTime(t);
+    char produce_time_bundle[32];
+    char produce_time_tube[32];
+    // 格式化输出生产时间字符串，格式为 YYYYMMDDHHMMSS
+    strftime(produce_time_bundle, sizeof(produce_time_bundle), "%Y%m%d%H%M%S", &t);
+    strftime(produce_time_tube, sizeof(produce_time_tube), "%Y-%m-%d %H:%M:%S", &t);
+    spdlog::info("生产时间: {}", produce_time_bundle);
+
+    // 数据库操作
+    // 1.查询合同数据————api_order_data_t
+    // 使用单个事务处理所有数据库操作
+    pqxx::work txn(*m_ctx->pgConn);
+    while (true)
+    {
+        // 生成管捆号：管捆号格式=首位标志(1油管2套管) + 0 + 班次 + 4位流水号
+        stringstream str;
+        str << bundle_first_type_ << "0";
+        str << (ban_ci % 10);
+        str << setw(4) << setfill('0') << bundle_flow_no_;
+        bundleno = str.str();
+        spdlog::info("尝试生成管捆号: {}", bundleno);
+        // 检查管捆号是否已存在
+        const pqxx::result bundleExists = txn.exec(
+            "SELECT 1 FROM api_bundle_data_t "
+            "WHERE order_no = $1 AND item_no = $2 AND bundle_no = $3 LIMIT 1",
+            pqxx::params{order_no, item_no, bundleno});
+
+        if (bundleExists.empty())
+        {
+            break; // 不存在，使用这个管捆号
+        }
+
+        // 已存在
+        spdlog::warn("检测到重复管捆号: order_no={}, item_no={}, bundle_no={}",
+                     order_no,
+                     item_no,
+                     bundleno);
+    }
+    const pqxx::result orderResult = txn.exec(
+        "SELECT weight_per_meter, weight_ew, diameter, wall_thickness, "
+        "prod_code, prod_cname, mat_no, mat_text, std_sg_code, sg_text, std_text, "
+        "end_type_code, end_type_sign, thread_type_code, thread_type_sign, "
+        "coupling_type_code, coupling_type_sign, order_no_old, end_type, thread_type, "
+        "diameter_down_ctrl, diameter_up_ctrl, wal_thick_down_ctrl, wal_thick_up_ctrl "
+        "FROM api_order_data_t "
+        "WHERE order_no = $1 AND item_no = $2 LIMIT 1",
+        pqxx::params{order_no, item_no});
+
+    // 先定义变量并赋予默认值（在查询之前）
+    double weight_per_meter = 0.0;
+    double weight_ew = 0.0;
+    double diameter = 0.0;
+    double wall_thickness = 0.0;
+    string prod_code = "";
+    string prod_cname = "";
+    string mat_no = "";
+    string mat_text = "";
+    string std_sg_code = "";
+    string sg_text = "";
+    string std_text = "";
+    string end_type_code = "";
+    string end_type_sign = "";
+    string thread_type_code = "";
+    string thread_type_sign = "";
+    string coupling_type_code = "";
+    string coupling_type_sign = "";
+    string order_no_old = "";
+    string end_type = "";
+    string thread_type = "";
+    string diameter_down_ctrl = "";
+    string diameter_up_ctrl = "";
+    string wal_thick_down_ctrl = "";
+    string wal_thick_up_ctrl = "";
+
+    if (orderResult.empty())
+    {
+        spdlog::warn("没有查到订单数据 order_no={}, item_no={}", order_no, item_no);
+    }
+    else
+    {
+        const auto &row = orderResult[0];
+        weight_per_meter = row["weight_per_meter"].as<double>();       // 米重
+        weight_ew = row["weight_ew"].as<double>();                     // EW值
+        diameter = row["diameter"].as<double>();                       // 外径
+        wall_thickness = row["wall_thickness"].as<double>();           // 壁厚
+        prod_code = row["prod_code"].as<string>();                     // 品名细分类代码
+        prod_cname = row["prod_cname"].as<string>();                   // 品名细分类
+        mat_no = row["mat_no"].as<string>();                           // 材质号
+        mat_text = row["mat_text"].as<string>();                       // 材质正文
+        std_sg_code = row["std_sg_code"].as<string>();                 // 标准钢级代码
+        sg_text = row["sg_text"].as<string>();                         // 钢级正文
+        std_text = row["std_text"].as<string>();                       // 标准正文
+        end_type_code = row["end_type_code"].as<string>();             // 螺纹类型代码
+        end_type_sign = row["end_type_sign"].as<string>();             // 螺纹类型符号
+        thread_type_code = row["thread_type_code"].as<string>();       // 管端类型代码
+        thread_type_sign = row["thread_type_sign"].as<string>();       // 管端类型符号
+        coupling_type_code = row["coupling_type_code"].as<string>();   // 接箍类型代码
+        coupling_type_sign = row["coupling_type_sign"].as<string>();   // 接箍类型符号
+        order_no_old = row["order_no_old"].as<string>();               // 原合同号
+        end_type = row["end_type"].as<string>();                       // 端部类型描述
+        thread_type = row["thread_type"].as<string>();                 // 螺纹类型描述
+        diameter_down_ctrl = row["diameter_down_ctrl"].as<string>();   // 外径下控制线
+        diameter_up_ctrl = row["diameter_up_ctrl"].as<string>();       // 外径上控制线
+        wal_thick_down_ctrl = row["wal_thick_down_ctrl"].as<string>(); // 壁厚下控制线
+        wal_thick_up_ctrl = row["wal_thick_up_ctrl"].as<string>();     // 壁厚上控制线
+    }
+
+    // 计算派生字段
+    weightsum = std::round(weightsum);                                      // 总重量取整
+    double weight_eng = std::round(weightsum * 2.204622 * 1000.0) / 1000.0; // 英制重量
+    lengthsum = std::round(lengthsum * 1000.0) / 1000.0;                    // 保留3位小数                  // 最长
+    double length_eng = std::round(lengthsum * 3.280839 * 1000.0) / 1000.0; // 英制长度 
+    double length_from = std::round(lengthmin * 100.0) / 100.0;             // 最短
+    double length_to = std::round(lengthmax * 100.0) / 100.0;
+    int theory_weight = static_cast<int>(std::round((lengthsum * weight_per_meter) + weight_ew)); // 理论重量
+    double theory_total_length = lengthsum;                                                       // 理论总长度
+    int gross_weight = static_cast<int>(weightsum + weight_packaging / 100.0);                    // 毛重
+    string bundle_type_str = bundle_type.substr(0, 3);                                            // 管捆状态(提取前 3 个字符)
+    string ban_ci_str = std::to_string(ban_ci);                                                   // ban_ci是varchar(2)
+    spdlog::info("计算管捆信息: lengthsum={}, weightsum={}, weight_eng={}, length_eng={}, length_from={}, length_to={}, theory_weight={}, gross_weight={}",
+                 lengthsum, weightsum, weight_eng, length_eng, length_from, length_to, theory_weight, gross_weight);
+
+    // 2.删除重复流水号的管子数据(按业务键: order_no + item_no + tubeno_ht)
+    size_t deleted_tube_rows = 0;
+    for (const auto &tubePtr : Tubes())
+    {
+        const auto &tube = *tubePtr;
+        const pqxx::result deleteResult = txn.exec(
+            "DELETE FROM api_tube_data_t "
+            "WHERE order_no = $1 AND item_no = $2 AND tubeno_ht = $3",
+            pqxx::params{tube.order_no, tube.item_no, tube.flow_no});
+        deleted_tube_rows += deleteResult.affected_rows();
+    }
+    spdlog::info("已删除重复流水号的管子数据，共{}根", deleted_tube_rows);
+
+    // 3.在事务中同时插入管捆数据和插入管子数据
+    try
+    {
+        // 3.1 插入管捆主表——————api_bundle_data_t
+        // 注意：这里的SQL语句需要根据实际的表结构进行调整，确保字段名称和顺序正确
+        const pqxx::result insertBundleResult = txn.exec(
+            "INSERT INTO api_bundle_data_t ("
+            "order_no, item_no, bundle_no, roll_no, melt_no, lot_no,"
+            "prod_code, prod_cname, mat_no, mat_text, std_sg_code, std_text, sg_text,"
+            "diameter, wall_thickness, weight, weight_eng, total_length, length_eng,"
+            "length_from, length_to, tube, bundle_type, produce_time, ban_ci,"
+            "theory_weight,theory_total_length, last_flow_no, end_type_code, end_type_sign,"
+            "thread_type_code, thread_type_sign, coupling_type_code, coupling_type_sign,"
+            "order_no_old, toc, gross_weight, end_type, thread_type,"
+            "diameter_down_ctrl, diameter_up_ctrl, wal_thick_down_ctrl, wal_thick_up_ctrl,"
+            "weight_per_meter, weight_ew) "
+            "VALUES ($1,$2, $3, $4, $5, $6,"
+            "$7, $8, $9, $10, $11, $12, $13,"
+            "$14, $15, $16, $17, $18, $19,"
+            "$20, $21, $22, $23, $24, $25,"
+            "$26, $27, $28, $29, $30,"
+            "$31, $32, $33, $34,"
+            "$35, $36,$37, $38, $39,"
+            "$40, $41, $42, $43,"
+            "$44,$45)",
+            pqxx::params{order_no, item_no, bundleno, roll_no, melt_no, lot_no,
+                         prod_code, prod_cname, mat_no, mat_text, std_sg_code, std_text, sg_text,
+                         diameter, wall_thickness, weightsum, weight_eng, lengthsum, length_eng,
+                         length_from, length_to, tubecount, bundle_type_str, produce_time_bundle, ban_ci_str,
+                         theory_weight, theory_total_length,
+                         flow_no, end_type_code, end_type_sign,
+                         thread_type_code, thread_type_sign, coupling_type_code, coupling_type_sign,
+                         order_no_old, produce_time_tube, gross_weight, end_type, thread_type,
+                         diameter_down_ctrl, diameter_up_ctrl, wal_thick_down_ctrl, wal_thick_up_ctrl,
+                         weight_per_meter, weight_ew});
+
+        // 插入管子明细表
+        // 循环插入每根管子数据
+        for (const auto &tubePtr : Tubes())
+        {
+            const auto &tube = *tubePtr;
+            txn.exec(
+                "INSERT INTO api_tube_data_t ("
+                "order_no, item_no, bundle_no, melt_no, lot_no, weight, length, tubeno_ht, "
+                "produce_time, short_flag, ban_ci, tube_no) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
+                pqxx::params{
+                    tube.order_no,
+                    tube.item_no,
+                    bundleno,
+                    tube.melt_no,
+                    tube.lot_no,
+                    std::round(tube.weight),
+                    std::round(tube.length * 1000.0) / 1000.0,
+                    tube.flow_no,
+                    produce_time_tube,
+                    "0",
+                    ban_ci_str,
+                    tube.tube_no});
+        }
+        // 更新parameter_set表中的bundle_flow_no，为下一次打捆做准备
+        if (bundle_flow_no_ > 9998)
+        {
+            bundle_flow_no_ = 0; // 流水号达到9999后重置为0
+        }
+        const int nextBundleFlowNo = bundle_flow_no_ + 1;
+        txn.exec(
+            "UPDATE parameter_set SET bundle_flow_no = $1",
+            pqxx::params{nextBundleFlowNo});
+
+        // 所有操作成功，提交事务
+        txn.commit();
+        // 更新当前对象的bundle_flow_no为最新值
+        bundle_flow_no_ = nextBundleFlowNo;
+
+        spdlog::info("=== 打捆操作成功 ===");
+        spdlog::info("管捆号: {}, 根数: {}, 总重量: {}, 总长度: {}",
+                     bundleno, tubecount, weightsum, lengthsum);
+
+        // 输出插入的主表信息
+        spdlog::info("已插入管捆主表: order_no={}, item_no={}, bundle_no={}",
+                     order_no, item_no, bundleno);
+
+        // 向PLC发送打捆完成信号
+        Clear();
+        return true;
+    }
+    catch (const std::exception &e)
+    {
+        spdlog::error("打捆数据库操作失败，已回滚，成品筐保留当前管子: {}", e.what());
+        // pqxx::work在析构时会自动回滚，无需手动调用
+        return false;
     }
 }

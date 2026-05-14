@@ -46,6 +46,8 @@
 #define ERROR_INVALID_PARAMETER			39
 #define ERROR_INVALID_RESPONSE			40
 #define ERROR_BUFFER_TOO_SMALL			41
+#define ERROR_TAG_NOT_EXIST 			(MY_ERR_OFFSET + 42)
+
 
 #pragma pack( push, enter_qbdtype_h_, 8)
 
