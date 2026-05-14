@@ -7,9 +7,26 @@
 
 std::unique_ptr<CTube> CProductionPlan::Pop(int /*mode*/)
 {
-
     if (feed_num > 0)
     {
+        const int nextFeedNum = feed_num - 1;
+        const int nextTubeNo = tube_no + 1;
+        const int nextFlowNo = flow_no + 1;
+
+        try
+        {
+            pqxx::work txn(*m_ctx->pgConn);
+            txn.exec(
+                "UPDATE parameter_set SET feed_number = $1, tube_no = $2, flow_no = $3",
+                pqxx::params{nextFeedNum, nextTubeNo, nextFlowNo});
+            txn.commit();
+        }
+        catch (const std::exception &e)
+        {
+            spdlog::error("更新parameter_set中的生产计划计数失败: {}", e.what());
+            return nullptr;
+        }
+
         auto tube = std::make_unique<CTube>();
         // 查询当前合同和生产参数，填充管子数据
         tube->order_no = order_no;
@@ -21,13 +38,13 @@ std::unique_ptr<CTube> CProductionPlan::Pop(int /*mode*/)
         tube->lotno_coupling = lotno_coupling;
         tube->tube_no = tube_no;
 
-        // 生成流水号
-        static int flow_no = 0;
-        tube->flow_no = flow_no++;
+        // 使用parameter_set里持久化的下一根管号/流水号，避免重启后重复分配。
+        tube->flow_no = flow_no;
 
         // 更新计数器
-        feed_num--;
-        tube_no += 1;
+        feed_num = nextFeedNum;
+        tube_no = nextTubeNo;
+        flow_no = nextFlowNo;
 
         UpdateForm();
 
@@ -91,7 +108,7 @@ void CProductionPlan::ReadParameterSet()
         pqxx::nontransaction ntx(*m_ctx->pgConn);
         const pqxx::result result = ntx.exec(
             "SELECT order_no, item_no, roll_no, melt_no, lot_no, "
-            "lot_no_coupling, melt_no_coupling, feed_number, tube_no "
+            "lot_no_coupling, melt_no_coupling, feed_number, tube_no, flow_no "
             "FROM parameter_set "
             "LIMIT 1");
 
@@ -112,6 +129,7 @@ void CProductionPlan::ReadParameterSet()
             this->meltno_coupling = row["melt_no_coupling"].as<string>(); // 接箍炉号
             this->feed_num = row["feed_number"].as<int>();                // 投料支数
             this->tube_no = row["tube_no"].as<int>();                     // 管号
+            this->flow_no = row["flow_no"].as<int>();                     // 流水号
 
             spdlog::info("从数据库加载生产计划参数成功  order_no: {}", this->order_no);
         }

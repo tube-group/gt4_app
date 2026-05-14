@@ -33,6 +33,7 @@ protected:
 	bool m_bWbReleased; // 步进梁封锁状态位
 	void GetDateTime(struct tm &t);
 	void GetDateTimeString(string &dateStr, string &timeStr);
+	const deque<unique_ptr<CTube>> &Tubes() const { return m_tubes; }
 	// string convertToJson(const CTube &tube);
 	string convertToJson();
 
