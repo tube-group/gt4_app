@@ -209,4 +209,22 @@ struct FinishWeightEvent
 REGISTER_STRUCT(FinishWeightEvent,
 	FIELD_DESC(Int32, FinishWeightEvent, weight)
 )
+
+struct TagPrintEvent
+{
+  PodString<20> order_no; // 合同号
+  PodString<20> item_no;  // 项目号
+  PodString<20> bundle_no; // 捆号
+  int language;
+  int count;
+};
+
+REGISTER_STRUCT(TagPrintEvent,
+	FIELD_DESC_STRING(TagPrintEvent, order_no),
+	FIELD_DESC_STRING(TagPrintEvent, item_no),
+	FIELD_DESC_STRING(TagPrintEvent, bundle_no),
+	FIELD_DESC(Int32, TagPrintEvent, language),
+	FIELD_DESC(Int32, TagPrintEvent, count)
+)
+
 #endif // USER_TYPES_H_

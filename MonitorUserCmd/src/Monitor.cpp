@@ -221,6 +221,16 @@ bool CMonitor::handleCommand(const std::string &message)
 			int value = 0;
 			writeb(ctx_.gplatConn, "START_WEIGHT_EVENT", &value, sizeof(value), &error);
 		}
+		else if (j["cmd_name"] == "tag_print_cmd")
+		{
+			unsigned int error;
+			TagPrintEvent cmd; // 这个命令没有参数，value可以是任意数据
+			cmd.order_no = cmdPara["order_no"].get<std::string>();
+			cmd.item_no = cmdPara["item_no"].get<std::string>();	
+			cmd.bundle_no = cmdPara["bundle_no"].get<std::string>();
+			cmd.count = cmdPara["count"].get<int>();
+			writeb(ctx_.gplatConn, "TAG_PRINT_EVENT", &cmd, sizeof(cmd), &error);
+		}
 		else
 		{
 			spdlog::warn("未知的命令类型: {}", j["cmd_name"].get<std::string>());

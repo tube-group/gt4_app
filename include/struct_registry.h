@@ -25,6 +25,7 @@ inline const std::unordered_map<std::string, const StructInfo*>& GetStructRegist
 		REG(AddTubeCmd),
 		REG(StartWeightEvent),
 		REG(FinishWeightEvent),
+		REG(TagPrintEvent),
 		// 新增类型在此添加一行
 	};
 	return table;

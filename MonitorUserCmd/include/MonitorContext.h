@@ -19,11 +19,16 @@ struct MonitorContext {
     }
 
     // 清理资源
-    void Cleanup() {
-        if (gplatConn > 0) {
+    void Cleanup()
+    {
+        if (gplatConn > 0)
+        {
             disconnectgplat(gplatConn);
             gplatConn = -1;
         }
-        redis.reset();
+        if (redis)
+        {
+            redis.reset();
+        }
     }
 };

@@ -97,4 +97,12 @@ struct FinishWeightEvent
 {
   int weight; // 称重结果，单位为0.01kg
 };
+
+struct TagPrintEvent
+{
+  PodString<20> order_no; // 合同号
+  PodString<20> item_no;  // 项目号
+  PodString<20> bundle_no; // 捆号
+  int count;
+};
 #endif // USERCMD_H
