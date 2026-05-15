@@ -31,7 +31,6 @@ CREATE TABLE public.api_bundle_data_t (
 	bundle_type varchar(3) DEFAULT '',
 	produce_time varchar(14) DEFAULT '',
 	ban_ci varchar(2) DEFAULT '',
-	hr_ban_ci varchar(2) DEFAULT '',
 	product_job_point varchar(4) DEFAULT 'T031',
 	direction_code varchar(4) DEFAULT '',
 	theory_weight int DEFAULT 0,
@@ -45,16 +44,9 @@ CREATE TABLE public.api_bundle_data_t (
 	coupling_type_sign varchar(12) DEFAULT '',
 	pono_id_coupling varchar(8) DEFAULT '',
 	lot_no_thread varchar(7) DEFAULT '',
-	male_pono_id_coupling varchar(6) DEFAULT '',
-	male_lot_no_thread varchar(7) DEFAULT '',
-	female_pono_id_coupling varchar(6) DEFAULT '',
-	female_lot_no_thread varchar(7) DEFAULT '',
-	seam_lot_no varchar(7) DEFAULT '',
 	order_no_old varchar(10) DEFAULT '',
 	toc varchar(19) DEFAULT '',
 	send_flag varchar(1) DEFAULT '0',
-	report_flag varchar(1) DEFAULT '0',
-	del_flag varchar(1) DEFAULT '',
 	gross_weight int DEFAULT 0,
 	end_type varchar(12) DEFAULT '',
 	thread_type varchar(30) DEFAULT '',
@@ -86,7 +78,6 @@ COMMENT ON COLUMN public.api_bundle_data_t.last_flow_no IS '最后管号';
 COMMENT ON COLUMN public.api_bundle_data_t.produce_time IS '生产时间';
 COMMENT ON COLUMN public.api_bundle_data_t.bundle_type IS '管捆状态';
 COMMENT ON COLUMN public.api_bundle_data_t.ban_ci IS '班组';
-COMMENT ON COLUMN public.api_bundle_data_t.end_type IS '管端型式';
 COMMENT ON COLUMN public.api_bundle_data_t.product_job_point IS '作业点代码';
 COMMENT ON COLUMN public.api_bundle_data_t.direction_code IS '去向代码';
 COMMENT ON COLUMN public.api_bundle_data_t.theory_weight IS '理论重量';
@@ -98,40 +89,30 @@ COMMENT ON COLUMN public.api_bundle_data_t.length_eng IS '英制长度';
 COMMENT ON COLUMN public.api_bundle_data_t.mat_text IS '材质正文';
 COMMENT ON COLUMN public.api_bundle_data_t.std_text IS '标准正文';
 COMMENT ON COLUMN public.api_bundle_data_t.sg_text IS '钢级正文';
-COMMENT ON COLUMN public.api_bundle_data_t.thread_type_sign IS '管端类型符号';
-COMMENT ON COLUMN public.api_bundle_data_t.end_type_sign IS '螺纹类型符号';
+COMMENT ON COLUMN public.api_bundle_data_t.thread_type_sign IS '螺纹类型符号';
+COMMENT ON COLUMN public.api_bundle_data_t.end_type IS '管端型式';
+COMMENT ON COLUMN public.api_bundle_data_t.end_type_sign IS '管端类型符号';
 COMMENT ON COLUMN public.api_bundle_data_t.pono_id_coupling IS '接箍炉号';
 COMMENT ON COLUMN public.api_bundle_data_t.lot_no_thread IS '接箍批号';
 COMMENT ON COLUMN public.api_bundle_data_t.thread_type IS '螺纹类型';
 
--- 从class1.cs里找到的对应字段
+-- 画面中没有的字段
 COMMENT ON COLUMN public.api_bundle_data_t.prod_code IS '品名细分类代码';
 COMMENT ON COLUMN public.api_bundle_data_t.prod_cname IS '品名细分类';
 COMMENT ON COLUMN public.api_bundle_data_t.mat_no IS '材质号';
-COMMENT ON COLUMN public.api_bundle_data_t.end_type_code IS '螺纹类型代码';
-COMMENT ON COLUMN public.api_bundle_data_t.thread_type_code IS '管端类型代码';
+COMMENT ON COLUMN public.api_bundle_data_t.end_type_code IS '管端类型代码';
+COMMENT ON COLUMN public.api_bundle_data_t.thread_type_code IS '螺纹类型代码';
 COMMENT ON COLUMN public.api_bundle_data_t.coupling_type_code IS '接箍类型代码';
 COMMENT ON COLUMN public.api_bundle_data_t.coupling_type_sign IS '接箍类型符号';
 COMMENT ON COLUMN public.api_bundle_data_t.std_sg_code IS '标准钢级代码';
-COMMENT ON COLUMN public.api_bundle_data_t.seam_lot_no IS '焊缝试批号';
 COMMENT ON COLUMN public.api_bundle_data_t.order_no_old IS '原合同号';
-COMMENT ON COLUMN public.api_bundle_data_t.toc IS '时间';
+COMMENT ON COLUMN public.api_bundle_data_t.toc IS '修改时间';
 COMMENT ON COLUMN public.api_bundle_data_t.send_flag IS '发送标记';
-
-
--- 完全没找到对应的字段
-COMMENT ON COLUMN public.api_bundle_data_t.hr_ban_ci IS '';
-COMMENT ON COLUMN public.api_bundle_data_t.male_pono_id_coupling IS '';
-COMMENT ON COLUMN public.api_bundle_data_t.male_lot_no_thread IS '';
-COMMENT ON COLUMN public.api_bundle_data_t.female_pono_id_coupling IS '';
-COMMENT ON COLUMN public.api_bundle_data_t.female_lot_no_thread IS '';
-COMMENT ON COLUMN public.api_bundle_data_t.report_flag IS '';
-COMMENT ON COLUMN public.api_bundle_data_t.del_flag IS '删除标志';
 COMMENT ON COLUMN public.api_bundle_data_t.gross_weight IS '毛重';
 COMMENT ON COLUMN public.api_bundle_data_t.diameter_down_ctrl IS '外径下限_内控';
 COMMENT ON COLUMN public.api_bundle_data_t.diameter_up_ctrl IS '外径上限_内控';
 COMMENT ON COLUMN public.api_bundle_data_t.wal_thick_down_ctrl IS '壁厚下限_内控';
 COMMENT ON COLUMN public.api_bundle_data_t.wal_thick_up_ctrl IS '壁厚上限_内控';
 COMMENT ON COLUMN public.api_bundle_data_t.weight_per_meter IS '米重';
-COMMENT ON COLUMN public.api_bundle_data_t.weight_ew IS '称重要求螺纹和接箍EW';
+COMMENT ON COLUMN public.api_bundle_data_t.weight_ew IS 'EW值';
 COMMENT ON COLUMN public.api_bundle_data_t.room_no IS '库位号';

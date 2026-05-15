@@ -255,19 +255,19 @@ bool CBasket::Bundle()
         std_sg_code = row["std_sg_code"].as<string>();                 // 标准钢级代码
         sg_text = row["sg_text"].as<string>();                         // 钢级正文
         std_text = row["std_text"].as<string>();                       // 标准正文
-        end_type_code = row["end_type_code"].as<string>();             // 螺纹类型代码
-        end_type_sign = row["end_type_sign"].as<string>();             // 螺纹类型符号
-        thread_type_code = row["thread_type_code"].as<string>();       // 管端类型代码
-        thread_type_sign = row["thread_type_sign"].as<string>();       // 管端类型符号
+        end_type_code = row["end_type_code"].as<string>();             // 管端类型代码
+        end_type_sign = row["end_type_sign"].as<string>();             // 管端类型符号
+        thread_type_code = row["thread_type_code"].as<string>();       // 螺纹类型代码
+        thread_type_sign = row["thread_type_sign"].as<string>();       // 螺纹类型符号
         coupling_type_code = row["coupling_type_code"].as<string>();   // 接箍类型代码
         coupling_type_sign = row["coupling_type_sign"].as<string>();   // 接箍类型符号
         order_no_old = row["order_no_old"].as<string>();               // 原合同号
-        end_type = row["end_type"].as<string>();                       // 端部类型描述
-        thread_type = row["thread_type"].as<string>();                 // 螺纹类型描述
-        diameter_down_ctrl = row["diameter_down_ctrl"].as<string>();   // 外径下控制线
-        diameter_up_ctrl = row["diameter_up_ctrl"].as<string>();       // 外径上控制线
-        wal_thick_down_ctrl = row["wal_thick_down_ctrl"].as<string>(); // 壁厚下控制线
-        wal_thick_up_ctrl = row["wal_thick_up_ctrl"].as<string>();     // 壁厚上控制线
+        end_type = row["end_type"].as<string>();                       // 管端类型
+        thread_type = row["thread_type"].as<string>();                 // 螺纹类型
+        diameter_down_ctrl = row["diameter_down_ctrl"].as<string>();   // 外径下限_内控
+        diameter_up_ctrl = row["diameter_up_ctrl"].as<string>();       // 外径上限_内控
+        wal_thick_down_ctrl = row["wal_thick_down_ctrl"].as<string>(); // 壁厚下限_内控
+        wal_thick_up_ctrl = row["wal_thick_up_ctrl"].as<string>();     // 壁厚上限_内控
     }
 
     // 计算派生字段
@@ -285,14 +285,14 @@ bool CBasket::Bundle()
     spdlog::info("计算管捆信息: lengthsum={}, weightsum={}, weight_eng={}, length_eng={}, length_from={}, length_to={}, theory_weight={}, gross_weight={}",
                  lengthsum, weightsum, weight_eng, length_eng, length_from, length_to, theory_weight, gross_weight);
 
-    // 2.删除重复流水号的管子数据(按业务键: order_no + item_no + tubeno_ht)
+    // 2.删除重复流水号的管子数据(按业务键: order_no + item_no + flow_no)
     size_t deleted_tube_rows = 0;
     for (const auto &tubePtr : Tubes())
     {
         const auto &tube = *tubePtr;
         const pqxx::result deleteResult = txn.exec(
             "DELETE FROM api_tube_data_t "
-            "WHERE order_no = $1 AND item_no = $2 AND tubeno_ht = $3",
+            "WHERE order_no = $1 AND item_no = $2 AND flow_no = $3",
             pqxx::params{tube.order_no, tube.item_no, tube.flow_no});
         deleted_tube_rows += deleteResult.affected_rows();
     }
@@ -341,21 +341,16 @@ bool CBasket::Bundle()
             const auto &tube = *tubePtr;
             txn.exec(
                 "INSERT INTO api_tube_data_t ("
-                "order_no, item_no, bundle_no, melt_no, lot_no, weight, length, tubeno_ht, "
-                "produce_time, short_flag, ban_ci, tube_no) "
-                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
+                "order_no, item_no, bundle_no, weight, length, flow_no, tube_no"
+                " ) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7)",
                 pqxx::params{
                     tube.order_no,
                     tube.item_no,
                     bundleno,
-                    tube.melt_no,
-                    tube.lot_no,
                     std::round(tube.weight),
                     std::round(tube.length * 1000.0) / 1000.0,
                     tube.flow_no,
-                    produce_time_tube,
-                    "0",
-                    ban_ci_str,
                     tube.tube_no});
         }
         // 更新parameter_set表中的bundle_flow_no，为下一次打捆做准备
@@ -382,6 +377,15 @@ bool CBasket::Bundle()
                      order_no, item_no, bundleno);
 
         // 向PLC发送打捆完成信号
+        unsigned int error;
+        TagPrintEvent a;
+        a.order_no = order_no;
+        a.item_no = item_no;
+        a.bundle_no = bundleno;
+        a.count = tubecount;
+
+        bool ret = writeb(m_ctx->gplatConn, "TAG_PRINT_EVENT", &a, sizeof(a), &error);
+        spdlog::info("向PLC发送打捆完成信号: {}, ret={}, error={}", bundleno, ret, error);
         Clear();
         return true;
     }
