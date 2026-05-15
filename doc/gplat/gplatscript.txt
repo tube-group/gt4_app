@@ -9,3 +9,4 @@ create ADD_TUBE_CMD AddTubeCmd
 create PARAMETER_SET_UPDATED Int32
 create START_WEIGHT_EVENT StartWeightEvent
 create FINISH_WEIGHT_EVENT FinishWeightEvent
+create TAG_PRINT_EVENT TagPrintEvent

@@ -390,7 +390,7 @@ int main(int argc, char* argv[])
 
     // 11. 在主线程直接运行TagPrint（收到退出命令或信号后返回）
     TagPrint tagPrint(ctx);
-    tagPrint.test();
+    tagPrint.Run();
 
     // 资源清理
     ctx.Cleanup();

@@ -54,7 +54,7 @@ namespace
         std::string meltNo;
         std::string zoneNo;
         double diameter = 0.0;
-        double walThick = 0.0;
+        double wallThickness = 0.0;
         int tube = 0;
         int weight = 0;
         int grossweight = 0;
@@ -183,6 +183,17 @@ namespace
         return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
     }
 
+    std::string BinarySliceToString(const std::vector<std::uint8_t> &buffer, std::size_t offset, std::size_t length)
+    {
+        if (offset >= buffer.size() || length == 0)
+        {
+            return std::string();
+        }
+
+        const std::size_t actualLength = std::min(length, buffer.size() - offset);
+        return std::string(reinterpret_cast<const char *>(buffer.data() + offset), actualLength);
+    }
+
     void ReplaceFirst(std::vector<std::uint8_t> &buffer, const std::string &oldValue, const std::string &newValue)
     {
         const std::vector<std::uint8_t> oldBytes(oldValue.begin(), oldValue.end());
@@ -208,7 +219,7 @@ namespace
         qr << bundle.bundleNo << ' '
            << bundle.orderNo << ' '
            << bundle.sgText << ' '
-           << FormatPadded(bundle.diameter, 6, 2) << '*' << FormatFixed(bundle.walThick, 2) << ' '
+           << FormatPadded(bundle.diameter, 6, 2) << '*' << FormatFixed(bundle.wallThickness, 2) << ' '
            << bundle.meltNo << ' '
            << bundle.lotNo << ' '
            << FormatPadded(bundle.weight, 4, 0) << ' '
@@ -316,7 +327,7 @@ namespace
         ReplaceFirst(buffer, "order_no", bundle.orderNo);
         ReplaceFirst(buffer, "std_text", bundle.stdText);
         ReplaceFirst(buffer, "sg_text", bundle.sgText);
-        ReplaceFirst(buffer, "guige", FormatFixed(bundle.diameter, 2) + " mm × " + FormatFixed(bundle.walThick, 2) + " mm");
+        ReplaceFirst(buffer, "guige", FormatFixed(bundle.diameter, 2) + " mm × " + FormatFixed(bundle.wallThickness, 2) + " mm");
         ReplaceFirst(buffer, "melt_no", bundle.meltNo);
         ReplaceFirst(buffer, "lot_no", bundle.lotNo);
         ReplaceFirst(buffer, "weight", std::to_string(bundle.weight) + " kg");
@@ -346,7 +357,7 @@ namespace
         ReplaceFirst(buffer, "order_no", bundle.orderNo);
         ReplaceFirst(buffer, "std_text", bundle.stdText);
         ReplaceFirst(buffer, "sg_text", bundle.sgText);
-        ReplaceFirst(buffer, "guige", FormatFixed(bundle.diameter, 2) + " mm × " + FormatFixed(bundle.walThick, 2) + " mm");
+        ReplaceFirst(buffer, "guige", FormatFixed(bundle.diameter, 2) + " mm × " + FormatFixed(bundle.wallThickness, 2) + " mm");
         ReplaceFirst(buffer, "melt_no", bundle.meltNo);
         ReplaceFirst(buffer, "lot_no", bundle.lotNo);
         ReplaceFirst(buffer, "weight", std::to_string(bundle.weight) + " kg");
@@ -414,9 +425,14 @@ namespace
         }
 
         // return ConnectAndSend(ctx.printerIp, ctx.printerPort, payload);
-        spdlog::info("构建打印数据成功，准备发送到打印机 {}:{}", ctx.printerIp, ctx.printerPort);
+
         spdlog::info("打印数据大小: {} 字节", payload.size());
-        spdlog::info("打印数据预览:\n{}", std::string(payload.begin(), payload.end()));
+        constexpr std::size_t kTailBytes = 806;
+        spdlog::info("打印数据预览(结尾{}字节):\n{}",
+                     std::min(kTailBytes, payload.size()),
+                     BinarySliceToString(payload, payload.size() > kTailBytes ? payload.size() - kTailBytes : 0,
+                                         std::min(kTailBytes, payload.size())));
+
         spdlog::info("检测到打印请求，暂不执行实际发送");
         return true;
     }
@@ -439,7 +455,7 @@ namespace
             pqxx::work tx(*ctx.pgConn);
 
             const auto bundleRows = tx.exec(
-                "SELECT rl_no, lot_no, melt_no, product_job_point, diameter, wal_thick, tube, weight, gross_weight, "
+                "SELECT roll_no, lot_no, melt_no, product_job_point, diameter, wall_thickness, tube, weight, gross_weight, "
                 "length_to, length_from, total_length, pono_id_coupling, lot_no_thread, ban_ci, produce_time, mat_no, sg_text, "
                 "mat_text, std_text, thread_type_sign, bundle_type, direction_code, room_no "
                 "FROM api_bundle_data_t WHERE order_no = $1 AND bundle_no = $2 AND item_no = $3",
@@ -459,12 +475,12 @@ namespace
             bundle.count = count;
 
             const auto &bundleRow = bundleRows.front();
-            bundle.rollNo = RowString(bundleRow, "rl_no");
+            bundle.rollNo = RowString(bundleRow, "roll_no");
             bundle.lotNo = RowString(bundleRow, "lot_no");
             bundle.meltNo = RowString(bundleRow, "melt_no");
             bundle.zoneNo = RowString(bundleRow, "product_job_point");
             bundle.diameter = RowNumber<double>(bundleRow, "diameter", 0.0);
-            bundle.walThick = RowNumber<double>(bundleRow, "wal_thick", 0.0);
+            bundle.wallThickness = RowNumber<double>(bundleRow, "wall_thickness", 0.0);
             bundle.tube = RowNumber<int>(bundleRow, "tube", 0);
             bundle.weight = static_cast<int>(std::lround(RowNumber<double>(bundleRow, "weight", 0.0)));
             bundle.grossweight = RowNumber<int>(bundleRow, "gross_weight", 0);
@@ -545,7 +561,6 @@ TagPrint::TagPrint(TagPrintContext &ctx) : ctx_(ctx)
 void TagPrint::Run()
 {
     spdlog::info("标签打印程序启动");
-    ctx_.running = true;
 
     try
     {
@@ -559,7 +574,7 @@ void TagPrint::Run()
         throw; // 让Run函数的调用者决定如何处理订阅失败的情况
     }
 
-    while (ctx_.running.load())
+    while (g_running)
     {
         unsigned int err = 0;
         char value[1024] = {0};
@@ -570,7 +585,7 @@ void TagPrint::Run()
             bool ret = waitpostdata(ctx_.gplatConn, tagname, value, 1024, -1, &err);
             if (!ret)
             {
-                if (!ctx_.running.load())
+                if (!g_running)
                 {
                     break;
                 }
@@ -656,7 +671,6 @@ void TagPrint::Run()
         }
     }
 
-    ctx_.running = false;
     spdlog::info("标签打印程序结束");
 }
 
@@ -668,7 +682,7 @@ void TagPrint::test()
     TagPrintEvent tagPrint;
     tagPrint.order_no = "G2A2201255";
     tagPrint.item_no = "0";
-    tagPrint.bundle_no = "1016274";
+    tagPrint.bundle_no = "1016284";
     tagPrint.count = 5;
 
     auto bundle = LoadBundleData(ctx_, tagPrint);
