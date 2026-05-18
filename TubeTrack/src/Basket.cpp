@@ -158,8 +158,8 @@ bool CBasket::Bundle()
         spdlog::info("统计管子: roll_no={}", tube.roll_no);
     }
 
-    // 查询班次————————暂时取固定值：甲班，后续需要补充
-    int ban_ci = 1; // 当前班次
+    // 查询班次————————暂时取固定值：甲班，后续需要补充 (早/晚班+甲/乙/丙/丁班)
+    int ban_ci = 11; // 当前班次
 
     // 获取当前日期时间
     struct tm t;
