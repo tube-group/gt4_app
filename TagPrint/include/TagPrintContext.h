@@ -17,6 +17,7 @@ struct TagPrintContext
     std::unique_ptr<pqxx::connection> pgConn;
     std::string printerIp;
     int printerPort = 0;
+    std::string printerTextEncoding = "GB18030";
 
     // 统一初始化入口。
     // 当前留空，便于后续把分散初始化逻辑收敛到上下文层。

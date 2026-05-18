@@ -13,6 +13,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <iconv.h>
 #include <optional>
 #include <regex>
 #include <sstream>
@@ -95,6 +96,91 @@ namespace
         std::transform(value.begin(), value.end(), value.begin(), [](unsigned char ch)
                        { return static_cast<char>(std::toupper(ch)); });
         return value;
+    }
+
+    bool IsAscii(const std::string &value)
+    {
+        return std::all_of(value.begin(), value.end(), [](unsigned char ch)
+                           { return ch <= 0x7F; });
+    }
+
+    std::string NormalizeEncodingName(std::string value)
+    {
+        value = Trim(ToUpperCopy(value));
+        if (value.empty() || value == "UTF8")
+        {
+            return "UTF-8";
+        }
+        if (value == "GBK" || value == "GB2312" || value == "CP936")
+        {
+            return "GB18030";
+        }
+        return value;
+    }
+
+    std::optional<std::string> ConvertEncoding(const std::string &input,
+                                               const std::string &fromEncoding,
+                                               const std::string &toEncoding)
+    {
+        iconv_t cd = iconv_open(toEncoding.c_str(), fromEncoding.c_str());
+        if (cd == reinterpret_cast<iconv_t>(-1))
+        {
+            return std::nullopt;
+        }
+
+        std::size_t inLeft = input.size();
+        std::size_t outLeft = std::max<std::size_t>(64, input.size() * 4 + 16);
+        std::string output(outLeft, '\0');
+
+        char *inBuf = const_cast<char *>(input.data());
+        char *outBuf = output.data();
+
+        while (true)
+        {
+            std::size_t rc = iconv(cd, &inBuf, &inLeft, &outBuf, &outLeft);
+            if (rc != static_cast<std::size_t>(-1))
+            {
+                break;
+            }
+
+            if (errno == E2BIG)
+            {
+                const std::size_t used = output.size() - outLeft;
+                output.resize(output.size() * 2);
+                outBuf = output.data() + static_cast<std::ptrdiff_t>(used);
+                outLeft = output.size() - used;
+                continue;
+            }
+
+            iconv_close(cd);
+            return std::nullopt;
+        }
+
+        iconv_close(cd);
+        output.resize(output.size() - outLeft);
+        return output;
+    }
+
+    std::string EncodeForPrinter(const std::string &value, const std::string &printerEncoding)
+    {
+        if (value.empty() || IsAscii(value))
+        {
+            return value;
+        }
+
+        const std::string normalizedEncoding = NormalizeEncodingName(printerEncoding);
+        if (normalizedEncoding == "UTF-8")
+        {
+            return value;
+        }
+
+        auto converted = ConvertEncoding(value, "UTF-8", normalizedEncoding);
+        if (!converted)
+        {
+            spdlog::warn("文本编码转换失败，保持原始字节发送: target_encoding={}", normalizedEncoding);
+            return value;
+        }
+        return *converted;
     }
 
     std::string RowString(const pqxx::row &row, const char *field)
@@ -185,21 +271,14 @@ namespace
         return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
     }
 
-    std::string BinarySliceToString(const std::vector<std::uint8_t> &buffer, std::size_t offset, std::size_t length)
+    void ReplaceFirst(std::vector<std::uint8_t> &buffer,
+                      const std::string &oldValue,
+                      const std::string &newValue,
+                      const std::string &printerEncoding)
     {
-        if (offset >= buffer.size() || length == 0)
-        {
-            return std::string();
-        }
-
-        const std::size_t actualLength = std::min(length, buffer.size() - offset);
-        return std::string(reinterpret_cast<const char *>(buffer.data() + offset), actualLength);
-    }
-
-    void ReplaceFirst(std::vector<std::uint8_t> &buffer, const std::string &oldValue, const std::string &newValue)
-    {
+        const std::string encodedValue = EncodeForPrinter(newValue, printerEncoding);
         const std::vector<std::uint8_t> oldBytes(oldValue.begin(), oldValue.end());
-        const std::vector<std::uint8_t> newBytes(newValue.begin(), newValue.end());
+        const std::vector<std::uint8_t> newBytes(encodedValue.begin(), encodedValue.end());
         const auto it = std::search(buffer.begin(), buffer.end(), oldBytes.begin(), oldBytes.end());
         if (it == buffer.end())
         {
@@ -322,85 +401,59 @@ namespace
         return true;
     }
 
-    [[maybe_unused]] std::vector<std::uint8_t> BuildWastePayload(const fs::path &templateDir, const BundleDataFull &bundle)
-    {
-        auto buffer = ReadBinaryFile(templateDir / "废管格式.prn");
-        ReplaceFirst(buffer, "bundle_no", bundle.bundleNo);
-        ReplaceFirst(buffer, "order_no", bundle.orderNo);
-        ReplaceFirst(buffer, "std_text", bundle.stdText);
-        ReplaceFirst(buffer, "sg_text", bundle.sgText);
-        ReplaceFirst(buffer, "guige", FormatFixed(bundle.diameter, 2) + " mm × " + FormatFixed(bundle.wallThickness, 2) + " mm");
-        ReplaceFirst(buffer, "melt_no", bundle.meltNo);
-        ReplaceFirst(buffer, "lot_no", bundle.lotNo);
-        ReplaceFirst(buffer, "weight", std::to_string(bundle.weight) + " kg");
-        ReplaceFirst(buffer, "tube", std::to_string(bundle.tube));
-        ReplaceFirst(buffer, "changdu", FormatFixed(bundle.lengthFrom, 2) + " - " + FormatFixed(bundle.lengthTo, 2) + " m");
-        ReplaceFirst(buffer, "total_length", FormatFixed(bundle.totalLength, 2) + " m");
-        ReplaceFirst(buffer, "product_time", FormatDateCn(bundle.productDate));
-        ReplaceFirst(buffer, "banbie", ResolveBanciText(bundle.banci));
-        ReplaceFirst(buffer, "tiaoxingma", bundle.bundleNo);
-        ReplaceFirst(buffer, "bundle_type", bundle.bundleType);
-        ReplaceFirst(buffer, "direction_code", bundle.directionCode);
-        ReplaceFirst(buffer, "room_no", bundle.roomNo);
-        ReplaceFirst(buffer, "0000C5201", "0002C5201");
-
-        if (bundle.count >= 2 && bundle.count <= 4)
-        {
-            ReplaceFirst(buffer, "XS;I,0001", "XS;I,000" + std::to_string(bundle.count));
-        }
-
-        return buffer;
-    }
-
-    std::vector<std::uint8_t> BuildFixedPayload(const fs::path &templateDir, const BundleDataFull &bundle)
+    std::vector<std::uint8_t> BuildFixedPayload(const fs::path &templateDir,
+                                                const BundleDataFull &bundle,
+                                                const std::string &printerEncoding)
     {
         auto buffer = ReadBinaryFile(templateDir / "固定格式.prn");
-        ReplaceFirst(buffer, "bundle_no", bundle.bundleNo);
-        ReplaceFirst(buffer, "order_no", bundle.orderNo);
-        ReplaceFirst(buffer, "std_text", bundle.stdText);
-        ReplaceFirst(buffer, "sg_text", bundle.sgText);
-        ReplaceFirst(buffer, "guige", FormatFixed(bundle.diameter, 2) + " mm × " + FormatFixed(bundle.wallThickness, 2) + " mm");
-        ReplaceFirst(buffer, "melt_no", bundle.meltNo);
-        ReplaceFirst(buffer, "lot_no", bundle.lotNo);
-        ReplaceFirst(buffer, "weight", std::to_string(bundle.weight) + " kg");
-        ReplaceFirst(buffer, "tube", std::to_string(bundle.tube));
-        ReplaceFirst(buffer, "changdu", FormatFixed(bundle.lengthFrom, 2) + " - " + FormatFixed(bundle.lengthTo, 2) + " m");
-        ReplaceFirst(buffer, "total_length", FormatFixed(bundle.totalLength, 2) + " m");
-        ReplaceFirst(buffer, "product_time", FormatDateCn(bundle.productDate));
-        ReplaceFirst(buffer, "banbie", ResolveBanciText(bundle.banci));
-        ReplaceFirst(buffer, "tiaoxingma", bundle.bundleNo);
-        ReplaceFirst(buffer, "kx_text", bundle.kxText);
-        ReplaceFirst(buffer, "erweima|", BuildQrText(bundle));
-        ReplaceFirst(buffer, "0000C5201", "0002C5201");
+        ReplaceFirst(buffer, "bundle_no", bundle.bundleNo, printerEncoding);
+        ReplaceFirst(buffer, "order_no", bundle.orderNo, printerEncoding);
+        ReplaceFirst(buffer, "std_text", bundle.stdText, printerEncoding);
+        ReplaceFirst(buffer, "sg_text", bundle.sgText, printerEncoding);
+        ReplaceFirst(buffer, "guige", FormatFixed(bundle.diameter, 2) + " mm × " + FormatFixed(bundle.wallThickness, 2) + " mm", printerEncoding);
+        ReplaceFirst(buffer, "melt_no", bundle.meltNo, printerEncoding);
+        ReplaceFirst(buffer, "lot_no", bundle.lotNo, printerEncoding);
+        ReplaceFirst(buffer, "weight", std::to_string(bundle.weight) + " kg", printerEncoding);
+        ReplaceFirst(buffer, "tube", std::to_string(bundle.tube), printerEncoding);
+        ReplaceFirst(buffer, "changdu", FormatFixed(bundle.lengthFrom, 2) + " - " + FormatFixed(bundle.lengthTo, 2) + " m", printerEncoding);
+        ReplaceFirst(buffer, "total_length", FormatFixed(bundle.totalLength, 2) + " m", printerEncoding);
+        ReplaceFirst(buffer, "product_time", FormatDateCn(bundle.productDate), printerEncoding);
+        ReplaceFirst(buffer, "banbie", ResolveBanciText(bundle.banci), printerEncoding);
+        ReplaceFirst(buffer, "tiaoxingma", bundle.bundleNo, printerEncoding);
+        ReplaceFirst(buffer, "kx_text", bundle.kxText, printerEncoding);
+        ReplaceFirst(buffer, "erweima|", BuildQrText(bundle), printerEncoding);
+        ReplaceFirst(buffer, "0000C5201", "0002C5201", printerEncoding);
 
         if (bundle.count >= 2 && bundle.count <= 4)
         {
-            ReplaceFirst(buffer, "XS;I,0001", "XS;I,000" + std::to_string(bundle.count));
+            ReplaceFirst(buffer, "XS;I,0001", "XS;I,000" + std::to_string(bundle.count), printerEncoding);
         }
 
         return buffer;
     }
 
-    std::vector<std::uint8_t> BuildFreePayload(const fs::path &templateDir, BundleDataFull bundle)
+    std::vector<std::uint8_t> BuildFreePayload(const fs::path &templateDir,
+                                               BundleDataFull bundle,
+                                               const std::string &printerEncoding)
     {
         for (auto &line : bundle.labelReqManual)
         {
             ApplyManualTokens(line, bundle);
         }
 
-        auto buffer = ReadBinaryFile(templateDir / "自由格式1.prn");
+        auto buffer = ReadBinaryFile(templateDir / "自由格式.prn");
         for (std::size_t i = 0; i < bundle.labelReqManual.size(); ++i)
         {
-            ReplaceFirst(buffer, "line" + std::to_string(i + 1), bundle.labelReqManual[i]);
+            ReplaceFirst(buffer, "line" + std::to_string(i + 1), bundle.labelReqManual[i], printerEncoding);
         }
-        ReplaceFirst(buffer, "tiaoxingma", bundle.bundleNo + "(" + bundle.orderNo + ")");
-        ReplaceFirst(buffer, "information", bundle.bundleNo + "(" + bundle.orderNo + ")");
-        ReplaceFirst(buffer, "erweima|", BuildQrText(bundle));
-        ReplaceFirst(buffer, "0000C5201", "0002C5201");
+        ReplaceFirst(buffer, "tiaoxingma", bundle.bundleNo + "(" + bundle.orderNo + ")", printerEncoding);
+        ReplaceFirst(buffer, "information", bundle.bundleNo + "(" + bundle.orderNo + ")", printerEncoding);
+        ReplaceFirst(buffer, "erweima|", BuildQrText(bundle), printerEncoding);
+        ReplaceFirst(buffer, "0000C5201", "0002C5201", printerEncoding);
 
         if (bundle.count >= 2 && bundle.count <= 4)
         {
-            ReplaceFirst(buffer, "XS;I,0001", "XS;I,000" + std::to_string(bundle.count));
+            ReplaceFirst(buffer, "XS;I,0001", "XS;I,000" + std::to_string(bundle.count), printerEncoding);
         }
 
         return buffer;
@@ -409,34 +462,29 @@ namespace
     bool PrintTag(TagPrintContext &ctx, const BundleDataFull &bundle)
     {
         const fs::path templateDir = FindTemplateDirectory();
+        const std::string printerEncoding = ctx.printerTextEncoding.empty() ? "GB18030" : ctx.printerTextEncoding;
         std::vector<std::uint8_t> payload;
 
         if (!bundle.bundleNo.empty() && bundle.bundleNo.front() == '9')
         {
-            // payload = BuildWastePayload(templateDir, bundle);
             spdlog::info("检测到废管标签，暂不执行打印");
             return true;
         }
         else if (bundle.emType == 1)
         {
-            payload = BuildFreePayload(templateDir, bundle);
+            payload = BuildFreePayload(templateDir, bundle, printerEncoding);
         }
         else
         {
-            payload = BuildFixedPayload(templateDir, bundle);
+            payload = BuildFixedPayload(templateDir, bundle, printerEncoding);
         }
 
-        // return ConnectAndSend(ctx.printerIp, ctx.printerPort, payload);
+        return ConnectAndSend(ctx.printerIp, ctx.printerPort, payload);
 
-        spdlog::info("打印数据大小: {} 字节", payload.size());
-        constexpr std::size_t kTailBytes = 806;
-        spdlog::info("打印数据预览(结尾{}字节):\n{}",
-                     std::min(kTailBytes, payload.size()),
-                     BinarySliceToString(payload, payload.size() > kTailBytes ? payload.size() - kTailBytes : 0,
-                                         std::min(kTailBytes, payload.size())));
-
-        spdlog::info("检测到打印请求，暂不执行实际发送");
-        return true;
+        // spdlog::info("打印数据大小: {} 字节", payload.size());
+        // constexpr std::size_t kTailBytes = 806;
+        // spdlog::info("检测到打印请求，暂不执行实际发送");
+        // return true;
     }
 
     std::optional<BundleDataFull> LoadBundleData(TagPrintContext &ctx, const TagPrintEvent &tagPrint)
