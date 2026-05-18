@@ -72,6 +72,7 @@ namespace
         std::string kxText;
         int labLengthType = 0;
         int labWeightType = 0;
+        int manualLengthPrecision = 2;
         int emType = 0;
         std::array<std::string, 8> labelReqManual;
         int count = 1;
@@ -168,7 +169,8 @@ namespace
         ReplaceTokenIgnoreCase(line, "%G", std::to_string(bundle.tube));
         ReplaceTokenIgnoreCase(line, "%M", bundle.meltNo);
         ReplaceTokenIgnoreCase(line, "%S", bundle.lotNo);
-        ReplaceTokenIgnoreCase(line, "%L", FormatFixed(bundle.totalLength, 2));
+        const int lengthPrecision = std::clamp(bundle.manualLengthPrecision, 0, 6);
+        ReplaceTokenIgnoreCase(line, "%L", FormatFixed(bundle.totalLength, lengthPrecision));
         ReplaceTokenIgnoreCase(line, "%W", std::to_string(bundle.weight));
         ReplaceTokenIgnoreCase(line, "%T", std::to_string(bundle.grossweight));
     }
@@ -386,7 +388,7 @@ namespace
             ApplyManualTokens(line, bundle);
         }
 
-        auto buffer = ReadBinaryFile(templateDir / "自由格式.prn");
+        auto buffer = ReadBinaryFile(templateDir / "自由格式1.prn");
         for (std::size_t i = 0; i < bundle.labelReqManual.size(); ++i)
         {
             ReplaceFirst(buffer, "line" + std::to_string(i + 1), bundle.labelReqManual[i]);
@@ -538,6 +540,22 @@ namespace
                 }
             }
 
+            const auto parameterRows = tx.exec(
+                "SELECT label_length_type FROM parameter_set WHERE order_no = $1 AND item_no = $2 LIMIT 1",
+                pqxx::params{orderNo, itemNo});
+
+            if (!parameterRows.empty())
+            {
+                bundle.manualLengthPrecision = RowNumber<int>(parameterRows.front(), "label_length_type", 2);
+            }
+            else
+            {
+                spdlog::warn("parameter_set未找到标签长度格式，使用默认小数位: order_no={}, item_no={}, precision={}",
+                             orderNo,
+                             itemNo,
+                             bundle.manualLengthPrecision);
+            }
+
             tx.commit();
             return bundle;
         }
@@ -682,7 +700,7 @@ void TagPrint::test()
     TagPrintEvent tagPrint;
     tagPrint.order_no = "G2A2201255";
     tagPrint.item_no = "0";
-    tagPrint.bundle_no = "1016284";
+    tagPrint.bundle_no = "1016285";
     tagPrint.count = 5;
 
     auto bundle = LoadBundleData(ctx_, tagPrint);
