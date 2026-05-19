@@ -69,6 +69,11 @@ bool moveTubeBetween(CPositionBase &source,
 
 void workThread(TubeTrackContext &ctx)
 {
+    // 测试喷印功能
+    float simulatedLength = 10.0f; // 模拟测长值
+    spdlog::info("Handling LENGTH_FINISH: Simulated MEA_LEN={}", simulatedLength);
+    ctx.sprayPos.HandleLengthReady(simulatedLength);
+
     // // // 手工模拟管子的完整流程。
 
     // // 第 0 步：步进梁在基位
@@ -164,6 +169,7 @@ void workThread(TubeTrackContext &ctx)
     subscribe(ctx.gplatConn, "SET_CURRENT_CONTRACT_CMD", &err);
     subscribe(ctx.gplatConn, "ADD_TUBE_CMD", &err);
     subscribe(ctx.gplatConn, "FINISH_WEIGHT_EVENT", &err);
+    subscribe(ctx.gplatConn, "LENGTH_FINISH", &err);// 订阅测长完成事件
 
     // 主循环：等待gPlat数据，处理TAG更新
     while (g_running)
@@ -264,6 +270,31 @@ void workThread(TubeTrackContext &ctx)
                 int weight = read_value<int>(value);
                 // ctx.weightPos.SetTubeWeight(weight);
                 ctx.weightPos.SetTubeWeight(1001);
+            }
+            else if (tagname == "LENGTH_FINISH")
+            {
+                // 测长完成，读取测长实际值并交给喷印工位处理
+                bool lengthFinish = read_value<bool>(value);
+                if (!lengthFinish)
+                {
+                    spdlog::debug("LENGTH_FINISH reset to false, ignore");
+                    continue;
+                }
+
+                float meaLen = 0.0f;
+                unsigned int err = 0;
+                if (!readb(ctx.gplatConn, "MEA_LEN", &meaLen, sizeof(meaLen), &err))
+                {
+                    spdlog::warn("Read MEA_LEN failed, err={}", err);
+                    continue;
+                }
+
+                spdlog::info("Handling LENGTH_FINISH: MEA_LEN={}", meaLen);
+                ctx.sprayPos.HandleLengthReady(meaLen);
+            }
+            else
+            {
+                spdlog::warn("Unhandled tag: {}, value: {}", tagname, value);
             }
         }
         catch (const std::exception &ex)

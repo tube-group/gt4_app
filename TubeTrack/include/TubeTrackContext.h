@@ -51,6 +51,7 @@ struct TubeTrackContext {
         circlePos.SetContext(*this);
         scraptRoller.SetContext(*this);
         backBuffer.SetContext(*this);
+        sprayPos.SetBackBuffer(&backBuffer);
         scrapt.SetContext(*this);
         basket.SetContext(*this);
         walkingBeam.SetContext(*this);

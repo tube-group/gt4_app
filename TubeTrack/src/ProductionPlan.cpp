@@ -150,7 +150,7 @@ bool CProductionPlan::ApplyCurrentContract(const string &orderNo, const string &
         // 根据合同号、项目号查询批号、外径、壁厚等生产参数
         pqxx::work txn(*m_ctx->pgConn);
         const pqxx::result queryResult = txn.exec(
-            "SELECT roll_no, diameter, wall_thickness FROM api_order_data_t "
+            "SELECT roll_no, diameter, wall_thickness, weight_per_meter, weight_ew FROM api_order_data_t "
             "WHERE order_no = $1 AND item_no = $2 LIMIT 1",
             pqxx::params{orderNo, itemNo});
 
@@ -164,9 +164,11 @@ bool CProductionPlan::ApplyCurrentContract(const string &orderNo, const string &
         const std::string rollNo = queryResult[0]["roll_no"].as<std::string>("");
         const double Diameter = queryResult[0]["diameter"].as<double>(0.0);
         const double wallThickness = queryResult[0]["wall_thickness"].as<double>(0.0);
+        const double weightPerMeter = queryResult[0]["weight_per_meter"].as<double>(0.0);
+        const double weightEw = queryResult[0]["weight_ew"].as<double>(0.0);
         const auto updatedRows = txn.exec(
-                                        "UPDATE parameter_set SET order_no = $1, item_no = $2, roll_no = $3, diameter = $4, wall_thickness = $5",
-                                        pqxx::params{orderNo, itemNo, rollNo, Diameter, wallThickness})
+                                        "UPDATE parameter_set SET order_no = $1, item_no = $2, roll_no = $3, diameter = $4, wall_thickness = $5, weight_per_meter = $6, weight_ew = $7",
+                                        pqxx::params{orderNo, itemNo, rollNo, Diameter, wallThickness, weightPerMeter, weightEw})
                                      .affected_rows();
 
         if (updatedRows == 0)
