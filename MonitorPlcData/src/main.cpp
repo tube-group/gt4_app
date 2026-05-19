@@ -316,25 +316,25 @@ static std::vector<TagDefinition> buildStaticTags()
         {"CIRCLE_POS_ON", "BOOL", "S7_GT4_SGAO"},            // 色环工位占用信号 CIR_POS
         {"LENGTH_MEASURE_FINISH", "BOOL", "S7_GT4_SGAO"},        // 来自PLC的测长完成信号 LEN_MEA_COMP
         {"WB_BASE", "BOOL", "S7_GT4_SGAO"},               // 测量点步进梁原位信号
-        {"LEN_ENABLE", "BOOL", "S7_GT4_SGAO"},            // 测长允许
+        {"LENGTH_ENABLE", "BOOL", "S7_GT4_SGAO"},            // 测长允许
         {"START_CALIB", "BOOL", "S7_GT4_SGAO"},           // 标定开始
-        {"WEI_ENABLE", "BOOL", "S7_GT4_SGAO"},            // 称重允许
-        {"WEI_FINISH", "BOOL", "S7_GT4_SGAO"},            // 称重结束
-        {"PRT_ENABLE", "BOOL", "S7_GT4_SGAO"},            // 压印允许
-        {"SPY_ENABLE", "BOOL", "S7_GT4_SGAO"},            // 喷印允许
-        {"CIR_ENABLE", "BOOL", "S7_GT4_SGAO"},            // 色环允许
-        {"CIR1_ENABLE", "BOOL", "S7_GT4_SGAO"},           // 1号色环允许
-        {"CIR2_ENABLE", "BOOL", "S7_GT4_SGAO"},           // 2号色环允许
-        {"CIR3_ENABLE", "BOOL", "S7_GT4_SGAO"},           // 3号色环允许
-        {"CIR4_ENABLE", "BOOL", "S7_GT4_SGAO"},           // 4号色环允许
-        {"CIR5_ENABLE", "BOOL", "S7_GT4_SGAO"},           // 5号色环允许
+        {"WEIGHT_ENABLE", "BOOL", "S7_GT4_SGAO"},            // 称重允许
+        {"WEIGHT_FINISH", "BOOL", "S7_GT4_SGAO"},            // 称重结束
+        {"CARVE_ENABLE", "BOOL", "S7_GT4_SGAO"},            // 压印允许
+        {"SPRAY_ENABLE", "BOOL", "S7_GT4_SGAO"},            // 喷印允许
+        {"CIRCLE_ENABLE", "BOOL", "S7_GT4_SGAO"},            // 色环允许
+        {"CIRCLE1_ENABLE", "BOOL", "S7_GT4_SGAO"},           // 1号色环允许
+        {"CIRCLE2_ENABLE", "BOOL", "S7_GT4_SGAO"},           // 2号色环允许
+        {"CIRCLE3_ENABLE", "BOOL", "S7_GT4_SGAO"},           // 3号色环允许
+        {"CIRCLE4_ENABLE", "BOOL", "S7_GT4_SGAO"},           // 4号色环允许
+        {"CIRCLE5_ENABLE", "BOOL", "S7_GT4_SGAO"},           // 5号色环允许
         {"WB_RELEASE", "BOOL", "S7_GT4_SGAO"},            // 步进梁释放信号连锁，为0时才允许料流修改 WB_RELEASE
-        {"LEN_POS_RDY", "BOOL", "S7_GT4_SGAO"},           // 测长工位备妥
-        {"WEI_POS_RDY", "BOOL", "S7_GT4_SGAO"},           // 称重工位备妥
-        {"PRT_POS_RDY", "BOOL", "S7_GT4_SGAO"},           // 压印工位备妥
-        {"SPY_POS_RDY", "BOOL", "S7_GT4_SGAO"},           // 喷涂工位备妥
-        {"CIR_POS_RDY", "BOOL", "S7_GT4_SGAO"},           // 色环工位备妥
-        {"SCR_ROLLER_RDY", "BOOL", "S7_GT4_SGAO"},        // 出料工位备妥
+        {"ALIGN_POS_RDY", "BOOL", "S7_GT4_SGAO"},           // 对齐工位备妥
+        {"WEIGHT_POS_RDY", "BOOL", "S7_GT4_SGAO"},           // 称重工位备妥
+        {"CARVE_POS_RDY", "BOOL", "S7_GT4_SGAO"},           // 压印工位备妥
+        {"SPRAY_POS_RDY", "BOOL", "S7_GT4_SGAO"},           // 喷涂工位备妥
+        {"CIRCLE_POS_RDY", "BOOL", "S7_GT4_SGAO"},           // 色环工位备妥
+        {"SCRAPT_ROLLER_POS_RDY", "BOOL", "S7_GT4_SGAO"},        // 出料工位备妥
         {"WB_RDY", "BOOL", "S7_GT4_SGAO"},                // 步进梁备妥
         {"SAM_LEN", "REAL", "S7_GT4_SGAO"},               // 样管长度
         {"TUBE_DIA", "REAL", "S7_GT4_SGAO"},              // 钢管外径

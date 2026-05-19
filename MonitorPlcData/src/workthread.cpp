@@ -162,7 +162,7 @@ namespace
         return formatValue(tag, rawValue.data());
     }
     // --------启动时同步读取所有点位当前值到Redis，确保数据一致性---------
-    void syncAllTagsToRedis(MonitorPlcDataContext &ctx)
+    void syncAllTagsToRedis(MonitorPlcDataContext &ctx, const AppConfig &app)
     {
         unsigned int error = 0;
         std::size_t syncedCount = 0;// 统计成功同步的点位数量
@@ -174,6 +174,7 @@ namespace
                 error = 0;
                 const std::string redisValue = readCurrentValue(ctx, tag, error);
                 ctx.redis->set(tag.name, redisValue);
+                ctx.redis->publish(app.redisChannel, tag.name);
                 ++syncedCount;
             }
             catch (const std::exception &ex)
@@ -200,7 +201,7 @@ namespace
         {
             if (initGplat(ctx) && subscribeAllTags(ctx))
             {
-                syncAllTagsToRedis(ctx);// 重连成功后立即同步当前点位值到Redis，确保数据一致性
+                syncAllTagsToRedis(ctx, app);// 重连成功后立即同步当前点位值到Redis，确保数据一致性
                 return true;
             }
 
@@ -223,7 +224,7 @@ void workThread(MonitorPlcDataContext &ctx, const AppConfig &app, volatile sig_a
         }
     }
 
-    syncAllTagsToRedis(ctx);// 启动时同步读取所有点位当前值到Redis，确保数据一致性
+    syncAllTagsToRedis(ctx, app);// 启动时同步读取所有点位当前值到Redis，确保数据一致性
 
     unsigned int error = 0; // 用于接收错误码
     char value[4096] = {0}; // 接收缓冲区
