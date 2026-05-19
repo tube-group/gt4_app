@@ -200,6 +200,7 @@ bool CBasket::Bundle()
                      order_no,
                      item_no,
                      bundleno);
+        break; // 这里先跳出循环，后续可以改为自动生成新的管捆号（比如流水号加1）
     }
     const pqxx::result orderResult = txn.exec(
         "SELECT weight_per_meter, weight_ew, diameter, wall_thickness, "
@@ -382,7 +383,7 @@ bool CBasket::Bundle()
         a.order_no = order_no;
         a.item_no = item_no;
         a.bundle_no = bundleno;
-        a.count = tubecount;
+        a.count = 2;
 
         bool ret = writeb(m_ctx->gplatConn, "TAG_PRINT_EVENT", &a, sizeof(a), &error);
         spdlog::info("向PLC发送打捆完成信号: {}, ret={}, error={}", bundleno, ret, error);

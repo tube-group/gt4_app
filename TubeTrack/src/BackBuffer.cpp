@@ -24,3 +24,24 @@ void CBackBuffer::DebugOut()
         spdlog::info("{}: {} = {}", m_positionName, m_redisKey, convertToJson());
     }
 }
+
+bool CBackBuffer::QueryTube(const std::string& order_no, int flow_no) const
+{
+    // 根据订单号和流水号查询管子是否在后缓冲区中
+    for(const auto& tube : Tubes())
+    {
+        if (tube->order_no == order_no && tube->flow_no == flow_no)
+        {
+            return true; // 找到匹配的管子，返回true
+        }
+    }
+    return false; // 没有找到匹配的管子，返回false
+}
+// for (const auto& tube : m_tubes)
+//     {
+//         if (tube->order_no == order_no && tube->flow_no == flow_no)
+//         {
+//             return true; // 找到匹配的管子，返回true
+//         }
+//     }
+//     return false; // 没有找到匹配的管子，返回false
