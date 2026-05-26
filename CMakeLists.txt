@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project(gt4_app)
 
 # 设置C++标准
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 设置可执行文件输出目录
@@ -10,12 +10,12 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
 # 统一使用 find_package 查找所有第三方库
 find_package(libpqxx REQUIRED)
-find_package(yaml-cpp REQUIRED)
+# find_package(yaml-cpp REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(hiredis REQUIRED)
 find_package(redis++ REQUIRED)
 find_package(nlohmann_json REQUIRED)
-find_package(SOCI REQUIRED COMPONENTS core postgresql)
+# find_package(SOCI REQUIRED COMPONENTS core postgresql)
 find_package(Threads REQUIRED)
 
 # 设置公共头文件路径变量

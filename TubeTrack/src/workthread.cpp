@@ -589,7 +589,7 @@ void handleAddTubeCmd(TubeTrackContext &ctx, const char *value)
         }
         else
         {
-            const pqxx::row row = result[0];
+            const auto row = result[0];
             tube->tube_no = row["tube_no"].as<int>();
             tube->order_no = row["order_no"].as<std::string>();
             tube->item_no = row["item_no"].as<std::string>();
@@ -626,7 +626,7 @@ void handleAddTubeCmd(TubeTrackContext &ctx, const char *value)
         }
         else
         {
-            const pqxx::row row = result[0];
+            const auto row = result[0];
             tube->tube_no = row["tube_no"].as<int>();
             tube->order_no = row["order_no"].as<std::string>();
             tube->item_no = row["item_no"].as<std::string>();

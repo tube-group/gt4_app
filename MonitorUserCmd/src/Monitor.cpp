@@ -221,10 +221,10 @@ bool CMonitor::handleCommand(const std::string &message)
 			int value = 0;
 			writeb(ctx_.gplatConn, "START_WEIGHT_EVENT", &value, sizeof(value), &error);
 		}
-		else if (j["cmd_name"] == "tag_print_cmd")
+		else if (j["cmd_name"] == "tag_print_event")
 		{
 			unsigned int error;
-			TagPrintEvent cmd; // 这个命令没有参数，value可以是任意数据
+			TagPrintEvent cmd; 
 			cmd.order_no = cmdPara["order_no"].get<std::string>();
 			cmd.item_no = cmdPara["item_no"].get<std::string>();	
 			cmd.bundle_no = cmdPara["bundle_no"].get<std::string>();

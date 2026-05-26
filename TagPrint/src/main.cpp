@@ -140,6 +140,7 @@ struct AppConfig {
     std::string targetChannel = "optional_cmd";
     std::string printerIp;
     int printerPort = 0;
+    std::string printerTextEncoding = "GB18030";
 };
 
 // 加载配置文件 + 解析命令行参数
@@ -165,6 +166,7 @@ static bool loadConfig(int argc, char* argv[], AppConfig& app)
     app.targetChannel = config.GetStringDefault("target_channel", app.targetChannel);
     app.printerIp = config.GetStringDefault("printer_ip", "");
     app.printerPort = config.GetIntDefault("printer_port", 0);
+    app.printerTextEncoding = config.GetStringDefault("printer_text_encoding", app.printerTextEncoding);
 
     // 解析命令行参数（-d 强制守护进程模式）
     int opt;
@@ -361,6 +363,7 @@ int main(int argc, char* argv[])
     TagPrintContext ctx;
     ctx.printerIp = app.printerIp;
     ctx.printerPort = app.printerPort;
+    ctx.printerTextEncoding = app.printerTextEncoding;
 
     // 7. 连接 Redis
     if (!initRedis(ctx)) {
