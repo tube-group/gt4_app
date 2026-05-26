@@ -22,6 +22,6 @@ target_include_directories(${PROJECT_NAME}
 # 链接 第三方库
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        redis++::redis++_static  # redis++库
+        redis++::redis++  # redis++库
         Threads::Threads
 )
