@@ -43,10 +43,8 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         libpqxx::pqxx            # PostgreSQL C++库
         spdlog::spdlog           # spdlog库
-        redis++::redis++_static  # redis++库
+        redis++::redis++  # redis++库
         nlohmann_json::nlohmann_json # nlohmann_json库
-        SOCI::soci_postgresql_static
-        SOCI::soci_core_static
         Threads::Threads
         ${HIGPLAT_LIB}           # 自有库 higplat
 )
