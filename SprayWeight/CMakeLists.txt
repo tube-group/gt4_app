@@ -27,7 +27,7 @@ find_library(HIGPLAT_LIB higplat PATHS /usr/local/lib REQUIRED)
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
         libpqxx::pqxx
-        redis++::redis++_static
+        redis++::redis++
         nlohmann_json::nlohmann_json
         spdlog::spdlog
         Threads::Threads

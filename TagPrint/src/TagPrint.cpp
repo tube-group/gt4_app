@@ -183,17 +183,17 @@ namespace
         return *converted;
     }
 
-    std::string RowString(const pqxx::row &row, const char *field)
+    std::string RowString(const auto &row, const char *field)
     {
         const auto cell = row[field];
         return cell.is_null() ? std::string() : std::string(cell.c_str());
     }
 
     template <typename T>
-    T RowNumber(const pqxx::row &row, const char *field, T fallback)
+    T RowNumber(const auto &row, const char *field, T fallback)
     {
         const auto cell = row[field];
-        return cell.is_null() ? fallback : cell.as<T>();
+        return cell.is_null() ? fallback : cell.template as<T>();
     }
 
     std::string FormatFixed(double value, int precision)
