@@ -1,23 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
-project(TubeTrack)
+project(CommL3)
 
 # 查找源文件
 # file(GLOB SOURCES "src/*.cpp")
 set(SOURCES
     src/main.cpp
-    src/Tube.cpp
-    src/Basket.cpp
-    src/BackBuffer.cpp
-    src/CarvePosition.cpp
-    src/AlignPosition.cpp
-    src/CirclePosition.cpp
-    src/PositionBase.cpp
-    src/ProductionPlan.cpp
-    src/Scrapt.cpp
-    src/ScraptRoller.cpp
-    src/SprayPosition.cpp
-    src/WeightPosition.cpp
-    src/WalkingBeam.cpp
     src/workthread.cpp
 )
 
@@ -38,7 +25,7 @@ target_include_directories(${PROJECT_NAME}
 find_library(HIGPLAT_LIB higplat PATHS /usr/local/lib REQUIRED)                                                          
 
 # 定义高斯 SDK 的绝对路径
-set(GAUSS_SDK_DIR "${CMAKE_SOURCE_DIR}/third_party/gauss_sdk")
+# set(GAUSS_SDK_DIR "${CMAKE_SOURCE_DIR}/third_party/gauss_sdk")
 
 # =================================================================
 # 2. 核心：强制高斯头文件优先级高于 vcpkg
@@ -50,7 +37,8 @@ target_include_directories(${PROJECT_NAME} BEFORE PRIVATE "${GAUSS_SDK_DIR}/incl
 # target_link_directories(${PROJECT_NAME} BEFORE PRIVATE "${GAUSS_SDK_DIR}/lib")
 
 # 5. 统一使用 PRIVATE 关键字进行链接，防止统一性冲突
-target_link_libraries(TubeTrack PRIVATE 
+target_link_libraries(${PROJECT_NAME} PRIVATE 
+        ${CMAKE_DL_LIBS}
         libpqxx::pqxx            # PostgreSQL C++库
         spdlog::spdlog           # spdlog库
         redis++::redis++  # redis++库

@@ -1,0 +1,10 @@
+{
+  "name": "gt4-app",
+  "version-string": "1.0.0",
+  "dependencies": [
+    "nlohmann-json",
+    "spdlog",
+    "redis-plus-plus",
+    "libpqxx"
+  ]
+}
