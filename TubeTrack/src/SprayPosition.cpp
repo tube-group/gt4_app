@@ -313,7 +313,7 @@ void CSprayPosition::StartSpray()
 
         if (!result.empty())
         {
-            const pqxx::row &row = result[0];
+            const auto &row = result[0];
             std::string bundle_no = row["bundle_no"].as<std::string>();
 
             flowNoRepeated = true;
