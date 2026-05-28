@@ -16,27 +16,6 @@
 #include "gauss_loader.h"
 #include <iostream>
 
-void ConnectToGauss() {
-    try {
-        // 精准加载高斯动态库，不受系统路径和环境变量干扰
-        GaussLoader gauss("/app/projects/gt4_app/third_party/gauss_sdk/lib/libpq.so");
-
-        // 使用高斯专用的驱动进行连接
-        PGconn* conn = gauss.PQconnectdb("host=10.81.57.151 port=8000 dbname=gfhgot user=hfwot password=fhq6OPx92T");
-
-        if (gauss.PQresultStatus(gauss.PQexec(conn, "SELECT version();")) == PGRES_TUPLES_OK) {
-             std::cout << "高斯通道独立握手成功！" << std::endl;
-        }else{
-            std::cerr << "高斯通道独立握手失败！" << std::endl;
-        }
-
-        gauss.PQfinish(conn);
-    } 
-    catch (const std::exception& e) {
-        std::cerr << e.what() << std::endl;
-    }
-}
-
 // 前向声明
 void workThread(TubeTrackContext& ctx);
 
@@ -334,63 +313,165 @@ static bool initPostgreSQL(TubeTrackContext& ctx)
     }
 }
 
-void TestToGauss()
+// ---- 高斯数据库连接 ----
+static bool initGauss(TubeTrackContext& ctx)
 {
-
-    PGconn* conn = nullptr;
+    auto &config = CConfig::GetInstance();
     try {
-        // 1. 精准加载高斯动态库
-        GaussLoader gauss("/app/projects/gt4_app/third_party/gauss_sdk/lib/libpq.so");
-
-        // 2. 使用高斯专用的驱动进行连接（注意：检查端口是否需要从 5432 改为前面命令行成功的 8000）
-        PGconn* conn = gauss.PQconnectdb("host=10.81.57.151 port=8000 dbname=gfhgot user=hfwot password=fhq6OPx92T");
-
-        // 4. 测试握手
-        if (gauss.PQresultStatus(gauss.PQexec(conn, "SELECT version();")) == PGRES_TUPLES_OK) {
-             std::cout << "高斯通道独立握手成功！" << std::endl;
-        } else {
-            std::cerr << "高斯通道独立握手失败！" << std::endl;
-        }
-        
-
-        // 5. 执行插入测试（直接使用上面的 gauss 和 conn）
-        PGresult *res = gauss.PQexec(
-            conn,
-            "INSERT INTO test_employee (emp_name, salary) VALUES ('Copilot_Insert_Test', 9999.99)"
+        std::string soPath = config.GetStringDefault(
+            "gauss_so_path",
+            "/app/projects/gt4_app/third_party/gauss_sdk/lib/libpq.so"
         );
+        std::string host = config.GetStringDefault("gauss_host", "10.81.57.151");
+        std::string dbname = config.GetStringDefault("gauss_dbname", "gfhgot");
+        std::string user = config.GetStringDefault("gauss_user", "hfwot");
+        std::string password = config.GetStringDefault("gauss_password", "fhq6OPx92T");
+        int port = config.GetIntDefault("gauss_port", 8000);
 
-        if (!res) {
-            std::cerr << "[Gauss] 插入失败: 返回空结果" << std::endl;
-            gauss.PQfinish(conn);
-            return;
+        std::string connStr = "host=" + host +
+                              " port=" + std::to_string(port) +
+                              " dbname=" + dbname +
+                              " user=" + user +
+                              " password=" + password;
+
+        ctx.gaussLoader = std::make_unique<GaussLoader>(soPath);
+        ctx.gaussConn = ctx.gaussLoader->PQconnectdb(connStr.c_str());
+        if (ctx.gaussConn == nullptr) {
+            spdlog::error("高斯数据库连接失败: PQconnectdb 返回空指针");
+            ctx.gaussLoader.reset();
+            return false;
         }
 
-        if (gauss.PQresultStatus(res) != PGRES_COMMAND_OK) {
-            std::cerr << "[Gauss] 插入失败: " << gauss.PQerrorMessage(conn) << std::endl;
-            gauss.PQclear(res);
-            gauss.PQfinish(conn);
-            return;
+        PGresult* res = ctx.gaussLoader->PQexec(ctx.gaussConn, "SELECT version();");
+        if (res == nullptr) {
+            const char* err = ctx.gaussLoader->PQerrorMessage != nullptr
+                ? ctx.gaussLoader->PQerrorMessage(ctx.gaussConn)
+                : nullptr;
+            spdlog::error("高斯数据库连接失败: {}", err != nullptr ? err : "未知错误");
+            ctx.gaussLoader->PQfinish(ctx.gaussConn);
+            ctx.gaussConn = nullptr;
+            ctx.gaussLoader.reset();
+            return false;
         }
 
-        gauss.PQclear(res);
-        std::cout << "[Gauss] test_employee 插入测试成功。" << std::endl;
+        bool ok = ctx.gaussLoader->PQresultStatus(res) == PGRES_TUPLES_OK;
+        if (ok) {
+            spdlog::info("成功连接到高斯数据库: {}", dbname);
+        } else {
+            const char* err = ctx.gaussLoader->PQerrorMessage != nullptr
+                ? ctx.gaussLoader->PQerrorMessage(ctx.gaussConn)
+                : nullptr;
+            spdlog::error("高斯数据库连接失败: {}", err != nullptr ? err : "未知错误");
+        }
 
-        // 6. 清理连接
-        gauss.PQfinish(conn);
+        ctx.gaussLoader->PQclear(res);
+        if (!ok) {
+            ctx.gaussLoader->PQfinish(ctx.gaussConn);
+            ctx.gaussConn = nullptr;
+            ctx.gaussLoader.reset();
+            return false;
+        }
+
+        return true;
     } 
     catch (const std::exception& e) {
-        std::cerr << "发生异常: " << e.what() << std::endl;
-        // 如果异常发生时 conn 已建立，尝试关闭
-        // 注意：由于 gauss 是局部变量，如果异常在 gauss 析构后捕获，这里调用可能会有问题。
-        // 但标准 SQL 操作的异常会被包在里面。
+        spdlog::error("高斯数据库连接失败: {}", e.what());
+        ctx.gaussConn = nullptr;
+        ctx.gaussLoader.reset();
+        return false;
     }
+}
+
+// ----测试高斯数据库插入、更新、删除数据的功能----
+static bool testGauss(TubeTrackContext& ctx)
+{
+    if (ctx.gaussLoader == nullptr || ctx.gaussConn == nullptr) {
+        spdlog::error("高斯CRUD测试失败: 连接未初始化");
+        return false;
+    }
+
+    const std::string testName = "Copilot_CRUD_" + std::to_string(
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count());
+
+    // 1) 插入测试记录（使用你现有的 test_employee 表）
+    std::string insertSql = "INSERT INTO test_employee(emp_name, salary) VALUES ('" + testName + "', 9999.99);";
+    PGresult* res = ctx.gaussLoader->PQexec(ctx.gaussConn, insertSql.c_str());
+    if (res == nullptr || ctx.gaussLoader->PQresultStatus(res) != PGRES_COMMAND_OK) {
+        const char* err = ctx.gaussLoader->PQerrorMessage != nullptr
+            ? ctx.gaussLoader->PQerrorMessage(ctx.gaussConn)
+            : nullptr;
+        if (res != nullptr) ctx.gaussLoader->PQclear(res);
+        spdlog::error("高斯CRUD测试失败[插入数据]: {}", err != nullptr ? err : "未知错误");
+        return false;
+    }
+    ctx.gaussLoader->PQclear(res);
+
+    // 2) 更新 salary（按本次插入的唯一 emp_name 定位）
+    std::string updateSql = "UPDATE test_employee SET salary=10001.23 WHERE emp_name='" + testName + "';";
+    res = ctx.gaussLoader->PQexec(ctx.gaussConn, updateSql.c_str());
+    if (res == nullptr || ctx.gaussLoader->PQresultStatus(res) != PGRES_COMMAND_OK) {
+        const char* err = ctx.gaussLoader->PQerrorMessage != nullptr
+            ? ctx.gaussLoader->PQerrorMessage(ctx.gaussConn)
+            : nullptr;
+        if (res != nullptr) ctx.gaussLoader->PQclear(res);
+        spdlog::error("高斯CRUD测试失败[更新数据]: {}", err != nullptr ? err : "未知错误");
+        return false;
+    }
+    ctx.gaussLoader->PQclear(res);
+
+    // 3) 删除测试记录
+    std::string deleteSql = "DELETE FROM test_employee WHERE emp_name='" + testName + "';";
+    res = ctx.gaussLoader->PQexec(ctx.gaussConn, deleteSql.c_str());
+    if (res == nullptr || ctx.gaussLoader->PQresultStatus(res) != PGRES_COMMAND_OK) {
+        const char* err = ctx.gaussLoader->PQerrorMessage != nullptr
+            ? ctx.gaussLoader->PQerrorMessage(ctx.gaussConn)
+            : nullptr;
+        if (res != nullptr) ctx.gaussLoader->PQclear(res);
+        spdlog::error("高斯CRUD测试失败[删除数据]: {}", err != nullptr ? err : "未知错误");
+        return false;
+    }
+    ctx.gaussLoader->PQclear(res);
+
+    spdlog::info("高斯CRUD测试通过(test_employee): 插入/更新/删除均成功, emp_name={}", testName);
+    return true;
+}
+
+// ----测试同时访问高斯数据库和PostgreSQL的功能（在工作线程中调用）----
+static void testGaussAndPostgreSQL(TubeTrackContext& ctx)
+{
+    if (ctx.gaussLoader == nullptr || ctx.gaussConn == nullptr) {
+        spdlog::error("高斯和PostgreSQL测试失败: 高斯连接未初始化");
+        return;
+    }
+    if (ctx.pgConn == nullptr || !ctx.pgConn->is_open()) {
+        spdlog::error("高斯和PostgreSQL测试失败: PostgreSQL连接未初始化");
+        return;
+    }
+
+    // 从高斯查询版本信息
+    PGresult* resGauss = ctx.gaussLoader->PQexec(ctx.gaussConn, "SELECT version();");
+    if (resGauss == nullptr || ctx.gaussLoader->PQresultStatus(resGauss) != PGRES_TUPLES_OK) {
+        const char* err = ctx.gaussLoader->PQerrorMessage != nullptr
+            ? ctx.gaussLoader->PQerrorMessage(ctx.gaussConn)
+            : nullptr;
+        if (resGauss != nullptr) ctx.gaussLoader->PQclear(resGauss);
+        spdlog::error("高斯和PostgreSQL测试失败: 查询高斯版本信息失败: {}", err != nullptr ? err : "未知错误");
+        return;
+    }
+    std::string gaussVersion = ctx.gaussLoader->PQgetvalue(resGauss, 0, 0);
+    ctx.gaussLoader->PQclear(resGauss);
+
+    // 从PostgreSQL查询版本信息
+    pqxx::work txn(*ctx.pgConn);
+    pqxx::result resPg = txn.exec("SELECT version();");
+    std::string pgVersion = resPg[0][0].as<std::string>();
+
+    spdlog::info("高斯和PostgreSQL测试通过: 高斯版本={}, PostgreSQL版本={}", gaussVersion, pgVersion);
 }
 
 int main(int argc, char* argv[])
 {
-    //ConnectToGauss();
-    TestToGauss();
-
     // 1. 加载配置 + 解析命令行
     AppConfig app;
     if (!loadConfig(argc, argv, app))
@@ -419,12 +500,19 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    // 7. 连接 gPlat
-    if (!initGplat(ctx)) {
+    // 9. 连接高斯数据库
+    if (!initGauss(ctx)) {
         ctx.Cleanup();
         shutdownLogging();
         return EXIT_FAILURE;
     }
+
+    // if (!testGauss(ctx)) {
+    //     ctx.Cleanup();
+    //     shutdownLogging();
+    //     return EXIT_FAILURE;
+    // }
+    
 
     // 8. 连接PostgreSQL
     if (!initPostgreSQL(ctx)) {
@@ -432,6 +520,17 @@ int main(int argc, char* argv[])
         shutdownLogging();
         return EXIT_FAILURE;
     }
+
+    testGaussAndPostgreSQL(ctx);
+
+    // 7. 连接 gPlat
+    if (!initGplat(ctx)) {
+        ctx.Cleanup();
+        shutdownLogging();
+        return EXIT_FAILURE;
+    }
+
+
 
     // 启动工作线程
     std::thread workerThread(workThread, std::ref(ctx));
