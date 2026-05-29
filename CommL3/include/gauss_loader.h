@@ -11,18 +11,25 @@ public:
     typedef void (*PQfinish_t)(PGconn*);
     typedef PGresult* (*PQexec_t)(PGconn*, const char*);
     typedef ExecStatusType (*PQresultStatus_t)(const PGresult*);
+    typedef int (*PQntuples_t)(const PGresult*);  // 添加 PQntuples 类型定义
     typedef char* (*PQgetvalue_t)(const PGresult*, int, int);
     typedef void (*PQclear_t)(PGresult*);
     typedef char* (*PQerrorMessage_t)(const PGconn*);
+    typedef char* (*PQcmdTuples_t)(const PGresult*);  // 新增：获取受影响行数
+    typedef PGresult* (*PQexecParams_t)(PGconn*, const char*, int, const Oid*, 
+                        const char* const*, const int*, const int*, int);  // 新增：参数化查询
 
     // 实际的函数指针变量
     PQconnectdb_t PQconnectdb = nullptr;
     PQfinish_t PQfinish = nullptr;
     PQexec_t PQexec = nullptr;
     PQresultStatus_t PQresultStatus = nullptr;
+    PQntuples_t PQntuples = nullptr;  // 添加 PQntuples 函数指针
     PQgetvalue_t PQgetvalue = nullptr;
     PQclear_t PQclear = nullptr;
     PQerrorMessage_t PQerrorMessage = nullptr;
+    PQcmdTuples_t PQcmdTuples = nullptr; // 新增：获取受影响行数函数指针
+    PQexecParams_t PQexecParams = nullptr; // 新增：参数化查询函数指针
 
     // 单例模式或简单构造
     GaussLoader(const std::string& so_path) {
@@ -41,9 +48,12 @@ public:
         PQfinish = (PQfinish_t)dlsym(handle, "PQfinish");
         PQexec = (PQexec_t)dlsym(handle, "PQexec");
         PQresultStatus = (PQresultStatus_t)dlsym(handle, "PQresultStatus");
+        PQntuples = (PQntuples_t)dlsym(handle, "PQntuples");  // 绑定 PQntuples
         PQgetvalue = (PQgetvalue_t)dlsym(handle, "PQgetvalue");
         PQclear = (PQclear_t)dlsym(handle, "PQclear");
         PQerrorMessage = (PQerrorMessage_t)dlsym(handle, "PQerrorMessage");
+        PQcmdTuples = (PQcmdTuples_t)dlsym(handle, "PQcmdTuples"); // 绑定获取受影响行数函数指针
+        PQexecParams = (PQexecParams_t)dlsym(handle, "PQexecParams"); // 绑定参数化查询函数指针
     }
 
     ~GaussLoader() {

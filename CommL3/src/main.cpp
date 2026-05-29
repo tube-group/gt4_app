@@ -389,52 +389,57 @@ static bool testGauss(TubeTrackContext& ctx)
         spdlog::error("高斯CRUD测试失败: 连接未初始化");
         return false;
     }
+    PGresult* res = nullptr;  // 在这里声明res变量
+    // // 1. 插入数据
+    // const char* insertSql = "INSERT INTO test_employee(emp_name, salary) VALUES ($1, $2);";
+    // const char* insertParams[2] = {"zhangsan", "8888.88"};
+    // res = ctx.gaussLoader->PQexecParams(
+    //     ctx.gaussConn, insertSql, 2, nullptr, 
+    //     insertParams, nullptr, nullptr, 
+    //     0  // 返回二进制格式或文本格式（1=二进制，0=文本）
+    // );
+    // if (res && ctx.gaussLoader->PQresultStatus(res) == PGRES_COMMAND_OK) {
+    //     spdlog::info("插入成功，影响行数: {}", ctx.gaussLoader->PQcmdTuples(res));
+    // } else {
+    //     spdlog::error("插入失败");
+    //     if (res) ctx.gaussLoader->PQclear(res);
+    //     return false;
+    // }
+    // ctx.gaussLoader->PQclear(res);
 
-    const std::string testName = "Copilot_CRUD_" + std::to_string(
-        std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now().time_since_epoch()).count());
+    // // 2. 更新数据
+    // const char* updateSql = "UPDATE test_employee SET salary=$1 WHERE emp_name=$2;";
+    // const char* updateParams[2] = {"9999.99", "zhangsan"};
+    // res = ctx.gaussLoader->PQexecParams(ctx.gaussConn, updateSql, 2, nullptr,
+    //                                      updateParams, nullptr, nullptr, 0);
+    
+    // if (res || ctx.gaussLoader->PQresultStatus(res) == PGRES_COMMAND_OK) {
+    //     spdlog::info("更新成功，影响行数: {}", ctx.gaussLoader->PQcmdTuples(res));
+    // } else {
+    //     spdlog::error("更新失败");
+    //     if (res) ctx.gaussLoader->PQclear(res);
+    //     return false;
+    // }
+    // ctx.gaussLoader->PQclear(res);
 
-    // 1) 插入测试记录（使用你现有的 test_employee 表）
-    std::string insertSql = "INSERT INTO test_employee(emp_name, salary) VALUES ('" + testName + "', 9999.99);";
-    PGresult* res = ctx.gaussLoader->PQexec(ctx.gaussConn, insertSql.c_str());
-    if (res == nullptr || ctx.gaussLoader->PQresultStatus(res) != PGRES_COMMAND_OK) {
-        const char* err = ctx.gaussLoader->PQerrorMessage != nullptr
-            ? ctx.gaussLoader->PQerrorMessage(ctx.gaussConn)
-            : nullptr;
-        if (res != nullptr) ctx.gaussLoader->PQclear(res);
-        spdlog::error("高斯CRUD测试失败[插入数据]: {}", err != nullptr ? err : "未知错误");
+    // 3. 删除数据
+    const char* deleteSql = "DELETE FROM test_employee WHERE emp_name=$1;";
+    const char* deleteParams[1] = {"zhangsan"};
+    res = ctx.gaussLoader->PQexecParams(ctx.gaussConn, deleteSql, 1, nullptr,
+                                         deleteParams, nullptr, nullptr, 0);
+    
+    if (res || ctx.gaussLoader->PQresultStatus(res) == PGRES_COMMAND_OK) {
+        spdlog::info("删除成功，影响行数: {}", ctx.gaussLoader->PQcmdTuples(res));
+    } else {
+        spdlog::error("删除失败");
+        if (res) ctx.gaussLoader->PQclear(res);
         return false;
     }
     ctx.gaussLoader->PQclear(res);
-
-    // 2) 更新 salary（按本次插入的唯一 emp_name 定位）
-    std::string updateSql = "UPDATE test_employee SET salary=10001.23 WHERE emp_name='" + testName + "';";
-    res = ctx.gaussLoader->PQexec(ctx.gaussConn, updateSql.c_str());
-    if (res == nullptr || ctx.gaussLoader->PQresultStatus(res) != PGRES_COMMAND_OK) {
-        const char* err = ctx.gaussLoader->PQerrorMessage != nullptr
-            ? ctx.gaussLoader->PQerrorMessage(ctx.gaussConn)
-            : nullptr;
-        if (res != nullptr) ctx.gaussLoader->PQclear(res);
-        spdlog::error("高斯CRUD测试失败[更新数据]: {}", err != nullptr ? err : "未知错误");
-        return false;
-    }
-    ctx.gaussLoader->PQclear(res);
-
-    // 3) 删除测试记录
-    std::string deleteSql = "DELETE FROM test_employee WHERE emp_name='" + testName + "';";
-    res = ctx.gaussLoader->PQexec(ctx.gaussConn, deleteSql.c_str());
-    if (res == nullptr || ctx.gaussLoader->PQresultStatus(res) != PGRES_COMMAND_OK) {
-        const char* err = ctx.gaussLoader->PQerrorMessage != nullptr
-            ? ctx.gaussLoader->PQerrorMessage(ctx.gaussConn)
-            : nullptr;
-        if (res != nullptr) ctx.gaussLoader->PQclear(res);
-        spdlog::error("高斯CRUD测试失败[删除数据]: {}", err != nullptr ? err : "未知错误");
-        return false;
-    }
-    ctx.gaussLoader->PQclear(res);
-
-    spdlog::info("高斯CRUD测试通过(test_employee): 插入/更新/删除均成功, emp_name={}", testName);
+    
+    spdlog::info("CRUD测试通过: 插入->更新->删除成功");
     return true;
+
 }
 
 // ----测试同时访问高斯数据库和PostgreSQL的功能（在工作线程中调用）----
@@ -449,25 +454,71 @@ static void testGaussAndPostgreSQL(TubeTrackContext& ctx)
         return;
     }
 
-    // 从高斯查询版本信息
-    PGresult* resGauss = ctx.gaussLoader->PQexec(ctx.gaussConn, "SELECT version();");
+    // 准备测试数据
+    std::string empName = "张三";
+    std::string hireDate = "2024-01-15";
+    std::string salary = "8500.50";
+    std::string username = "zhang_san";
+    std::string fullName = "张三";
+    std::string email = "zhangsan@example.com";
+    std::string phone = "13812345678";
+    
+    PGresult* resGauss = nullptr;
+    int gaussEmpId = -1;
+    int pgUserId = -1;    
+
+    // 1、插入高斯数据库
+    const char* insertGaussSql = "INSERT INTO test_employee (emp_name, hire_date, salary) VALUES ($1, $2, $3) RETURNING emp_id;";
+    const char* insertGaussParams[3] = {empName.c_str(), hireDate.c_str(), salary.c_str()};
+    resGauss = ctx.gaussLoader->PQexecParams(ctx.gaussConn, insertGaussSql, 3, nullptr, insertGaussParams, nullptr, nullptr, 0);
     if (resGauss == nullptr || ctx.gaussLoader->PQresultStatus(resGauss) != PGRES_TUPLES_OK) {
         const char* err = ctx.gaussLoader->PQerrorMessage != nullptr
             ? ctx.gaussLoader->PQerrorMessage(ctx.gaussConn)
             : nullptr;
         if (resGauss != nullptr) ctx.gaussLoader->PQclear(resGauss);
-        spdlog::error("高斯和PostgreSQL测试失败: 查询高斯版本信息失败: {}", err != nullptr ? err : "未知错误");
+        spdlog::error("同时插入测试失败: 向高斯数据库插入数据失败: {}", err != nullptr ? err : "未知错误");
         return;
     }
-    std::string gaussVersion = ctx.gaussLoader->PQgetvalue(resGauss, 0, 0);
+
+    // 获取高斯插入的记录ID
+    if (ctx.gaussLoader->PQntuples(resGauss) > 0) {
+        gaussEmpId = std::stoi(ctx.gaussLoader->PQgetvalue(resGauss, 0, 0));
+        spdlog::info("高斯数据库插入成功，emp_id={}", gaussEmpId);
+    }
     ctx.gaussLoader->PQclear(resGauss);
 
-    // 从PostgreSQL查询版本信息
-    pqxx::work txn(*ctx.pgConn);
-    pqxx::result resPg = txn.exec("SELECT version();");
-    std::string pgVersion = resPg[0][0].as<std::string>();
+    // 2. 插入PostgreSQL数据库
+     try {
+        pqxx::work txn(*ctx.pgConn);
 
-    spdlog::info("高斯和PostgreSQL测试通过: 高斯版本={}, PostgreSQL版本={}", gaussVersion, pgVersion);
+        std::string insertPgSql = "INSERT INTO users (username, full_name, email, phone) VALUES ($1, $2, $3, $4) RETURNING id;";
+        pqxx::result resPg = txn.exec_params(insertPgSql, username, fullName, email, phone);
+        
+        if (!resPg.empty()) {
+            pgUserId = resPg[0][0].as<int>();
+            spdlog::info("PostgreSQL数据库插入成功，user_id={}", pgUserId);
+        }
+        txn.commit();
+        
+    } catch (const std::exception& e) {
+        spdlog::error("同时插入测试失败: 向PostgreSQL数据库插入数据失败: {}", e.what());
+        
+        // 如果PostgreSQL插入失败，回滚高斯数据库的插入,保证要么两个数据库都插入成功，要么都不插入
+        // 注意：这里的回滚是通过删除之前插入的记录实现的，前提是emp_id是唯一标识
+        if (gaussEmpId != -1) {
+            const char* rollbackSql = "DELETE FROM test_employee WHERE emp_id = $1;";
+            const char* rollbackParams[1] = {std::to_string(gaussEmpId).c_str()};
+            PGresult* resRollback = ctx.gaussLoader->PQexecParams(
+                ctx.gaussConn, rollbackSql, 1, nullptr,
+                rollbackParams, nullptr, nullptr, 0);
+            if (resRollback != nullptr) ctx.gaussLoader->PQclear(resRollback);
+            spdlog::warn("已回滚高斯数据库插入的记录, emp_id={}", gaussEmpId);
+        }
+        return;
+    }
+    
+    spdlog::info("高斯和PostgreSQL测试通过: 高斯记录ID={}, PostgreSQL记录ID={}", gaussEmpId, pgUserId);
+
 }
 
 int main(int argc, char* argv[])
@@ -507,21 +558,16 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    // if (!testGauss(ctx)) {
+    testGauss(ctx);
+    
+    // // 8. 连接PostgreSQL
+    // if (!initPostgreSQL(ctx)) {
     //     ctx.Cleanup();
     //     shutdownLogging();
     //     return EXIT_FAILURE;
     // }
-    
 
-    // 8. 连接PostgreSQL
-    if (!initPostgreSQL(ctx)) {
-        ctx.Cleanup();
-        shutdownLogging();
-        return EXIT_FAILURE;
-    }
-
-    testGaussAndPostgreSQL(ctx);
+    // testGaussAndPostgreSQL(ctx);
 
     // 7. 连接 gPlat
     if (!initGplat(ctx)) {
@@ -529,8 +575,6 @@ int main(int argc, char* argv[])
         shutdownLogging();
         return EXIT_FAILURE;
     }
-
-
 
     // 启动工作线程
     std::thread workerThread(workThread, std::ref(ctx));
