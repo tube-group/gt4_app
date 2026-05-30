@@ -14,6 +14,7 @@
 #include "Scrapt.h"
 #include "Basket.h"
 #include "WalkingBeam.h"
+#include "AlarmPublisher.h"
 #include <sw/redis++/redis++.h>
 #include <pqxx/pqxx>
 #include "logging.h"   // spdlog
@@ -23,6 +24,7 @@
 struct TubeTrackContext {
     // 共享资源
     std::unique_ptr<sw::redis::Redis> redis;
+    std::unique_ptr<AlarmPublisher> alarmPublisher;
     int gplatConn = -1;
     std::unique_ptr<pqxx::connection> pgConn;
 
@@ -95,6 +97,7 @@ struct TubeTrackContext {
             disconnectgplat(gplatConn);
             gplatConn = -1;
         }
+        alarmPublisher.reset();
         redis.reset();
         pgConn.reset();
     }

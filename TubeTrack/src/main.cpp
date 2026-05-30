@@ -250,6 +250,23 @@ static bool initRedis(TubeTrackContext& ctx)
     }
 }
 
+static bool initAlarmPublisher(TubeTrackContext& ctx)
+{
+    if (!ctx.redis) {
+        spdlog::error("AlarmPublisher初始化失败: Redis连接未初始化");
+        return false;
+    }
+
+    try {
+        ctx.alarmPublisher = std::make_unique<AlarmPublisher>(*ctx.redis);
+        spdlog::info("AlarmPublisher初始化完成");
+        return true;
+    } catch (const std::exception& e) {
+        spdlog::error("AlarmPublisher初始化失败: {}", e.what());
+        return false;
+    }
+}
+
 // ---- gplat连接 ----
 static bool initGplat(TubeTrackContext& ctx)
 {
@@ -336,6 +353,12 @@ int main(int argc, char* argv[])
 
     // 6. 连接 Redis
     if (!initRedis(ctx)) {
+        shutdownLogging();
+        return EXIT_FAILURE;
+    }
+
+    if (!initAlarmPublisher(ctx)) {
+        ctx.Cleanup();
         shutdownLogging();
         return EXIT_FAILURE;
     }

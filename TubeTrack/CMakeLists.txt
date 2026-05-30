@@ -47,6 +47,7 @@ find_library(HIGPLAT_LIB higplat PATHS /usr/local/lib REQUIRED)
 # 链接 第三方库
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
+        AlarmPublisher
         # 核心改动：去掉 -lpq 和 target_link_directories
         # 直接把高斯 libpq.so 的绝对路径喂给链接器，不给它任何猜的机会
         # ${GAUSS_LIB_DIR}/libpq.so
