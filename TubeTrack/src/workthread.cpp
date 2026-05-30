@@ -268,8 +268,8 @@ void workThread(TubeTrackContext &ctx)
                 // 调用称重工位的SetTubeWeight函数
                 spdlog::info("Handling FINISH_WEIGHT_EVENT, setting tube weight in WeightPosition");
                 int weight = read_value<int>(value);
-                // ctx.weightPos.SetTubeWeight(weight);
-                ctx.weightPos.SetTubeWeight(1001);
+                ctx.weightPos.SetTubeWeight(weight);
+                // ctx.weightPos.SetTubeWeight(1001);
             }
             else if (tagname == "LENGTH_FINISH")
             {

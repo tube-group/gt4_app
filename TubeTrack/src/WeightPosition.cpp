@@ -3,6 +3,99 @@
 #include "TubeTrackContext.h"
 #include "logging.h"
 
+#include <ctime>
+#include <iomanip>
+#include <nlohmann/json.hpp>
+#include <sstream>
+
+namespace {
+
+constexpr const char *kWeightAlarmCode = "WEIGHT_DATA_INVALID";
+constexpr const char *kWeightAreaCode = "AREA-A";
+constexpr const char *kWeightAlarmSeverity = "major";
+constexpr const char *kWeightAlarmSourceModule = "TubeTrack";
+constexpr const char *kWeightAlarmSourceKey = "weight.position.measurement";
+constexpr const char *kWeightAlarmDedupeKey = "tubetrack:weight-position:invalid-data";
+
+std::string BuildOccurredAtUtc()
+{
+    const auto now = std::time(nullptr);
+    std::tm utcTime{};
+    gmtime_r(&now, &utcTime);
+
+    std::ostringstream stream;
+    stream << std::put_time(&utcTime, "%Y-%m-%dT%H:%M:%SZ");
+    return stream.str();
+}
+
+std::string BuildWeightAlarmDetailJson(const CTube &tube, int rawWeight, bool weightEnabled)
+{
+    nlohmann::json detailJson;
+    detailJson["rawWeight"] = rawWeight;
+    detailJson["weightEnable"] = weightEnabled;
+    detailJson["tubeNo"] = tube.tube_no;
+    detailJson["flowNo"] = tube.flow_no;
+    detailJson["orderNo"] = tube.order_no;
+    detailJson["itemNo"] = tube.item_no;
+    return detailJson.dump();
+}
+
+void RaiseWeightAlarm(TubeTrackContext *ctx, const CTube &tube, int rawWeight, const std::string &message)
+{
+    if (!ctx || !ctx->alarmPublisher)
+    {
+        return;
+    }
+
+    AlarmRaiseRequest request;
+    request.alarmCode = kWeightAlarmCode;
+    request.areaCode = kWeightAreaCode;
+    request.severity = kWeightAlarmSeverity;
+    request.sourceModule = kWeightAlarmSourceModule;
+    request.sourceKey = kWeightAlarmSourceKey;
+    request.title = "称重工位无效重量数据";
+    request.message = message;
+    request.detailJson = BuildWeightAlarmDetailJson(tube, rawWeight, true);
+    request.requireAck = true;
+    request.autoClear = false;
+    request.dedupeKey = kWeightAlarmDedupeKey;
+    request.occurredAt = BuildOccurredAtUtc();
+
+    const AlarmPublishResult result = ctx->alarmPublisher->Raise(request);
+    if (!result.ok)
+    {
+        spdlog::error("称重报警发布失败: {}", result.errorMessage);
+    }
+}
+
+void ClearWeightAlarm(TubeTrackContext *ctx, const CTube &tube, int rawWeight, bool weightEnabled)
+{
+    if (!ctx || !ctx->alarmPublisher)
+    {
+        return;
+    }
+
+    AlarmClearRequest request;
+    request.alarmCode = kWeightAlarmCode;
+    request.areaCode = kWeightAreaCode;
+    request.sourceModule = kWeightAlarmSourceModule;
+    request.sourceKey = kWeightAlarmSourceKey;
+    request.dedupeKey = kWeightAlarmDedupeKey;
+    request.occurredAt = BuildOccurredAtUtc();
+    request.severity = kWeightAlarmSeverity;
+    request.title = "称重工位无效重量数据";
+    request.message = weightEnabled ? "称重数据恢复正常" : "称重功能未使能，报警已清除";
+    request.detailJson = BuildWeightAlarmDetailJson(tube, rawWeight, weightEnabled);
+
+    const AlarmPublishResult result = ctx->alarmPublisher->Clear(request);
+    if (!result.ok)
+    {
+        spdlog::error("称重报警清除失败: {}", result.errorMessage);
+    }
+}
+
+} // namespace
+
 void CWeightPosition::UpdateForm()
 {
     // 刷新称重工位的界面显示
@@ -75,14 +168,17 @@ void CWeightPosition::SetTubeWeight(int weight)
             if (weight == -1)
             {
                 spdlog::error("称重乱码，未获得有效的重量数据，请尝试人工称重");
+                RaiseWeightAlarm(m_ctx, *tube, weight, "称重乱码，未获得有效的重量数据，请尝试人工称重");
             }
             else if (weight == -2)
             {
                 spdlog::error("称重超时，未获得有效的重量数据，请尝试人工称重");
+                RaiseWeightAlarm(m_ctx, *tube, weight, "称重超时，未获得有效的重量数据，请尝试人工称重");
             }
             else if (weight == 0)
             {
                 spdlog::error("称重数据为0，未获得有效的重量数据，请尝试人工称重");
+                RaiseWeightAlarm(m_ctx, *tube, weight, "称重数据为0，未获得有效的重量数据，请尝试人工称重");
             }
         }
         else
@@ -93,6 +189,7 @@ void CWeightPosition::SetTubeWeight(int weight)
             tube->weight = actualWeight;
             // 没有长度数据，不进行管子判废
             spdlog::info("管子称重完成: 实际重量={}kg", actualWeight);
+            ClearWeightAlarm(m_ctx, *tube, weight, true);
             UpdateForm(); // 更新称重工位显示
         }
     }
@@ -104,6 +201,7 @@ void CWeightPosition::SetTubeWeight(int weight)
         m_bWbReleased = true;
 
         spdlog::info("称重功能未使能，跳过称重");
+        ClearWeightAlarm(m_ctx, *tube, weight, false);
     }
 }
 
