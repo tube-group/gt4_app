@@ -1,7 +1,9 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
-#include "TubeTrackContext.h"
+#include "CommL3Context.h"
+#include "L2SndL3.h"
+#include "L2RcvL3.h"
 #include <sw/redis++/redis++.h>
 #include <unistd.h>    // sleep, fork, setsid, getpid, close, dup2
 #include <fcntl.h>     // open, O_WRONLY, O_CREAT, O_RDWR
@@ -17,7 +19,7 @@
 #include <iostream>
 
 // 前向声明
-void workThread(TubeTrackContext& ctx);
+void workThread(CommL3Context& ctx);
 
 // ---- 信号处理 ----
 volatile sig_atomic_t g_running = 1;
@@ -139,10 +141,13 @@ static int becomeDaemon()
 }
 
 // ---- 应用配置 ----
-struct AppConfig {
+struct AppConfig
+{
     LogConfig logCfg;
     bool daemonMode = false;
-    std::string pidFile;
+    std::string pidFile = "/tmp/comml3.pid";
+    std::string gplatServer = "127.0.0.1";
+    int gplatPort = 8777;
 };
 
 // 加载配置文件 + 解析命令行参数
@@ -165,6 +170,8 @@ static bool loadConfig(int argc, char* argv[], AppConfig& app)
     app.logCfg.max_files       = config.GetIntDefault("max_files", app.logCfg.max_files);
     app.daemonMode = config.GetBoolDefault("daemon", false);
     app.pidFile    = config.GetStringDefault("pid_file", "/var/run/comml3.pid");
+    app.gplatServer = config.GetStringDefault("gplat_server", app.gplatServer);
+    app.gplatPort = config.GetIntDefault("gplat_port", app.gplatPort);
 
     // 解析命令行参数（-d 强制守护进程模式）
     int opt;
@@ -233,7 +240,7 @@ static int daemonize(AppConfig& app)
 }
 
 // ---- Redis连接 ----
-static bool initRedis(TubeTrackContext& ctx)
+static bool initRedis(CommL3Context& ctx)
 {
     auto &config = CConfig::GetInstance();
     try {
@@ -254,7 +261,7 @@ static bool initRedis(TubeTrackContext& ctx)
 }
 
 // ---- gplat连接 ----
-static bool initGplat(TubeTrackContext& ctx)
+static bool initGplat(CommL3Context& ctx)
 {
     auto &config = CConfig::GetInstance();
     try {
@@ -279,7 +286,7 @@ static bool initGplat(TubeTrackContext& ctx)
 }
 
 // ---- PostgreSQL连接 ----
-static bool initPostgreSQL(TubeTrackContext& ctx)
+static bool initPostgreSQL(CommL3Context& ctx)
 {
     auto &config = CConfig::GetInstance();
     try {
@@ -314,7 +321,7 @@ static bool initPostgreSQL(TubeTrackContext& ctx)
 }
 
 // ---- 高斯数据库连接 ----
-static bool initGauss(TubeTrackContext& ctx)
+static bool initGauss(CommL3Context& ctx)
 {
     auto &config = CConfig::GetInstance();
     try {
@@ -383,7 +390,7 @@ static bool initGauss(TubeTrackContext& ctx)
 }
 
 // ----测试高斯数据库插入、更新、删除数据的功能----
-static bool testGauss(TubeTrackContext& ctx)
+static bool testGauss(CommL3Context& ctx)
 {
     if (ctx.gaussLoader == nullptr || ctx.gaussConn == nullptr) {
         spdlog::error("高斯CRUD测试失败: 连接未初始化");
@@ -443,7 +450,7 @@ static bool testGauss(TubeTrackContext& ctx)
 }
 
 // ----测试同时访问高斯数据库和PostgreSQL的功能（在工作线程中调用）----
-static void testGaussAndPostgreSQL(TubeTrackContext& ctx)
+static void testGaussAndPostgreSQL(CommL3Context& ctx)
 {
     if (ctx.gaussLoader == nullptr || ctx.gaussConn == nullptr) {
         spdlog::error("高斯和PostgreSQL测试失败: 高斯连接未初始化");
@@ -543,7 +550,7 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
 
     // 5. 创建上下文对象（取代全局变量）
-    TubeTrackContext ctx;
+    CommL3Context ctx;
 
     // 6. 连接 Redis
     if (!initRedis(ctx)) {
@@ -551,21 +558,21 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    // 9. 连接高斯数据库
-    if (!initGauss(ctx)) {
-        ctx.Cleanup();
-        shutdownLogging();
-        return EXIT_FAILURE;
-    }
-
-    testGauss(ctx);
-    
-    // // 8. 连接PostgreSQL
-    // if (!initPostgreSQL(ctx)) {
+    // // 9. 连接高斯数据库
+    // if (!initGauss(ctx)) {
     //     ctx.Cleanup();
     //     shutdownLogging();
     //     return EXIT_FAILURE;
     // }
+
+    // testGauss(ctx);
+    
+    // 8. 连接PostgreSQL
+    if (!initPostgreSQL(ctx)) {
+        ctx.Cleanup();
+        shutdownLogging();
+        return EXIT_FAILURE;
+    }
 
     // testGaussAndPostgreSQL(ctx);
 
@@ -576,8 +583,18 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
+    // // 启动工作线程
+    // std::thread workerThread(workThread, std::ref(ctx));
+
+    // 9. 统一注入上下文到所有工位
+    ctx.Init();
+
     // 启动工作线程
-    std::thread workerThread(workThread, std::ref(ctx));
+    L2RcvL3 httpWorker(ctx);
+    L2SndL3 cprWorker(ctx);
+
+    std::thread httpThread(&L2RcvL3::Run, &httpWorker);
+    std::thread cprThread(&L2SndL3::Test, &cprWorker);
 
     // 主线程等待退出命令或信号
     while (true) {
@@ -585,10 +602,23 @@ int main(int argc, char* argv[])
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
+    // 通知工作线程退出，避免 join 阻塞。
+    ctx.running.store(false);
+
     // 等待所有线程结束
-    if (workerThread.joinable()) {
-        workerThread.join();
+    if (httpThread.joinable())
+    {
+        httpThread.join();
     }
+    if (cprThread.joinable())
+    {
+        cprThread.join();
+    }
+
+    // // 等待所有线程结束
+    // if (workerThread.joinable()) {
+    //     workerThread.join();
+    // }
 
     // 资源清理
     ctx.Cleanup();

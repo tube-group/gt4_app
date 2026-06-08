@@ -5,6 +5,8 @@ project(CommL3)
 # file(GLOB SOURCES "src/*.cpp")
 set(SOURCES
     src/main.cpp
+    src/L2RcvL3.cpp
+    src/L2SndL3.cpp
     src/workthread.cpp
 )
 
@@ -43,6 +45,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         spdlog::spdlog           # spdlog库
         redis++::redis++  # redis++库
         nlohmann_json::nlohmann_json # nlohmann_json库
+        cpr::cpr                 # cpr库
+        httplib::httplib         # httplib库
         Threads::Threads
         ${HIGPLAT_LIB}           # 自有库 higplat
         # -lpq # 强制链接，由于上面加了 BEFORE，它会抓到高斯的 libpq.so

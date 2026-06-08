@@ -11,13 +11,13 @@
 
 #include "logging.h"
 #include "higplat.h"
-#include "TubeTrackContext.h"
+#include "CommL3Context.h"
 #include "usercmd.h"
 
 // 声明外部变量
 extern volatile sig_atomic_t g_running;
 
-void workThread(TubeTrackContext &ctx)
+void workThread(CommL3Context &ctx)
 {
     unsigned int err;
 

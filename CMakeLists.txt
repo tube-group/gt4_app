@@ -17,6 +17,8 @@ find_package(redis++ REQUIRED)
 find_package(nlohmann_json REQUIRED)
 # find_package(SOCI REQUIRED COMPONENTS core postgresql)
 find_package(Threads REQUIRED)
+find_package(cpr REQUIRED)
+find_package(httplib CONFIG REQUIRED)
 
 # 设置公共头文件路径变量
 set(COMMON_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/include")
