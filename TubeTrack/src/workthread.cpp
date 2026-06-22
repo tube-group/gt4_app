@@ -18,6 +18,7 @@
 // 声明外部变量
 extern volatile sig_atomic_t g_running;
 
+void handleTask500MS(TubeTrackContext &ctx); // 处理500ms定时任务
 void handleAlignPosOn(TubeTrackContext &ctx, const char *value);
 void handleWeiPosOn(TubeTrackContext &ctx, const char *value);
 void handlePrtPosOn(TubeTrackContext &ctx, const char *value);
@@ -170,6 +171,7 @@ void workThread(TubeTrackContext &ctx)
     subscribe(ctx.gplatConn, "ADD_TUBE_CMD", &err);
     subscribe(ctx.gplatConn, "FINISH_WEIGHT_EVENT", &err);
     subscribe(ctx.gplatConn, "LENGTH_FINISH", &err);// 订阅测长完成事件
+    subscribe(ctx.gplatConn, "L2_WB_RELEASE", &err); 
 
     // 主循环：等待gPlat数据，处理TAG更新
     while (g_running)
@@ -192,6 +194,7 @@ void workThread(TubeTrackContext &ctx)
             if (tagname == "timer_500ms")
             {
                 spdlog::debug("Timer tick, g_running={}", g_running);
+                handleTask500MS(ctx);
                 continue;
             }
 
@@ -292,6 +295,12 @@ void workThread(TubeTrackContext &ctx)
                 spdlog::info("Handling LENGTH_FINISH: MEA_LEN={}", meaLen);
                 ctx.sprayPos.HandleLengthReady(meaLen);
             }
+            else if (tagname == "L2_WB_RELEASE")
+            {
+                bool l2WbRelease = read_value<bool>(value);
+                ctx.redis->set("L2_WB_RELEASE", l2WbRelease ? "true" : "false");
+                ctx.redis->publish("RealDataChanged", "L2_WB_RELEASE");
+            }
             else
             {
                 spdlog::warn("Unhandled tag: {}, value: {}", tagname, value);
@@ -302,7 +311,47 @@ void workThread(TubeTrackContext &ctx)
             spdlog::error("Error processing tag: {}, error: {}", tagname, ex.what());
             throw; // 继续抛出异常，交由上层处理（可能导致线程退出）
         }
-        //.....
+    }
+}
+
+void handleTask500MS(TubeTrackContext &ctx) {
+    unsigned int err;
+
+    bool weightRelease = ctx.weightPos.WbReleased();
+    bool sprayRelease = ctx.sprayPos.WbReleased();
+
+    bool l2WbRelease;
+    readb(ctx.gplatConn, "L2_WB_RELEASE", &l2WbRelease, sizeof(l2WbRelease), &err);
+
+    writeb(ctx.gplatConn, "WEIGHT_RELEASE", &weightRelease, sizeof(weightRelease), &err);
+    ctx.redis->set("WEIGHT_RELEASE", weightRelease ? "true" : "false");
+    ctx.redis->publish("RealDataChanged", "WEIGHT_RELEASE");
+    
+    writeb(ctx.gplatConn, "SPRAY_RELEASE", &sprayRelease, sizeof(sprayRelease), &err);
+    ctx.redis->set("SPRAY_RELEASE", sprayRelease ? "true" : "false");
+    ctx.redis->publish("RealDataChanged", "SPRAY_RELEASE");
+
+    bool wbRelease = weightRelease && sprayRelease && l2WbRelease;
+
+    if (wbRelease)
+    {
+        if (ctx.prodPlan.Count() == 0)
+        {
+            // Program.qbdConnection.LogAlarm("yjg4_Alarm", "投料支数为0，禁止释放步进梁，请设置投料支数！", 9);
+            // ctx.prodPlan.Block();
+            unsigned int err;
+            // write_plc_bool(ctx.gplatConn, "WB_RELEASE", false, &err);
+        }
+        else
+        {
+            unsigned int err;
+            // write_plc_bool(ctx.gplatConn, "WB_RELEASE", true, &err);
+        }
+    }
+    else
+    {
+        unsigned int err;
+        // write_plc_bool(ctx.gplatConn, "WB_RELEASE", true, &err);
     }
 }
 

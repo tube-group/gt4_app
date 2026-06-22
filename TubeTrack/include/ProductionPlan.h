@@ -23,6 +23,7 @@ public:
     void RestoreFromJson(const string &jsonStr);
     void ReadParameterSet();
     bool IsEmpty();
+    int Count(){return feed_num;} // 返回投料支数
 
 private:
     string order_no;        // 合同号

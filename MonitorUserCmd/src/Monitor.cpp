@@ -106,9 +106,9 @@ bool CMonitor::handleCommand(const std::string &message)
 		return false;
 	}
 
-	if (!j.contains("cmd_para") || (!j["cmd_para"].is_object()))
+	if (!j.contains("cmd_para"))
 	{
-		spdlog::warn("命令缺少有效的cmd_para字段: {}", message);
+		spdlog::warn("命令缺少cmd_para字段: {}", message);
 		return false;
 	}
 
@@ -230,6 +230,36 @@ bool CMonitor::handleCommand(const std::string &message)
 			cmd.bundle_no = cmdPara["bundle_no"].get<std::string>();
 			cmd.count = cmdPara["count"].get<int>();
 			writeb(ctx_.gplatConn, "TAG_PRINT_EVENT", &cmd, sizeof(cmd), &error);
+		}
+		else if (j["cmd_name"] == "l2_wb_release_cmd")
+		{
+			unsigned int error;
+			int value = 0;
+
+			// cmdPara支持int/string/bool，0表示封锁步进梁，非0表示释放步进梁
+			if (cmdPara.is_number_integer())
+			{
+				value = cmdPara.get<int>();
+			}
+			else if (cmdPara.is_string())
+			{
+				value = std::stoi(cmdPara.get<std::string>());
+			}
+			else if (cmdPara.is_boolean())
+			{
+				value = cmdPara.get<bool>() ? 1 : 0;
+			}
+			else
+			{
+				throw std::runtime_error("cmd_para类型非法, 期望int/string/bool");
+			}
+
+			bool boolValue = (value != 0);
+			writeb(ctx_.gplatConn, "L2_WB_RELEASE", &boolValue, sizeof(boolValue), &error);
+			spdlog::info("处理l2_wb_release_cmd命令: value={}", boolValue);
+
+			ctx_.redis->set("L2_WB_RELEASE", boolValue ? "true" : "false");
+			ctx_.redis->publish("RealDataChanged", "L2_WB_RELEASE");
 		}
 		else
 		{

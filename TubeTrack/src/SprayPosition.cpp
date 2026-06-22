@@ -72,7 +72,7 @@ void CSprayPosition::StartManualLength()
     // 标记手动测长状态，等待人工输入长度数据
     m_bManualLength = true;
     unsigned int error;
-    write_plc_bool(m_ctx->gplatConn, "[S7_GT4_1200]DB12,X0.7", true, &error);
+    // write_plc_bool(m_ctx->gplatConn, "[S7_GT4_1200]DB12,X0.7", true, &error);
 }
 
 //---------------处理测长完成事件-------------------------
@@ -178,7 +178,7 @@ void CSprayPosition::HandleLengthReady(float actlength)
     else
     {
         // 合格管处理
-        write_plc_bool(m_ctx->gplatConn, "[S7_GT4_1200]DB12,X0.2", false, &error); // 废管标志
+        // write_plc_bool(m_ctx->gplatConn, "SPRAY_WASTE_FLAG", false, &error); // 废管标志
         if (PrepairSpray())
         {
             StartSpray(); // 启动喷印
