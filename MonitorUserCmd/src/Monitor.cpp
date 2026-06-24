@@ -106,18 +106,34 @@ bool CMonitor::handleCommand(const std::string &message)
 		return false;
 	}
 
-	if (!j.contains("cmd_para"))
-	{
-		spdlog::warn("命令缺少cmd_para字段: {}", message);
-		return false;
-	}
+	const std::string cmdName = j["cmd_name"].get<std::string>();
 
 	try
 	{
-		const auto &cmdPara = j["cmd_para"];
-
-		if (j["cmd_name"] == "SetFeedNumCmd")
+		auto requireCmdPara = [&j, &cmdName]() -> const json &
 		{
+			if (!j.contains("cmd_para"))
+			{
+				throw std::runtime_error(cmdName + "命令缺少cmd_para字段");
+			}
+
+			return j["cmd_para"];
+		};
+
+		auto requireObjectCmdPara = [&requireCmdPara, &cmdName]() -> const json &
+		{
+			const auto &cmdPara = requireCmdPara();
+			if (!cmdPara.is_object())
+			{
+				throw std::runtime_error(cmdName + "命令的cmd_para必须是对象");
+			}
+
+			return cmdPara;
+		};
+
+		if (cmdName == "SetFeedNumCmd")
+		{
+			const auto &cmdPara = requireObjectCmdPara();
 
 			SetFeedNumCmd cmd;
 
@@ -129,8 +145,10 @@ bool CMonitor::handleCommand(const std::string &message)
 			spdlog::info("处理SetFeedNumCmd命令: feed_num={}", cmd.feed_num);
 
 		}
-		else if (j["cmd_name"] == "MoveTubeCmd")
+		else if (cmdName == "MoveTubeCmd")
 		{
+			const auto &cmdPara = requireObjectCmdPara();
+
 			MoveTubeCmd cmd;
 
 			cmd.from = cmdPara["from"].get<std::string>();
@@ -141,8 +159,10 @@ bool CMonitor::handleCommand(const std::string &message)
 
 			spdlog::info("处理MoveTubeCmd命令: from={}, to={}", cmd.from.c_str(), cmd.to.c_str());
 		}
-		else if (j["cmd_name"] == "ModifyTubeCmd")
+		else if (cmdName == "ModifyTubeCmd")
 		{
+			const auto &cmdPara = requireObjectCmdPara();
+
 			ModifyTubeCmd cmd;
 
 			cmd.seq_no = cmdPara["seq_no"].get<int>();
@@ -167,8 +187,10 @@ bool CMonitor::handleCommand(const std::string &message)
 			spdlog::info("处理ModifyTubeCmd命令: seq_no={}, position_name={}, order_no={}, item_no={}, roll_no={}, melt_no={}, lot_no={}, tube_no={}, flow_no={}, length={}, weight={}, length_ok={}, weight_ok={}, lotno_coupling={}, meltno_coupling={}",
 						 cmd.seq_no, cmd.position_name.c_str(), cmd.order_no.c_str(), cmd.item_no.c_str(), cmd.roll_no.c_str(), cmd.melt_no.c_str(), cmd.lot_no.c_str(), cmd.tube_no, cmd.flow_no, cmd.length, cmd.weight, cmd.length_ok, cmd.weight_ok, cmd.lotno_coupling.c_str(), cmd.meltno_coupling.c_str());
 		}
-		else if (j["cmd_name"] == "DeleteTubeCmd")
+		else if (cmdName == "DeleteTubeCmd")
 		{
+			const auto &cmdPara = requireObjectCmdPara();
+
 			DeleteTubeCmd cmd;
 
 			cmd.seq_no = cmdPara["seq_no"].get<int>();
@@ -179,8 +201,10 @@ bool CMonitor::handleCommand(const std::string &message)
 
 			spdlog::info("处理DeleteTubeCmd命令: seq_no={}, position_name={}", cmd.seq_no, cmd.position_name.c_str());
 		}
-		else if (j["cmd_name"] == "SetCurrentContractCmd")
+		else if (cmdName == "SetCurrentContractCmd")
 		{
+			const auto &cmdPara = requireObjectCmdPara();
+
 			SetCurrentContractCmd cmd;
 
 			cmd.order_no = cmdPara["order_no"].get<std::string>();
@@ -191,8 +215,10 @@ bool CMonitor::handleCommand(const std::string &message)
 
 			spdlog::info("处理SetCurrentContractCmd命令: order_no={}, item_no={}", cmd.order_no.c_str(), cmd.item_no.c_str());
 		}
-		else if (j["cmd_name"] == "AddTubeCmd")
+		else if (cmdName == "AddTubeCmd")
 		{
+			const auto &cmdPara = requireObjectCmdPara();
+
 			AddTubeCmd cmd;
 
 			cmd.seq_no = cmdPara["seq_no"].get<int>();
@@ -203,26 +229,28 @@ bool CMonitor::handleCommand(const std::string &message)
 
 			spdlog::info("处理AddTubeCmd命令: seq_no={}, position_name={}", cmd.seq_no, cmd.position_name.c_str());
 		}
-		else if (j["cmd_name"] == "parameter_set_updated")
+		else if (cmdName == "parameter_set_updated")
 		{
 			unsigned int error;
 			int a = 0; // 这个命令没有参数，value可以是任意数据
 			writeb(ctx_.gplatConn, "PARAMETER_SET_UPDATED", &a, sizeof(a), &error);
 		}
-		else if (j["cmd_name"] == "start_weight_cmd")
+		else if (cmdName == "start_weight_cmd")
 		{
 			unsigned int error;
 			int value = 1;
 			writeb(ctx_.gplatConn, "START_WEIGHT_EVENT", &value, sizeof(value), &error);
 		}
-		else if (j["cmd_name"] == "stop_weight_cmd")
+		else if (cmdName == "stop_weight_cmd")
 		{
 			unsigned int error;
 			int value = 0;
 			writeb(ctx_.gplatConn, "START_WEIGHT_EVENT", &value, sizeof(value), &error);
 		}
-		else if (j["cmd_name"] == "tag_print_event")
+		else if (cmdName == "tag_print_event")
 		{
+			const auto &cmdPara = requireObjectCmdPara();
+
 			unsigned int error;
 			TagPrintEvent cmd; 
 			cmd.order_no = cmdPara["order_no"].get<std::string>();
@@ -231,8 +259,10 @@ bool CMonitor::handleCommand(const std::string &message)
 			cmd.count = cmdPara["count"].get<int>();
 			writeb(ctx_.gplatConn, "TAG_PRINT_EVENT", &cmd, sizeof(cmd), &error);
 		}
-		else if (j["cmd_name"] == "l2_wb_release_cmd")
+		else if (cmdName == "l2_wb_release_cmd" || cmdName == "release_l2_wb_cmd")
 		{
+			const auto &cmdPara = requireCmdPara();
+
 			unsigned int error;
 			int value = 0;
 
@@ -261,15 +291,22 @@ bool CMonitor::handleCommand(const std::string &message)
 			ctx_.redis->set("L2_WB_RELEASE", boolValue ? "true" : "false");
 			ctx_.redis->publish("RealDataChanged", "L2_WB_RELEASE");
 		}
+		else if (cmdName == "release_all_pos_cmd")
+		{
+			unsigned int error;
+			int value = 1; // 释放所有工位
+			writeb(ctx_.gplatConn, "RELEASE_ALL_POS_CMD", &value, sizeof(value), &error);
+			spdlog::info("处理release_all_pos_cmd命令: value={}", value);
+		}
 		else
 		{
-			spdlog::warn("未知的命令类型: {}", j["cmd_name"].get<std::string>());
+			spdlog::warn("未知的命令类型: {}", cmdName);
 			return false;
 		}
 	}
 	catch (const std::exception &e)
 	{
-		spdlog::warn("{}命令失败: {}", j["cmd_name"].get<std::string>(), e.what());
+		spdlog::warn("{}命令失败: {}", cmdName, e.what());
 		return false;
 	}
 
