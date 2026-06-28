@@ -425,8 +425,8 @@ void WeightWorker::Run()
 			
 			if (tagname == "START_WEIGHT_EVENT" )
 			{
-				StartWeightEvent startWeightEvent = read_value<StartWeightEvent>(value);
-				if (startWeightEvent.is_start == 1)
+			        int  startWeightEvent = read_value<int>(value);
+				if (startWeightEvent == 1)
 				{
 					int weight = ReadWeightCentiKg();
 					spdlog::info("称重结果: {}", weight);
