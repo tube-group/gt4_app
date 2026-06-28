@@ -88,16 +88,6 @@ struct AddTubeCmd
   PodString<20> position_name; // 工位名称
 };
 
-struct StartWeightEvent
-{
-  int is_start; // 1表示开始称重，0表示结束称重
-};
-
-struct FinishWeightEvent
-{
-  int weight; // 称重结果，单位为0.01kg
-};
-
 struct TagPrintEvent
 {
   PodString<20> order_no; // 合同号

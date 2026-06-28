@@ -7,8 +7,8 @@ create SET_CURRENT_CONTRACT_CMD SetCurrentContractCmd
 create START_SPRAY_EVENT StartSprayEvent
 create ADD_TUBE_CMD AddTubeCmd
 create PARAMETER_SET_UPDATED Int32
-create START_WEIGHT_EVENT StartWeightEvent
-create FINISH_WEIGHT_EVENT FinishWeightEvent
+create START_WEIGHT_EVENT Int32
+create FINISH_WEIGHT_EVENT Int32
 create TAG_PRINT_EVENT TagPrintEvent
 create BUNDLE_CMD Int32
 create MANUAL_SPRAY_CMD Int32
