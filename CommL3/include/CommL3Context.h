@@ -4,8 +4,8 @@
 #pragma once
 
 #include <sw/redis++/redis++.h>
-#include <pqxx/pqxx>
-#include "gauss_loader.h"
+// #include <pqxx/pqxx>
+#include "gauss_connection.h"
 #include "logging.h"   // spdlog
 #include "higplat.h"
 #include <memory>
@@ -14,9 +14,8 @@ struct CommL3Context {
     // 共享资源
     std::unique_ptr<sw::redis::Redis> redis;
     int gplatConn = -1;
-    std::unique_ptr<pqxx::connection> pgConn;
-    std::unique_ptr<GaussLoader> gaussLoader;
-    PGconn* gaussConn = nullptr;
+    // std::unique_ptr<pqxx::connection> pgConn;
+    std::unique_ptr<GaussDB::Connection> gaussConn;
 
     std::atomic_bool running{true};
     std::string weightTcpHost = "140.32.1.185";
@@ -30,16 +29,12 @@ struct CommL3Context {
 
     // 清理资源
     void Cleanup() {
-        if (gaussConn != nullptr && gaussLoader != nullptr && gaussLoader->PQfinish != nullptr) {
-            gaussLoader->PQfinish(gaussConn);
-            gaussConn = nullptr;
-        }
+        gaussConn.reset();
         if (gplatConn > 0) {
             disconnectgplat(gplatConn);
             gplatConn = -1;
         }
         redis.reset();
-        pgConn.reset();
-        gaussLoader.reset();
+        // pgConn.reset();
     }
 };

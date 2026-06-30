@@ -15,7 +15,6 @@
 #include "iniconfig.h" // CConfig
 #include "logging.h"   // LogConfig
 
-#include "gauss_loader.h"
 #include <iostream>
 
 // 前向声明
@@ -285,54 +284,50 @@ static bool initGplat(CommL3Context& ctx)
     }
 }
 
-// ---- PostgreSQL连接 ----
-static bool initPostgreSQL(CommL3Context& ctx)
-{
-    auto &config = CConfig::GetInstance();
-    try {
-        // 读取PostgreSQL连接参数
-        std::string dbname = config.GetStringDefault("dbname", "mesl2");
-        std::string user = config.GetStringDefault("user", "l2user");
-        std::string password = config.GetStringDefault("password", "");
-        std::string hostaddr = config.GetStringDefault("hostaddr", "127.0.0.1");
-        int port = config.GetIntDefault("port", 5432);
+// // ---- PostgreSQL连接 ----
+// static bool initPostgreSQL(CommL3Context& ctx)
+// {
+//     auto &config = CConfig::GetInstance();
+//     try {
+//         // 读取PostgreSQL连接参数
+//         std::string dbname = config.GetStringDefault("dbname", "mesl2");
+//         std::string user = config.GetStringDefault("user", "l2user");
+//         std::string password = config.GetStringDefault("password", "");
+//         std::string hostaddr = config.GetStringDefault("hostaddr", "127.0.0.1");
+//         int port = config.GetIntDefault("port", 5432);
 
-        // 构建连接字符串
-        std::string connStr = "dbname=" + dbname +
-                              " user=" + user +
-                              " password=" + password +
-                              " hostaddr=" + hostaddr +
-                              " port=" + std::to_string(port);
+//         // 构建连接字符串
+//         std::string connStr = "dbname=" + dbname +
+//                               " user=" + user +
+//                               " password=" + password +
+//                               " hostaddr=" + hostaddr +
+//                               " port=" + std::to_string(port);
 
-        ctx.pgConn = std::make_unique<pqxx::connection>(connStr);
+//         ctx.pgConn = std::make_unique<pqxx::connection>(connStr);
         
-        if (ctx.pgConn->is_open()) {
-            spdlog::info("成功连接到 PostgreSQL 数据库: {}", dbname);
-            return true;
-        } else {
-            spdlog::error("PostgreSQL 连接失败: 数据库未打开");
-            return false;
-        }
+//         if (ctx.pgConn->is_open()) {
+//             spdlog::info("成功连接到 PostgreSQL 数据库: {}", dbname);
+//             return true;
+//         } else {
+//             spdlog::error("PostgreSQL 连接失败: 数据库未打开");
+//             return false;
+//         }
 
-    } catch (const std::exception& e) {
-        spdlog::error("PostgreSQL 连接失败: {}", e.what());
-        return false;
-    }
-}
+//     } catch (const std::exception& e) {
+//         spdlog::error("PostgreSQL 连接失败: {}", e.what());
+//         return false;
+//     }
+// }
 
 // ---- 高斯数据库连接 ----
 static bool initGauss(CommL3Context& ctx)
 {
     auto &config = CConfig::GetInstance();
     try {
-        std::string soPath = config.GetStringDefault(
-            "gauss_so_path",
-            "/app/projects/gt4_app/third_party/gauss_sdk/lib/libpq.so"
-        );
-        std::string host = config.GetStringDefault("gauss_host", "10.81.57.151");
-        std::string dbname = config.GetStringDefault("gauss_dbname", "gfhgot");
+        std::string host = config.GetStringDefault("gauss_host", "140.32.1.164");
+        std::string dbname = config.GetStringDefault("gauss_dbname", "dbprodu3");
         std::string user = config.GetStringDefault("gauss_user", "hfwot");
-        std::string password = config.GetStringDefault("gauss_password", "fhq6OPx92T");
+        std::string password = config.GetStringDefault("gauss_password", " ");
         int port = config.GetIntDefault("gauss_port", 8000);
 
         std::string connStr = "host=" + host +
@@ -341,50 +336,15 @@ static bool initGauss(CommL3Context& ctx)
                               " user=" + user +
                               " password=" + password;
 
-        ctx.gaussLoader = std::make_unique<GaussLoader>(soPath);
-        ctx.gaussConn = ctx.gaussLoader->PQconnectdb(connStr.c_str());
-        if (ctx.gaussConn == nullptr) {
-            spdlog::error("高斯数据库连接失败: PQconnectdb 返回空指针");
-            ctx.gaussLoader.reset();
-            return false;
-        }
-
-        PGresult* res = ctx.gaussLoader->PQexec(ctx.gaussConn, "SELECT version();");
-        if (res == nullptr) {
-            const char* err = ctx.gaussLoader->PQerrorMessage != nullptr
-                ? ctx.gaussLoader->PQerrorMessage(ctx.gaussConn)
-                : nullptr;
-            spdlog::error("高斯数据库连接失败: {}", err != nullptr ? err : "未知错误");
-            ctx.gaussLoader->PQfinish(ctx.gaussConn);
-            ctx.gaussConn = nullptr;
-            ctx.gaussLoader.reset();
-            return false;
-        }
-
-        bool ok = ctx.gaussLoader->PQresultStatus(res) == PGRES_TUPLES_OK;
-        if (ok) {
-            spdlog::info("成功连接到高斯数据库: {}", dbname);
-        } else {
-            const char* err = ctx.gaussLoader->PQerrorMessage != nullptr
-                ? ctx.gaussLoader->PQerrorMessage(ctx.gaussConn)
-                : nullptr;
-            spdlog::error("高斯数据库连接失败: {}", err != nullptr ? err : "未知错误");
-        }
-
-        ctx.gaussLoader->PQclear(res);
-        if (!ok) {
-            ctx.gaussLoader->PQfinish(ctx.gaussConn);
-            ctx.gaussConn = nullptr;
-            ctx.gaussLoader.reset();
-            return false;
-        }
+        ctx.gaussConn = std::make_unique<GaussDB::Connection>(connStr);
+        ctx.gaussConn->execute("SELECT version();");
+        spdlog::info("成功连接到高斯数据库: {}", dbname);
 
         return true;
     } 
     catch (const std::exception& e) {
         spdlog::error("高斯数据库连接失败: {}", e.what());
-        ctx.gaussConn = nullptr;
-        ctx.gaussLoader.reset();
+        ctx.gaussConn.reset();
         return false;
     }
 }
@@ -392,139 +352,26 @@ static bool initGauss(CommL3Context& ctx)
 // ----测试高斯数据库插入、更新、删除数据的功能----
 static bool testGauss(CommL3Context& ctx)
 {
-    if (ctx.gaussLoader == nullptr || ctx.gaussConn == nullptr) {
+    if (ctx.gaussConn == nullptr) {
         spdlog::error("高斯CRUD测试失败: 连接未初始化");
         return false;
     }
-    PGresult* res = nullptr;  // 在这里声明res变量
-    // // 1. 插入数据
-    // const char* insertSql = "INSERT INTO test_employee(emp_name, salary) VALUES ($1, $2);";
-    // const char* insertParams[2] = {"zhangsan", "8888.88"};
-    // res = ctx.gaussLoader->PQexecParams(
-    //     ctx.gaussConn, insertSql, 2, nullptr, 
-    //     insertParams, nullptr, nullptr, 
-    //     0  // 返回二进制格式或文本格式（1=二进制，0=文本）
-    // );
-    // if (res && ctx.gaussLoader->PQresultStatus(res) == PGRES_COMMAND_OK) {
-    //     spdlog::info("插入成功，影响行数: {}", ctx.gaussLoader->PQcmdTuples(res));
-    // } else {
-    //     spdlog::error("插入失败");
-    //     if (res) ctx.gaussLoader->PQclear(res);
-    //     return false;
-    // }
-    // ctx.gaussLoader->PQclear(res);
-
-    // // 2. 更新数据
-    // const char* updateSql = "UPDATE test_employee SET salary=$1 WHERE emp_name=$2;";
-    // const char* updateParams[2] = {"9999.99", "zhangsan"};
-    // res = ctx.gaussLoader->PQexecParams(ctx.gaussConn, updateSql, 2, nullptr,
-    //                                      updateParams, nullptr, nullptr, 0);
-    
-    // if (res || ctx.gaussLoader->PQresultStatus(res) == PGRES_COMMAND_OK) {
-    //     spdlog::info("更新成功，影响行数: {}", ctx.gaussLoader->PQcmdTuples(res));
-    // } else {
-    //     spdlog::error("更新失败");
-    //     if (res) ctx.gaussLoader->PQclear(res);
-    //     return false;
-    // }
-    // ctx.gaussLoader->PQclear(res);
+    // 如需插入或更新，可直接调用 executeParams：
+    // ctx.gaussConn->executeParams(
+    //     "INSERT INTO test_employee(emp_name, salary) VALUES ($1, $2);",
+    //     {"zhangsan", "8888.88"});
+    // ctx.gaussConn->executeParams(
+    //     "UPDATE test_employee SET salary=$1 WHERE emp_name=$2;",
+    //     {"9999.99", "zhangsan"});
 
     // 3. 删除数据
-    const char* deleteSql = "DELETE FROM test_employee WHERE emp_name=$1;";
-    const char* deleteParams[1] = {"zhangsan"};
-    res = ctx.gaussLoader->PQexecParams(ctx.gaussConn, deleteSql, 1, nullptr,
-                                         deleteParams, nullptr, nullptr, 0);
-    
-    if (res || ctx.gaussLoader->PQresultStatus(res) == PGRES_COMMAND_OK) {
-        spdlog::info("删除成功，影响行数: {}", ctx.gaussLoader->PQcmdTuples(res));
-    } else {
-        spdlog::error("删除失败");
-        if (res) ctx.gaussLoader->PQclear(res);
-        return false;
-    }
-    ctx.gaussLoader->PQclear(res);
+    auto res = ctx.gaussConn->executeParams(
+        "DELETE FROM test_employee WHERE emp_name=$1;",
+        {"zhangsan"});
+    spdlog::info("删除成功，影响行数: {}", res.cmdTuples());
     
     spdlog::info("CRUD测试通过: 插入->更新->删除成功");
     return true;
-
-}
-
-// ----测试同时访问高斯数据库和PostgreSQL的功能（在工作线程中调用）----
-static void testGaussAndPostgreSQL(CommL3Context& ctx)
-{
-    if (ctx.gaussLoader == nullptr || ctx.gaussConn == nullptr) {
-        spdlog::error("高斯和PostgreSQL测试失败: 高斯连接未初始化");
-        return;
-    }
-    if (ctx.pgConn == nullptr || !ctx.pgConn->is_open()) {
-        spdlog::error("高斯和PostgreSQL测试失败: PostgreSQL连接未初始化");
-        return;
-    }
-
-    // 准备测试数据
-    std::string empName = "张三";
-    std::string hireDate = "2024-01-15";
-    std::string salary = "8500.50";
-    std::string username = "zhang_san";
-    std::string fullName = "张三";
-    std::string email = "zhangsan@example.com";
-    std::string phone = "13812345678";
-    
-    PGresult* resGauss = nullptr;
-    int gaussEmpId = -1;
-    int pgUserId = -1;    
-
-    // 1、插入高斯数据库
-    const char* insertGaussSql = "INSERT INTO test_employee (emp_name, hire_date, salary) VALUES ($1, $2, $3) RETURNING emp_id;";
-    const char* insertGaussParams[3] = {empName.c_str(), hireDate.c_str(), salary.c_str()};
-    resGauss = ctx.gaussLoader->PQexecParams(ctx.gaussConn, insertGaussSql, 3, nullptr, insertGaussParams, nullptr, nullptr, 0);
-    if (resGauss == nullptr || ctx.gaussLoader->PQresultStatus(resGauss) != PGRES_TUPLES_OK) {
-        const char* err = ctx.gaussLoader->PQerrorMessage != nullptr
-            ? ctx.gaussLoader->PQerrorMessage(ctx.gaussConn)
-            : nullptr;
-        if (resGauss != nullptr) ctx.gaussLoader->PQclear(resGauss);
-        spdlog::error("同时插入测试失败: 向高斯数据库插入数据失败: {}", err != nullptr ? err : "未知错误");
-        return;
-    }
-
-    // 获取高斯插入的记录ID
-    if (ctx.gaussLoader->PQntuples(resGauss) > 0) {
-        gaussEmpId = std::stoi(ctx.gaussLoader->PQgetvalue(resGauss, 0, 0));
-        spdlog::info("高斯数据库插入成功，emp_id={}", gaussEmpId);
-    }
-    ctx.gaussLoader->PQclear(resGauss);
-
-    // 2. 插入PostgreSQL数据库
-     try {
-        pqxx::work txn(*ctx.pgConn);
-
-        std::string insertPgSql = "INSERT INTO users (username, full_name, email, phone) VALUES ($1, $2, $3, $4) RETURNING id;";
-        pqxx::result resPg = txn.exec_params(insertPgSql, username, fullName, email, phone);
-        
-        if (!resPg.empty()) {
-            pgUserId = resPg[0][0].as<int>();
-            spdlog::info("PostgreSQL数据库插入成功，user_id={}", pgUserId);
-        }
-        txn.commit();
-        
-    } catch (const std::exception& e) {
-        spdlog::error("同时插入测试失败: 向PostgreSQL数据库插入数据失败: {}", e.what());
-        
-        // 如果PostgreSQL插入失败，回滚高斯数据库的插入,保证要么两个数据库都插入成功，要么都不插入
-        // 注意：这里的回滚是通过删除之前插入的记录实现的，前提是emp_id是唯一标识
-        if (gaussEmpId != -1) {
-            const char* rollbackSql = "DELETE FROM test_employee WHERE emp_id = $1;";
-            const char* rollbackParams[1] = {std::to_string(gaussEmpId).c_str()};
-            PGresult* resRollback = ctx.gaussLoader->PQexecParams(
-                ctx.gaussConn, rollbackSql, 1, nullptr,
-                rollbackParams, nullptr, nullptr, 0);
-            if (resRollback != nullptr) ctx.gaussLoader->PQclear(resRollback);
-            spdlog::warn("已回滚高斯数据库插入的记录, emp_id={}", gaussEmpId);
-        }
-        return;
-    }
-    
-    spdlog::info("高斯和PostgreSQL测试通过: 高斯记录ID={}, PostgreSQL记录ID={}", gaussEmpId, pgUserId);
 
 }
 
@@ -558,21 +405,21 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    // // 9. 连接高斯数据库
-    // if (!initGauss(ctx)) {
-    //     ctx.Cleanup();
-    //     shutdownLogging();
-    //     return EXIT_FAILURE;
-    // }
-
-    // testGauss(ctx);
-    
-    // 8. 连接PostgreSQL
-    if (!initPostgreSQL(ctx)) {
+    // 9. 连接高斯数据库
+    if (!initGauss(ctx)) {
         ctx.Cleanup();
         shutdownLogging();
         return EXIT_FAILURE;
     }
+
+    // testGauss(ctx);
+    
+    // // 8. 连接PostgreSQL
+    // if (!initPostgreSQL(ctx)) {
+    //     ctx.Cleanup();
+    //     shutdownLogging();
+    //     return EXIT_FAILURE;
+    // }
 
     // testGaussAndPostgreSQL(ctx);
 

@@ -173,6 +173,7 @@ void workThread(TubeTrackContext &ctx)
     subscribe(ctx.gplatConn, "LENGTH_FINISH", &err);// 订阅测长完成事件
     subscribe(ctx.gplatConn, "L2_WB_RELEASE", &err); 
     subscribe(ctx.gplatConn, "RELEASE_ALL_POS_CMD", &err);
+    subscribe(ctx.gplatConn, "PARAMETER_SET_UPDATED", &err);// 订阅参数集更新事件
 
     // 主循环：等待gPlat数据，处理TAG更新
     while (g_running)
@@ -313,6 +314,25 @@ void workThread(TubeTrackContext &ctx)
                 ctx.sprayPos.ReleaseWB();
                 ctx.circlePos.ReleaseWB();
                 ctx.scraptRoller.ReleaseWB();
+            }
+            else if (tagname == "PARAMETER_SET_UPDATED")
+            {
+                spdlog::info("Handling PARAMETER_SET_UPDATED event");
+                // 重新读取各工位的参数集
+                ctx.prodPlan.ReadParameterSet();
+                ctx.weightPos.ReadParameterSet();
+                ctx.carvePos.ReadParameterSet();
+                ctx.sprayPos.ReadParameterSet();
+                ctx.circlePos.ReadParameterSet();
+                ctx.basket.ReadParameterSet();
+
+                // 刷新各工位的画面
+                ctx.prodPlan.UpdateForm();
+                ctx.weightPos.UpdateForm();
+                ctx.carvePos.UpdateForm();
+                ctx.sprayPos.UpdateForm();
+                ctx.circlePos.UpdateForm();
+                ctx.basket.UpdateForm();
             }
             else
             {
