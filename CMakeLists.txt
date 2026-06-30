@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
 # 统一使用 find_package 查找所有第三方库
-# find_package(libpqxx REQUIRED)
+find_package(libpqxx REQUIRED)
 # find_package(yaml-cpp REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(hiredis REQUIRED)

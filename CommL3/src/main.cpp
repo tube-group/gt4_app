@@ -327,18 +327,22 @@ static bool initGauss(CommL3Context& ctx)
         std::string host = config.GetStringDefault("gauss_host", "140.32.1.164");
         std::string dbname = config.GetStringDefault("gauss_dbname", "dbprodu3");
         std::string user = config.GetStringDefault("gauss_user", "hfwot");
-        std::string password = config.GetStringDefault("gauss_password", " ");
+        std::string password = config.GetStringDefault("gauss_password", "");
         int port = config.GetIntDefault("gauss_port", 8000);
 
-        std::string connStr = "host=" + host +
-                              " port=" + std::to_string(port) +
-                              " dbname=" + dbname +
-                              " user=" + user +
-                              " password=" + password;
-
-        ctx.gaussConn = std::make_unique<GaussDB::Connection>(connStr);
-        ctx.gaussConn->execute("SELECT version();");
-        spdlog::info("成功连接到高斯数据库: {}", dbname);
+        ctx.gaussConn = std::make_unique<GaussDB::Connection>(
+            std::vector<GaussDB::Connection::ConnectParam>{
+                {"host", host},
+                {"port", std::to_string(port)},
+                {"dbname", dbname},
+                {"user", user},
+                {"password", password}});
+        auto versionRes = ctx.gaussConn->execute("SELECT version();");
+        auto serverVersion = versionRes.getOptionalValue(0, 0);
+        if (!serverVersion.has_value()) {
+            throw std::runtime_error("version() 返回 NULL");
+        }
+        spdlog::info("成功连接到高斯数据库: {}, version={}", dbname, *serverVersion);
 
         return true;
     } 
@@ -359,15 +363,17 @@ static bool testGauss(CommL3Context& ctx)
     // 如需插入或更新，可直接调用 executeParams：
     // ctx.gaussConn->executeParams(
     //     "INSERT INTO test_employee(emp_name, salary) VALUES ($1, $2);",
-    //     {"zhangsan", "8888.88"});
+    //     {GaussDB::Connection::Param::text("zhangsan"),
+    //      GaussDB::Connection::Param::numeric("8888.88")});
     // ctx.gaussConn->executeParams(
     //     "UPDATE test_employee SET salary=$1 WHERE emp_name=$2;",
-    //     {"9999.99", "zhangsan"});
+    //     {GaussDB::Connection::Param::null(GaussDB::TypeOid::Numeric),
+    //      GaussDB::Connection::Param::text("zhangsan")});
 
     // 3. 删除数据
     auto res = ctx.gaussConn->executeParams(
         "DELETE FROM test_employee WHERE emp_name=$1;",
-        {"zhangsan"});
+        {GaussDB::Connection::Param::text("zhangsan")});
     spdlog::info("删除成功，影响行数: {}", res.cmdTuples());
     
     spdlog::info("CRUD测试通过: 插入->更新->删除成功");
@@ -440,8 +446,8 @@ int main(int argc, char* argv[])
     L2RcvL3 httpWorker(ctx);
     L2SndL3 cprWorker(ctx);
 
-    std::thread httpThread(&L2RcvL3::Run, &httpWorker);
-    std::thread cprThread(&L2SndL3::Test, &cprWorker);
+    // std::thread httpThread(&L2RcvL3::Run, &httpWorker);
+    // std::thread cprThread(&L2SndL3::Test, &cprWorker);
 
     // 主线程等待退出命令或信号
     while (true) {
@@ -453,14 +459,14 @@ int main(int argc, char* argv[])
     ctx.running.store(false);
 
     // 等待所有线程结束
-    if (httpThread.joinable())
-    {
-        httpThread.join();
-    }
-    if (cprThread.joinable())
-    {
-        cprThread.join();
-    }
+    // if (httpThread.joinable())
+    // {
+    //     httpThread.join();
+    // }
+    // if (cprThread.joinable())
+    // {
+    //     cprThread.join();
+    // }
 
     // // 等待所有线程结束
     // if (workerThread.joinable()) {
