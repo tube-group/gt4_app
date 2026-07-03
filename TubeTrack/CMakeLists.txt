@@ -19,6 +19,8 @@ set(SOURCES
     src/WeightPosition.cpp
     src/WalkingBeam.cpp
     src/workthread.cpp
+    src/statisticsthread.cpp
+    src/DoStatistics.cpp
 )
 
 

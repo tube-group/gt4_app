@@ -470,3 +470,40 @@ string CPositionBase::convertToJson()
 
 	return j.dump(4);
 }
+
+void CPositionBase::Statistics(string orderNo, string itemNo, string meltNo, string lotNo, float &weight, float &length, int &count)
+{
+    weight = 0.0f;
+    length = 0.0f;
+    count = 0;
+
+    for (const auto &tubePtr : Tubes())
+    {
+        const auto &tube = *tubePtr;
+        if (tube.order_no == orderNo && tube.item_no == itemNo &&
+            tube.melt_no == meltNo && tube.lot_no == lotNo)
+        {
+            weight += tube.weight;
+            length += tube.length;
+            count++;
+        }
+    }
+}
+
+void CPositionBase::Statistics(string orderNo, string itemNo, float &weight, float &length, int &count)
+{
+    weight = 0.0f;
+    length = 0.0f;
+    count = 0;
+
+    for (const auto &tubePtr : Tubes())
+    {
+        const auto &tube = *tubePtr;
+        if (tube.order_no == orderNo && tube.item_no == itemNo)
+        {
+            weight += tube.weight;
+            length += tube.length;
+            count++;
+        }
+    }
+}
