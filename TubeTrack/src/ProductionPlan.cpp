@@ -10,15 +10,14 @@ std::unique_ptr<CTube> CProductionPlan::Pop(int /*mode*/)
     if (feed_num > 0)
     {
         const int nextFeedNum = feed_num - 1;
-        const int nextTubeNo = tube_no + 1;
-        const int nextFlowNo = flow_no + 1;
+        const int nextTubeNo = tube_no + 10;
 
         try
         {
             pqxx::work txn(*m_ctx->pgConn);
             txn.exec(
-                "UPDATE parameter_set SET feed_number = $1, tube_no = $2, flow_no = $3",
-                pqxx::params{nextFeedNum, nextTubeNo, nextFlowNo});
+                "UPDATE parameter_set SET feed_number = $1, tube_no = $2",
+                pqxx::params{nextFeedNum, nextTubeNo});
             txn.commit();
         }
         catch (const std::exception &e)
@@ -38,13 +37,9 @@ std::unique_ptr<CTube> CProductionPlan::Pop(int /*mode*/)
         tube->lotno_coupling = lotno_coupling;
         tube->tube_no = tube_no;
 
-        // 使用parameter_set里持久化的下一根管号/流水号，避免重启后重复分配。
-        tube->flow_no = flow_no;
-
         // 更新计数器
         feed_num = nextFeedNum;
         tube_no = nextTubeNo;
-        flow_no = nextFlowNo;
 
         UpdateForm();
 

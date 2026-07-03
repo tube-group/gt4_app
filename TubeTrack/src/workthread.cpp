@@ -72,9 +72,9 @@ bool moveTubeBetween(CPositionBase &source,
 void workThread(TubeTrackContext &ctx)
 {
     // 测试喷印功能
-    // float simulatedLength = 10.0f; // 模拟测长值
-    // spdlog::info("Handling LENGTH_FINISH: Simulated MEA_LEN={}", simulatedLength);
-    // ctx.sprayPos.HandleLengthReady(simulatedLength);
+    float simulatedLength = 10.0f; // 模拟测长值
+    spdlog::info("Handling LENGTH_FINISH: Simulated MEA_LEN={}", simulatedLength);
+    ctx.sprayPos.HandleLengthReady(simulatedLength);
 
     // // // 手工模拟管子的完整流程。
 
