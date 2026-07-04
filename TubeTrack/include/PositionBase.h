@@ -13,7 +13,7 @@ class CPositionBase
 public:
 	CPositionBase(string redisKey, string positionName) : m_redisKey(redisKey), m_positionName(positionName)
 	{
-		m_bTriggerEnabled	= true;
+		m_bTriggerEnabled = true;
 		m_bUpdateTagEnabled = true;
 		m_bWbReleased = true;
 	}
@@ -25,12 +25,12 @@ private:
 	bool m_bUpdateTagEnabled;
 
 protected:
-	string m_redisKey; // Redis键名称
+	string m_redisKey;	   // Redis键名称
 	string m_positionName; // 工位名称（用于日志）
 
 protected:
-	TubeTrackContext* m_ctx = nullptr; // 上下文指针
-	bool m_bWbReleased; // 步进梁封锁状态位
+	TubeTrackContext *m_ctx = nullptr; // 上下文指针
+	bool m_bWbReleased;				   // 步进梁封锁状态位
 	void GetDateTime(struct tm &t);
 	void GetDateTimeString(string &dateStr, string &timeStr);
 	const deque<unique_ptr<CTube>> &Tubes() const { return m_tubes; }
@@ -38,7 +38,7 @@ protected:
 	string convertToJson();
 
 public:
-	void SetContext(TubeTrackContext& ctx) { m_ctx = &ctx; }
+	void SetContext(TubeTrackContext &ctx) { m_ctx = &ctx; }
 
 public:
 	virtual bool PushFront(unique_ptr<CTube> tube, int mode = 0);
@@ -72,4 +72,7 @@ public:
 	virtual void BlockWB() { m_bWbReleased = false; };			  // 封锁步进梁
 	virtual bool WbReleased() { return m_bWbReleased; };		  // 返回本工位步进梁状态
 	virtual void DebugOut();									  // 输出本工位物料信息
+
+	virtual void Statistics(string orderNo, string itemNo, float& weight, float& length, int& count);								// 合同量统计
+	virtual void Statistics(string orderNo, string itemNo, string meltNo, string lotNo, float& weight, float& length, int& count); // 炉批统计
 };

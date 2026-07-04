@@ -18,7 +18,7 @@
 #include <iostream>
 
 // 前向声明
-void workThread(CommL3Context& ctx);
+void workThread(CommL3Context &ctx);
 
 // ---- 信号处理 ----
 volatile sig_atomic_t g_running = 1;
@@ -30,23 +30,25 @@ static void signalHandler(int sig)
 }
 
 // ---- PID文件管理 ----
-static int g_pidfile_fd = -1;   // PID文件描述符，用于文件锁
+static int g_pidfile_fd = -1; // PID文件描述符，用于文件锁
 static std::string g_pidfile_path;
 
 // 打开PID文件并加锁（daemon化之前调用，验证可写性和单实例）
 // 返回: true=成功, false=失败
-static bool lockPidfile(const std::string& path)
+static bool lockPidfile(const std::string &path)
 {
     g_pidfile_path = path;
 
     g_pidfile_fd = open(path.c_str(), O_WRONLY | O_CREAT, 0644);
-    if (g_pidfile_fd == -1) {
+    if (g_pidfile_fd == -1)
+    {
         fprintf(stderr, "Cannot open PID file %s: %s\n", path.c_str(), strerror(errno));
         return false;
     }
 
     // 非阻塞排他锁，如果已被锁定说明有另一个实例在运行
-    if (flock(g_pidfile_fd, LOCK_EX | LOCK_NB) == -1) {
+    if (flock(g_pidfile_fd, LOCK_EX | LOCK_NB) == -1)
+    {
         fprintf(stderr, "Another instance is already running (PID file locked: %s)\n", path.c_str());
         close(g_pidfile_fd);
         g_pidfile_fd = -1;
@@ -59,15 +61,18 @@ static bool lockPidfile(const std::string& path)
 // 写入PID到已锁定的文件（daemon化之后调用，写子进程PID）
 static bool writePidfile()
 {
-    if (g_pidfile_fd == -1) return false;
+    if (g_pidfile_fd == -1)
+        return false;
 
-    if (ftruncate(g_pidfile_fd, 0) == -1) {
+    if (ftruncate(g_pidfile_fd, 0) == -1)
+    {
         return false;
     }
 
     char buf[32];
     int len = snprintf(buf, sizeof(buf), "%d\n", getpid());
-    if (write(g_pidfile_fd, buf, len) != len) {
+    if (write(g_pidfile_fd, buf, len) != len)
+    {
         return false;
     }
 
@@ -77,12 +82,14 @@ static bool writePidfile()
 // 清理PID文件
 static void removePidfile()
 {
-    if (g_pidfile_fd != -1) {
+    if (g_pidfile_fd != -1)
+    {
         flock(g_pidfile_fd, LOCK_UN);
         close(g_pidfile_fd);
         g_pidfile_fd = -1;
     }
-    if (!g_pidfile_path.empty()) {
+    if (!g_pidfile_path.empty())
+    {
         unlink(g_pidfile_path.c_str());
         g_pidfile_path.clear();
     }
@@ -93,7 +100,8 @@ static void removePidfile()
 // 返回: 0=子进程(成功), 1=父进程(应退出), -1=失败
 static int becomeDaemon()
 {
-    switch (fork()) {
+    switch (fork())
+    {
     case -1:
         fprintf(stderr, "becomeDaemon(): fork() failed: %s\n", strerror(errno));
         return -1;
@@ -106,7 +114,8 @@ static int becomeDaemon()
     }
 
     // 脱离终端，创建新会话
-    if (setsid() == -1) {
+    if (setsid() == -1)
+    {
         fprintf(stderr, "becomeDaemon(): setsid() failed: %s\n", strerror(errno));
         return -1;
     }
@@ -116,23 +125,28 @@ static int becomeDaemon()
 
     // 重定向stdin/stdout/stderr到/dev/null
     int fd = open("/dev/null", O_RDWR);
-    if (fd == -1) {
+    if (fd == -1)
+    {
         fprintf(stderr, "becomeDaemon(): open(\"/dev/null\") failed: %s\n", strerror(errno));
         return -1;
     }
-    if (dup2(fd, STDIN_FILENO) == -1) {
+    if (dup2(fd, STDIN_FILENO) == -1)
+    {
         fprintf(stderr, "becomeDaemon(): dup2(STDIN) failed: %s\n", strerror(errno));
         return -1;
     }
-    if (dup2(fd, STDOUT_FILENO) == -1) {
+    if (dup2(fd, STDOUT_FILENO) == -1)
+    {
         fprintf(stderr, "becomeDaemon(): dup2(STDOUT) failed: %s\n", strerror(errno));
         return -1;
     }
-    if (dup2(fd, STDERR_FILENO) == -1) {
+    if (dup2(fd, STDERR_FILENO) == -1)
+    {
         fprintf(stderr, "becomeDaemon(): dup2(STDERR) failed: %s\n", strerror(errno));
         return -1;
     }
-    if (fd > STDERR_FILENO) {
+    if (fd > STDERR_FILENO)
+    {
         close(fd);
     }
 
@@ -150,7 +164,7 @@ struct AppConfig
 };
 
 // 加载配置文件 + 解析命令行参数
-static bool loadConfig(int argc, char* argv[], AppConfig& app)
+static bool loadConfig(int argc, char *argv[], AppConfig &app)
 {
     auto &config = CConfig::GetInstance();
     std::string configFile = "../config/comml3.ini";
@@ -160,22 +174,24 @@ static bool loadConfig(int argc, char* argv[], AppConfig& app)
         return false;
     }
 
-    app.logCfg.log_console     = config.GetBoolDefault("log_console", false);
-    app.logCfg.level           = config.GetStringDefault("level", app.logCfg.level);
-    app.logCfg.pattern         = config.GetStringDefault("pattern", app.logCfg.pattern);
-    app.logCfg.filename        = config.GetStringDefault("filename", "log/tubetrack.log");
+    app.logCfg.log_console = config.GetBoolDefault("log_console", false);
+    app.logCfg.level = config.GetStringDefault("level", app.logCfg.level);
+    app.logCfg.pattern = config.GetStringDefault("pattern", app.logCfg.pattern);
+    app.logCfg.filename = config.GetStringDefault("filename", "log/tubetrack.log");
     app.logCfg.immediate_flush = config.GetBoolDefault("immediate_flush", app.logCfg.immediate_flush);
-    app.logCfg.max_size_mb     = config.GetIntDefault("max_size", app.logCfg.max_size_mb);
-    app.logCfg.max_files       = config.GetIntDefault("max_files", app.logCfg.max_files);
+    app.logCfg.max_size_mb = config.GetIntDefault("max_size", app.logCfg.max_size_mb);
+    app.logCfg.max_files = config.GetIntDefault("max_files", app.logCfg.max_files);
     app.daemonMode = config.GetBoolDefault("daemon", false);
-    app.pidFile    = config.GetStringDefault("pid_file", "/var/run/comml3.pid");
+    app.pidFile = config.GetStringDefault("pid_file", "/var/run/comml3.pid");
     app.gplatServer = config.GetStringDefault("gplat_server", app.gplatServer);
     app.gplatPort = config.GetIntDefault("gplat_port", app.gplatPort);
 
     // 解析命令行参数（-d 强制守护进程模式）
     int opt;
-    while ((opt = getopt(argc, argv, "dc:h")) != -1) {
-        switch (opt) {
+    while ((opt = getopt(argc, argv, "dc:h")) != -1)
+    {
+        switch (opt)
+        {
         case 'd':
             app.daemonMode = true;
             break;
@@ -184,9 +200,12 @@ static bool loadConfig(int argc, char* argv[], AppConfig& app)
         }
     }
 
-    if (app.daemonMode) {
+    if (app.daemonMode)
+    {
         fprintf(stdout, "以守护进程运行\n");
-    } else {
+    }
+    else
+    {
         fprintf(stdout, "以普通进程运行\n");
     }
 
@@ -196,13 +215,16 @@ static bool loadConfig(int argc, char* argv[], AppConfig& app)
 // ---- 守护进程化（统一入口） ----
 // 合并路径转换、PID文件锁定、fork、写PID
 // 返回: 0=子进程继续, 1=父进程应退出, -1=失败
-static int daemonize(AppConfig& app)
+static int daemonize(AppConfig &app)
 {
     // 将相对路径转为绝对路径（daemon后工作目录可能改变）
-    auto toAbsPath = [](std::string& path) {
-        if (!path.empty() && path[0] != '/') {
+    auto toAbsPath = [](std::string &path)
+    {
+        if (!path.empty() && path[0] != '/')
+        {
             char cwd[PATH_MAX];
-            if (getcwd(cwd, sizeof(cwd))) {
+            if (getcwd(cwd, sizeof(cwd)))
+            {
                 path = std::string(cwd) + "/" + path;
             }
         }
@@ -211,21 +233,25 @@ static int daemonize(AppConfig& app)
     toAbsPath(app.pidFile);
 
     // 打开并锁定PID文件（验证可写性和单实例）
-    if (!lockPidfile(app.pidFile)) {
+    if (!lockPidfile(app.pidFile))
+    {
         return -1;
     }
 
     // fork + setsid + 重定向
     int rc = becomeDaemon();
-    if (rc == -1) {
+    if (rc == -1)
+    {
         fprintf(stderr, "Failed to daemonize. Exiting.\n");
         return -1;
     }
 
-    if (rc == 1) {
+    if (rc == 1)
+    {
         // 父进程，正常退出（不清理PID文件，由子进程持有锁）
         fprintf(stdout, "父进程，正常退出\n");
-        if (g_pidfile_fd != -1) {
+        if (g_pidfile_fd != -1)
+        {
             close(g_pidfile_fd);
             g_pidfile_fd = -1;
         }
@@ -239,10 +265,11 @@ static int daemonize(AppConfig& app)
 }
 
 // ---- Redis连接 ----
-static bool initRedis(CommL3Context& ctx)
+static bool initRedis(CommL3Context &ctx)
 {
     auto &config = CConfig::GetInstance();
-    try {
+    try
+    {
         sw::redis::ConnectionOptions opts;
         opts.host = config.GetStringDefault("redis_host", "127.0.0.1");
         opts.port = config.GetIntDefault("redis_port", 6379);
@@ -252,24 +279,27 @@ static bool initRedis(CommL3Context& ctx)
         ctx.redis->ping();
         spdlog::info("成功连接到 Redis");
         return true;
-
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception &e)
+    {
         spdlog::error("Redis连接失败: {}", e.what());
         return false;
     }
 }
 
 // ---- gplat连接 ----
-static bool initGplat(CommL3Context& ctx)
+static bool initGplat(CommL3Context &ctx)
 {
     auto &config = CConfig::GetInstance();
-    try {
+    try
+    {
         std::string host = config.GetStringDefault("gplat_host", "127.0.0.1");
         int port = config.GetIntDefault("gplat_port", 8777);
 
         int conn = connectgplat(host.c_str(), port);
 
-        if (conn <= 0) {
+        if (conn <= 0)
+        {
             spdlog::error("gPlat连接失败");
             return false;
         }
@@ -277,8 +307,9 @@ static bool initGplat(CommL3Context& ctx)
         ctx.gplatConn = conn;
         spdlog::info("成功连接到 gPlat");
         return true;
-
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception &e)
+    {
         spdlog::error("gPlat连接失败: {}", e.what());
         return false;
     }
@@ -304,7 +335,7 @@ static bool initGplat(CommL3Context& ctx)
 //                               " port=" + std::to_string(port);
 
 //         ctx.pgConn = std::make_unique<pqxx::connection>(connStr);
-        
+
 //         if (ctx.pgConn->is_open()) {
 //             spdlog::info("成功连接到 PostgreSQL 数据库: {}", dbname);
 //             return true;
@@ -320,10 +351,11 @@ static bool initGplat(CommL3Context& ctx)
 // }
 
 // ---- 高斯数据库连接 ----
-static bool initGauss(CommL3Context& ctx)
+static bool initGauss(CommL3Context &ctx)
 {
     auto &config = CConfig::GetInstance();
-    try {
+    try
+    {
         std::string host = config.GetStringDefault("gauss_host", "140.32.1.164");
         std::string dbname = config.GetStringDefault("gauss_dbname", "dbprodu3");
         std::string user = config.GetStringDefault("gauss_user", "hfwot");
@@ -339,14 +371,16 @@ static bool initGauss(CommL3Context& ctx)
                 {"password", password}});
         auto versionRes = ctx.gaussConn->execute("SELECT version();");
         auto serverVersion = versionRes.getOptionalValue(0, 0);
-        if (!serverVersion.has_value()) {
+        if (!serverVersion.has_value())
+        {
             throw std::runtime_error("version() 返回 NULL");
         }
         spdlog::info("成功连接到高斯数据库: {}, version={}", dbname, *serverVersion);
 
         return true;
-    } 
-    catch (const std::exception& e) {
+    }
+    catch (const std::exception &e)
+    {
         spdlog::error("高斯数据库连接失败: {}", e.what());
         ctx.gaussConn.reset();
         return false;
@@ -354,34 +388,105 @@ static bool initGauss(CommL3Context& ctx)
 }
 
 // ----测试高斯数据库插入、更新、删除数据的功能----
-static bool testGauss(CommL3Context& ctx)
+static bool testGauss(CommL3Context &ctx)
 {
-    if (ctx.gaussConn == nullptr) {
+    if (ctx.gaussConn == nullptr)
+    {
         spdlog::error("高斯CRUD测试失败: 连接未初始化");
         return false;
     }
-    // 如需插入或更新，可直接调用 executeParams：
-    // ctx.gaussConn->executeParams(
-    //     "INSERT INTO test_employee(emp_name, salary) VALUES ($1, $2);",
-    //     {GaussDB::Connection::Param::text("zhangsan"),
-    //      GaussDB::Connection::Param::numeric("8888.88")});
-    // ctx.gaussConn->executeParams(
-    //     "UPDATE test_employee SET salary=$1 WHERE emp_name=$2;",
-    //     {GaussDB::Connection::Param::null(GaussDB::TypeOid::Numeric),
-    //      GaussDB::Connection::Param::text("zhangsan")});
 
-    // 3. 删除数据
-    auto res = ctx.gaussConn->executeParams(
-        "DELETE FROM test_employee WHERE emp_name=$1;",
-        {GaussDB::Connection::Param::text("zhangsan")});
-    spdlog::info("删除成功，影响行数: {}", res.cmdTuples());
-    
-    spdlog::info("CRUD测试通过: 插入->更新->删除成功");
+    // CREATE TABLE hhcsth.api_tube_data_t (
+    // order_no varchar(10) NOT NULL,
+    // item_no varchar(3) NOT NULL,
+    // bundle_no varchar(7) NOT NULL,
+    // weight numeric(7, 3) DEFAULT 0 NULL,
+    // length numeric(6, 3) DEFAULT 0 NULL,
+    // flow_no int4 NOT NULL,
+    // tube_no int4 DEFAULT 0 NULL,
+    // CONSTRAINT pk_api_tube_data_t PRIMARY KEY (order_no, item_no, flow_no)
+
+    // // 查询表hhcsth.api_tube_data_t，条件是bundle_no='1016286'，并打印结果
+    // auto res = ctx.gaussConn->executeParams(
+    //     "SELECT order_no, item_no, bundle_no, weight, length, flow_no, tube_no "
+    //     "FROM hhcsth.api_tube_data_t "
+    //     "WHERE bundle_no=$1;",
+    //     {GaussDB::Connection::Param::text("1016286")});
+    // // 打印查询结果
+    // for (int i = 0; i < res.getRowCount(); ++i)
+    // {
+    //     std::string order_no = res.getValue(i, 0);
+    //     std::string item_no = res.getValue(i, 1);
+    //     std::string bundle_no = res.getValue(i, 2);
+    //     double weight = res.getDouble(i, 3);
+    //     double length = res.getDouble(i, 4);
+    //     int flow_no = res.getInt32(i, 5);
+    //     int tube_no = res.getInt32(i, 6);
+
+    //     spdlog::info("Row {}: order_no={}, item_no={}, bundle_no={}, weight={}, length={}, flow_no={}, tube_no={}",
+    //                  i, order_no, item_no, bundle_no, weight, length, flow_no, tube_no);
+    // }
+    // spdlog::info("查询结果行数: {}", res.getRowCount());
+
+    // try{
+    //     // 向表hhcsth.api_tube_data_t里插入一条数据，并输出是否成功
+    // auto res = ctx.gaussConn->executeParams(
+    //     "INSERT INTO hhcsth.api_tube_data_t (order_no, item_no, bundle_no, weight, length, flow_no, tube_no) "
+    //     "VALUES ($1, $2, $3, $4, $5, $6, $7);",
+    //     std::vector<GaussDB::Connection::Param>{
+    //         GaussDB::Connection::Param::text("1234567890"),
+    //         GaussDB::Connection::Param::text("1"),
+    //         GaussDB::Connection::Param::text("12345678"),
+    //         GaussDB::Connection::Param::numeric("0"),
+    //         GaussDB::Connection::Param::numeric("0"),
+    //         GaussDB::Connection::Param::int4(0), // 改为 int4
+    //         GaussDB::Connection::Param::int4(0)  // 改为 int4
+    //     });
+
+    // spdlog::info("插入成功，影响行数: {}", res.cmdTuples());
+
+    // }catch (const std::exception &e)
+    // {
+    //     spdlog::error("高斯数据库插入数据失败: {}", e.what());
+    //     return false;
+    // }
+
+    // try
+    // {
+    //     // 向表hhcsth.api_tube_data_t里更新一条数据，条件是bundle_no=1234567,更新weight为10，并输出是否成功
+    //     auto res = ctx.gaussConn->executeParams(
+    //         "UPDATE hhcsth.api_tube_data_t SET weight=$1 WHERE bundle_no=$2;",
+    //         std::vector<GaussDB::Connection::Param>{
+    //             GaussDB::Connection::Param::numeric("10"),
+    //             GaussDB::Connection::Param::text("1234567")});
+
+    //     spdlog::info("更新成功，影响行数: {}", res.cmdTuples());
+    // }
+    // catch (const std::exception &e)
+    // {
+    //     spdlog::error("高斯数据库更新数据失败: {}", e.what());
+    //     return false;
+    // }
+
+    try
+    {
+        // 向表hhcsth.api_tube_data_t里删除一条数据，条件是bundle_no=1234567，并输出是否成功
+        auto res = ctx.gaussConn->executeParams(
+            "DELETE FROM hhcsth.api_tube_data_t WHERE bundle_no=$1;",
+            std::vector<GaussDB::Connection::Param>{
+            GaussDB::Connection::Param::text("1234567")});
+        spdlog::info("删除成功，影响行数: {}", res.cmdTuples());
+    }
+    catch (const std::exception &e)
+    {
+        spdlog::error("高斯数据库删除数据失败: {}", e.what());
+        return false;
+    }
+
     return true;
-
 }
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
     // 1. 加载配置 + 解析命令行
     AppConfig app;
@@ -389,9 +494,11 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
 
     // 2. 守护进程化
-    if (app.daemonMode) {
+    if (app.daemonMode)
+    {
         int rc = daemonize(app);
-        if (rc != 0) return (rc == 1) ? 0 : 1;
+        if (rc != 0)
+            return (rc == 1) ? 0 : 1;
     }
 
     // 3. 注册信号处理
@@ -406,20 +513,22 @@ int main(int argc, char* argv[])
     CommL3Context ctx;
 
     // 6. 连接 Redis
-    if (!initRedis(ctx)) {
+    if (!initRedis(ctx))
+    {
         shutdownLogging();
         return EXIT_FAILURE;
     }
 
     // 9. 连接高斯数据库
-    if (!initGauss(ctx)) {
+    if (!initGauss(ctx))
+    {
         ctx.Cleanup();
         shutdownLogging();
         return EXIT_FAILURE;
     }
 
-    // testGauss(ctx);
-    
+    testGauss(ctx);
+
     // // 8. 连接PostgreSQL
     // if (!initPostgreSQL(ctx)) {
     //     ctx.Cleanup();
@@ -430,7 +539,8 @@ int main(int argc, char* argv[])
     // testGaussAndPostgreSQL(ctx);
 
     // 7. 连接 gPlat
-    if (!initGplat(ctx)) {
+    if (!initGplat(ctx))
+    {
         ctx.Cleanup();
         shutdownLogging();
         return EXIT_FAILURE;
@@ -443,15 +553,17 @@ int main(int argc, char* argv[])
     ctx.Init();
 
     // 启动工作线程
-    L2RcvL3 httpWorker(ctx);
-    L2SndL3 cprWorker(ctx);
+    // L2RcvL3 httpWorker(ctx);
+    // L2SndL3 cprWorker(ctx);
 
     // std::thread httpThread(&L2RcvL3::Run, &httpWorker);
     // std::thread cprThread(&L2SndL3::Test, &cprWorker);
 
     // 主线程等待退出命令或信号
-    while (true) {
-        if (!g_running) break;
+    while (true)
+    {
+        if (!g_running)
+            break;
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
@@ -476,7 +588,8 @@ int main(int argc, char* argv[])
     // 资源清理
     ctx.Cleanup();
     shutdownLogging();
-    if (app.daemonMode) {
+    if (app.daemonMode)
+    {
         removePidfile();
     }
 

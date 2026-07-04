@@ -14,6 +14,7 @@
 #include "TubeTrackContext.h"
 #include "usercmd.h"
 #include "WeightPosition.h"
+#include "DoStatistics.h"
 
 // 声明外部变量
 extern volatile sig_atomic_t g_running;
@@ -71,9 +72,9 @@ bool moveTubeBetween(CPositionBase &source,
 void workThread(TubeTrackContext &ctx)
 {
     // 测试喷印功能
-    // float simulatedLength = 10.0f; // 模拟测长值
-    // spdlog::info("Handling LENGTH_FINISH: Simulated MEA_LEN={}", simulatedLength);
-    // ctx.sprayPos.HandleLengthReady(simulatedLength);
+    float simulatedLength = 10.0f; // 模拟测长值
+    spdlog::info("Handling LENGTH_FINISH: Simulated MEA_LEN={}", simulatedLength);
+    ctx.sprayPos.HandleLengthReady(simulatedLength);
 
     // // // 手工模拟管子的完整流程。
 
@@ -157,6 +158,7 @@ void workThread(TubeTrackContext &ctx)
 
     // 订阅timer用于退出检测
     subscribe(ctx.gplatConn, "timer_500ms", &err);
+    subscribe(ctx.gplatConn, "timer_1s", &err);
     subscribe(ctx.gplatConn, "ALIGN_POS_ON", &err);
     subscribe(ctx.gplatConn, "WEIGHT_POS_ON", &err);
     subscribe(ctx.gplatConn, "CARVE_POS_ON", &err);
@@ -175,6 +177,9 @@ void workThread(TubeTrackContext &ctx)
     subscribe(ctx.gplatConn, "RELEASE_ALL_POS_CMD", &err);
     subscribe(ctx.gplatConn, "PARAMETER_SET_UPDATED", &err);// 订阅参数集更新事件
 
+    DoStatistics(ctx);
+
+    int loop = 0; // 用于统计1分钟的循环次数
     // 主循环：等待gPlat数据，处理TAG更新
     while (g_running)
     {
@@ -197,6 +202,18 @@ void workThread(TubeTrackContext &ctx)
             {
                 spdlog::debug("Timer tick, g_running={}", g_running);
                 handleTask500MS(ctx);
+                continue;
+            }
+
+            if (tagname == "timer_1s")
+            {
+                spdlog::debug("Timer 1s tick, g_running={}", g_running);
+                loop++;
+                if (loop >= 60)
+                {
+                    DoStatistics(ctx);
+                    loop = 0;
+                }
                 continue;
             }
 

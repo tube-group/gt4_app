@@ -24,6 +24,7 @@ inline const std::unordered_map<std::string, const StructInfo*>& GetStructRegist
 		REG(StartSprayEvent),
 		REG(AddTubeCmd),
 		REG(TagPrintEvent),
+		REG(YieldStatistics),
 		// 新增类型在此添加一行
 	};
 	return table;

@@ -53,6 +53,10 @@ void CSprayPosition::ReadParameterSet()
             this->qrcode_spray_enable_ = row["qrcode_spray_enable"].as<int>();       // 二维码喷印
             this->flow_no_ = row["flow_no"].as<int>();                               // 喷印工位下一根管子流水号
 
+            // 将下一根管子的流水号写入Redis，NEXT_TUBE_FLOW_NO键用于前端显示
+            m_ctx->redis->set("NEXT_TUBE_FLOW_NO", std::to_string(flow_no_));
+            m_ctx->redis->publish("RealDataChanged", "NEXT_TUBE_FLOW_NO");
+
             unsigned int error = 0;
             // write_plc_bool(m_ctx->gplatConn, "[S7_GT4_1200]DB12,X0.3", spray_enable_ != 0, &error);
             // write_plc_bool(m_ctx->gplatConn, "[S7_GT4_1200]DB12,X0.4", qrcode_spray_enable_ != 0, &error);
@@ -232,6 +236,10 @@ bool CSprayPosition::PrepairSpray()
                 txn.exec("UPDATE parameter_set SET flow_no = $1", pqxx::params{flow_no_});
                 txn.commit();
                 spdlog::info("更新数据库中喷印工位下一根管子流水号成功，flow_no={}", flow_no_);
+
+                // 将下一根管子的流水号写入Redis，NEXT_TUBE_FLOW_NO键用于前端显示
+                m_ctx->redis->set("NEXT_TUBE_FLOW_NO", std::to_string(flow_no_));
+                m_ctx->redis->publish("RealDataChanged", "NEXT_TUBE_FLOW_NO");
             }
             catch (const std::exception &e)
             {

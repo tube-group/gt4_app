@@ -37,11 +37,3 @@ bool CBackBuffer::QueryTube(const std::string& order_no, int flow_no) const
     }
     return false; // 没有找到匹配的管子，返回false
 }
-// for (const auto& tube : m_tubes)
-//     {
-//         if (tube->order_no == order_no && tube->flow_no == flow_no)
-//         {
-//             return true; // 找到匹配的管子，返回true
-//         }
-//     }
-//     return false; // 没有找到匹配的管子，返回false

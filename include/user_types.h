@@ -207,4 +207,47 @@ REGISTER_STRUCT(TagPrintEvent,
 	FIELD_DESC(Int32, TagPrintEvent, count)
 )
 
+struct YieldStatistics
+{
+	PodString<16> order_no; // 合同号
+	PodString<8> item_no; // 项目号
+	PodString<16> melt_no; // 炉号
+	PodString<8> lot_no; // 试批号
+	float diameter;
+	float thickness;
+	float order_weight;
+	float order_length;
+	int order_count;
+	float order_weight_correct;
+	float order_length_correct;
+	int order_count_correct;
+	float lot_weight;
+	float lot_length;
+	int lot_count;
+	float shift_weight;
+	float shift_length;
+	int shift_count;
+};
+
+REGISTER_STRUCT(YieldStatistics,
+	FIELD_DESC_STRING(YieldStatistics, order_no),
+	FIELD_DESC_STRING(YieldStatistics, item_no),
+	FIELD_DESC_STRING(YieldStatistics, melt_no),
+	FIELD_DESC_STRING(YieldStatistics, lot_no),
+	FIELD_DESC(Single, YieldStatistics, diameter),
+	FIELD_DESC(Single, YieldStatistics, thickness),
+	FIELD_DESC(Single, YieldStatistics, order_weight),
+	FIELD_DESC(Single, YieldStatistics, order_length),
+	FIELD_DESC(Int32, YieldStatistics, order_count),
+	FIELD_DESC(Single, YieldStatistics, order_weight_correct),
+	FIELD_DESC(Single, YieldStatistics, order_length_correct),
+	FIELD_DESC(Int32, YieldStatistics, order_count_correct),
+	FIELD_DESC(Single, YieldStatistics, lot_weight),
+	FIELD_DESC(Single, YieldStatistics, lot_length),
+	FIELD_DESC(Int32, YieldStatistics, lot_count),
+	FIELD_DESC(Single, YieldStatistics, shift_weight),
+	FIELD_DESC(Single, YieldStatistics, shift_length),
+	FIELD_DESC(Int32, YieldStatistics, shift_count)
+)
+
 #endif // USER_TYPES_H_
