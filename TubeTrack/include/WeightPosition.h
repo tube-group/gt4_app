@@ -10,6 +10,7 @@ public:
     void UpdateForm() override;                    // 刷新画面
     void ReadParameterSet();                       // 从数据库读取称重工位参数
     void SetTubeWeight(int weight);                // 获取管子实际重量，并设置到管子对象中
+    void EntryTriggerBeforePush(CTube &tube) override; // 在Push管子进入称重工位前触发
     void EntryTrigger(const CTube &tube) override; // 重写触发器，进行称重计算和判定
 
 private:

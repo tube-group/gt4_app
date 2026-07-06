@@ -402,7 +402,7 @@ void SprayWorker::SendSprayCommand(const SprayJob &job)
 	}
 
 	//  写PLC
-	// unsigned int err;
+	unsigned int err;
 	// write_plc_bool(ctx_.gplatConn, "SPRAY_WASTE_FLAG", waste_flag, &err);  // 废管标志位
 	// write_plc_string(ctx_.gplatConn, "SPRAY_STRING_TO_L1", sprayText, &err);   // 发送喷印字符串
 	// write_plc_bool(ctx_.gplatConn, "SPRAY_FINISH_NOUSE", true, &err);       // 喷印完成
@@ -417,4 +417,26 @@ void SprayWorker::SendSprayCommand(const SprayJob &job)
 	spdlog::info("写PLC: SPRAY_WASTE_FLAG={}, SPRAY_STRING_TO_L1={}, SPRAY_FINISH_NOUSE=true, QUICK_MARK_FINISH=true, SPRAY_FINISH=true, SPRAY_START_NOUSE=true, SPRAY_START=true, QUICK_MARK_START=true",
 				 waste_flag ? 1 : 0,
 				 sprayText);
+
+	if (writeb_string2(ctx_.gplatConn, "SPRAY_STRING", sprayText, &err))// 发送喷印字符串
+	{
+		// 更稳的做法是先做 JSON 转义，再写入。原则上应该生成一个真正的 JSON string literal，而不是手工包两层引号
+		// std::string payload = nlohmann::json(sprayText).dump();
+		// ctx_.redis->set("SPRAY_STRING", payload);
+
+		// 目前的方案是让前端判断是普通字符串还是JSON字符串，如果是普通字符串就直接显示，如果是JSON字符串就解析后显示
+		// function looksLikeJsonLiteral(value: string): boolean {
+		// if (value === 'true' || value === 'false' || value === 'null') {
+		// 	return true;
+		// }
+		// if (/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(value)) {
+		// 	return true;
+		// }
+		// const firstChar = value[0];
+		// return firstChar === '{' || firstChar === '[' || firstChar === '"';
+		// }
+		
+		ctx_.redis->set("SPRAY_STRING", sprayText);
+		ctx_.redis->publish("RealDataChanged", "SPRAY_STRING");
+	}
 }

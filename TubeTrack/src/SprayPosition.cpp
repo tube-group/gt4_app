@@ -55,6 +55,7 @@ void CSprayPosition::ReadParameterSet()
 
             // 将下一根管子的流水号写入Redis，NEXT_TUBE_FLOW_NO键用于前端显示
             m_ctx->redis->set("NEXT_TUBE_FLOW_NO", std::to_string(flow_no_));
+            spdlog::info("喷印工位下一根管子流水号已写入Redis: NEXT_TUBE_FLOW_NO={}", flow_no_);
             m_ctx->redis->publish("RealDataChanged", "NEXT_TUBE_FLOW_NO");
 
             unsigned int error = 0;
@@ -89,14 +90,14 @@ void CSprayPosition::HandleLengthReady(float actlength)
     if (length_enable_)
     {
         // 处理长度数据
-        float length = actlength - length_coupling_; // 喷印长度=实际长度-保护环长度
+        float length = actlength/1000.0f - length_coupling_; // 喷印长度=实际长度-保护环长度
         // 按指定精度四舍五入
         length = std::round(length * std::pow(10, spray_length_precision_)) / std::pow(10, spray_length_precision_);
         if (tube)
         {
             tube->length = length;
 
-            spdlog::info("管子流水号{}测得长度{}m，保护环长度{}m，喷印长度{}m", tube->flow_no, actlength, length_coupling_, tube->length);
+            spdlog::info("管子流水号{}测得长度{}m，保护环长度{}m，喷印长度{}m", tube->flow_no, actlength/1000.0f, length_coupling_, tube->length);
             // 长度判废
             if (waste_length_enable_)
             {
@@ -145,6 +146,10 @@ void CSprayPosition::HandleLengthReady(float actlength)
                 {
                     tube->weight_ok = false; // 长度不合格不判断重量，默认重量不合格
                 }
+
+                //debug: 测试环境下，一律合格
+                tube->weight_ok = true;
+                m_bWbReleased = true;
             }
             else
             {

@@ -314,7 +314,6 @@ static std::vector<TagDefinition> buildStaticTags()
         {"CARVE_POS_ON", "BOOL", "S7_GT4_SGAO"},            // 压印工位占用信号 PRT_POS
         {"SPRAY_POS_ON", "BOOL", "S7_GT4_SGAO"},            // 喷涂工位占用信号 SPY_POS
         {"CIRCLE_POS_ON", "BOOL", "S7_GT4_SGAO"},            // 色环工位占用信号 CIR_POS
-        {"LENGTH_MEASURE_FINISH", "BOOL", "S7_GT4_SGAO"},        // 来自PLC的测长完成信号 LEN_MEA_COMP
         {"WB_BASE", "BOOL", "S7_GT4_SGAO"},               // 测量点步进梁原位信号
         {"LENGTH_ENABLE", "BOOL", "S7_GT4_SGAO"},            // 测长允许
         {"START_CALIB", "BOOL", "S7_GT4_SGAO"},           // 标定开始
@@ -342,7 +341,8 @@ static std::vector<TagDefinition> buildStaticTags()
         {"SCRAPTROLLER_POS_ON", "BOOL", "S7_GT4_MainLine"},     // 涂层纵向输送链第1组钢管检测有料
         {"NBWB_RELEASE", "BOOL", "S7_GT4_MainLine"},      // 内保步进梁释放信号连锁
         {"WASTE_ROLLER_FLAG", "WORD", "S7_GT4_MainLine"}, // 涂层纵向输送链第1组钢管去向
-        {"WATCHDOG2", "DINT", "S7_GT4_MainLine"}          // 通讯看门狗信号2
+        {"WATCHDOG2", "DINT", "S7_GT4_MainLine"},          // 通讯看门狗信号2
+        {"LENGTH_FINISH", "BOOL", "S7_GT4_1200"}           // 测长完成
     };
 }
 

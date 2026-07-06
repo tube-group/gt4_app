@@ -18,7 +18,7 @@ public:
 		m_bWbReleased = true;
 	}
 
-private:
+protected:
 	deque<unique_ptr<CTube>> m_tubes;
 	bool m_bOccupied;
 	bool m_bTriggerEnabled;

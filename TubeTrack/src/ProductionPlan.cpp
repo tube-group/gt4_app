@@ -3,21 +3,33 @@
 #include "TubeTrackContext.h"
 #include <memory>
 #include <nlohmann/json.hpp>
-#include "../../include/logging.h" // spdlog
+#include "logging.h" // spdlog
 
 std::unique_ptr<CTube> CProductionPlan::Pop(int /*mode*/)
 {
-    if (feed_num > 0)
+    if (feed_num_ > 0)
     {
-        const int nextFeedNum = feed_num - 1;
-        const int nextTubeNo = tube_no + 10;
+        auto tube = std::make_unique<CTube>();
+        // 查询当前合同和生产参数，填充管子数据
+        tube->order_no = order_no_;
+        tube->roll_no = roll_no_;
+        tube->item_no = item_no_;
+        tube->lot_no = lot_no_;
+        tube->melt_no = melt_no_;
+        tube->meltno_coupling = meltno_coupling_;
+        tube->lotno_coupling = lotno_coupling_;
+        tube->tube_no = tube_no_;
+
+        // 更新计数器
+        feed_num_--;
+        tube_no_ += 10;
 
         try
         {
             pqxx::work txn(*m_ctx->pgConn);
             txn.exec(
                 "UPDATE parameter_set SET feed_number = $1, tube_no = $2",
-                pqxx::params{nextFeedNum, nextTubeNo});
+                pqxx::params{feed_num_, tube_no_});
             txn.commit();
         }
         catch (const std::exception &e)
@@ -26,44 +38,62 @@ std::unique_ptr<CTube> CProductionPlan::Pop(int /*mode*/)
             return nullptr;
         }
 
-        auto tube = std::make_unique<CTube>();
-        // 查询当前合同和生产参数，填充管子数据
-        tube->order_no = order_no;
-        tube->roll_no = roll_no;
-        tube->item_no = item_no;
-        tube->lot_no = lot_no;
-        tube->melt_no = melt_no;
-        tube->meltno_coupling = meltno_coupling;
-        tube->lotno_coupling = lotno_coupling;
-        tube->tube_no = tube_no;
-
-        // 更新计数器
-        feed_num = nextFeedNum;
-        tube_no = nextTubeNo;
-
         UpdateForm();
 
         return tube;
     }
     else
     {
+        //mark 后面要添加报警功能
+        spdlog::error("投料支数为0，无法产生管子数据，请设置投料支数！");
+        // Program.qbdConnection.LogAlarm("yjg4_Alarm", "投料支数为0，无法产生管子数据，请设置投料支数！", 9);
         return nullptr;
     }
+}
+
+bool CProductionPlan::Push(std::unique_ptr<CTube> tube, int /*mode*/)
+{
+    if (!tube)
+    {
+        spdlog::error("CProductionPlan::Push失败：传入的管子对象为空");
+        return false;
+    }
+
+    // 将管子数据写入数据库
+    try
+    {
+        feed_num_++; // 投料支数增加
+        pqxx::work txn(*m_ctx->pgConn);
+        txn.exec(
+            "update parameter_set set feed_number = $1",
+            pqxx::params{feed_num_});
+        txn.commit();
+        spdlog::info("生产参数已写入数据库,feed_number={}", feed_num_);
+    }
+    catch (const std::exception &e)
+    {
+        spdlog::error("将管子数据写入数据库失败: {}", e.what());
+        return false;
+    }
+
+    UpdateForm();
+
+    return true;
 }
 
 string CProductionPlan::convertToJson()
 {
     // 使用nlohmann/json库实现生产计划转换为JSON格式字符串
     nlohmann::json j;
-    j["order_no"] = order_no;
-    j["item_no"] = item_no;
-    j["roll_no"] = roll_no;
-    j["melt_no"] = melt_no;
-    j["lot_no"] = lot_no;
-    j["lotno_coupling"] = lotno_coupling;
-    j["meltno_coupling"] = meltno_coupling;
-    j["feed_num"] = feed_num;
-    j["tube_no"] = tube_no;
+    j["order_no"] = order_no_;
+    j["item_no"] = item_no_;
+    j["roll_no"] = roll_no_;
+    j["melt_no"] = melt_no_;
+    j["lot_no"] = lot_no_;
+    j["lotno_coupling"] = lotno_coupling_;
+    j["meltno_coupling"] = meltno_coupling_;
+    j["feed_num"] = feed_num_;
+    j["tube_no"] = tube_no_;
 
     return j.dump(4);
 }
@@ -115,18 +145,18 @@ void CProductionPlan::ReadParameterSet()
         {
             const auto &row = result[0];
 
-            this->order_no = row["order_no"].as<string>();                // 合同号
-            this->item_no = row["item_no"].as<string>();                  // 项目号
-            this->roll_no = row["roll_no"].as<string>();                  // 轧批号
-            this->melt_no = row["melt_no"].as<string>();                  // 炉号
-            this->lot_no = row["lot_no"].as<string>();                    // 试批号
-            this->lotno_coupling = row["lot_no_coupling"].as<string>();   // 接箍批号
-            this->meltno_coupling = row["melt_no_coupling"].as<string>(); // 接箍炉号
-            this->feed_num = row["feed_number"].as<int>();                // 投料支数
-            this->tube_no = row["tube_no"].as<int>();                     // 管号
-            this->flow_no = row["flow_no"].as<int>();                     // 流水号
+            this->order_no_ = row["order_no"].as<string>();                // 合同号
+            this->item_no_ = row["item_no"].as<string>();                  // 项目号
+            this->roll_no_ = row["roll_no"].as<string>();                  // 轧批号
+            this->melt_no_ = row["melt_no"].as<string>();                  // 炉号
+            this->lot_no_ = row["lot_no"].as<string>();                    // 试批号
+            this->lotno_coupling_ = row["lot_no_coupling"].as<string>();   // 接箍批号
+            this->meltno_coupling_ = row["melt_no_coupling"].as<string>(); // 接箍炉号
+            this->feed_num_ = row["feed_number"].as<int>();                // 投料支数
+            this->tube_no_ = row["tube_no"].as<int>();                     // 管号
+            this->flow_no_ = row["flow_no"].as<int>();                     // 流水号
 
-            spdlog::info("从数据库加载生产计划参数成功  order_no: {}", this->order_no);
+            spdlog::info("从数据库加载生产计划参数成功  order_no: {}", this->order_no_);
         }
     }
     catch (const std::exception &e)
@@ -175,9 +205,9 @@ bool CProductionPlan::ApplyCurrentContract(const string &orderNo, const string &
         txn.commit();
 
         // 更新内部状态并刷新画面
-        order_no = orderNo;
-        item_no = itemNo;
-        roll_no = rollNo;
+        order_no_ = orderNo;
+        item_no_ = itemNo;
+        roll_no_ = rollNo;
         UpdateForm();
 
         spdlog::info(
@@ -222,17 +252,17 @@ void CProductionPlan::RestoreFromJson(const string &jsonStr)
             return;
         }
 
-        order_no = j.value("order_no", "");
-        item_no = j.value("item_no", "");
-        roll_no = j.value("roll_no", "");
-        melt_no = j.value("melt_no", "");
-        lot_no = j.value("lot_no", "");
-        lotno_coupling = j.value("lotno_coupling", "");
-        meltno_coupling = j.value("meltno_coupling", "");
-        feed_num = j.value("feed_num", 0);
-        tube_no = j.value("tube_no", 0);
+        order_no_ = j.value("order_no", "");
+        item_no_ = j.value("item_no", "");
+        roll_no_ = j.value("roll_no", "");
+        melt_no_ = j.value("melt_no", "");
+        lot_no_ = j.value("lot_no", "");
+        lotno_coupling_ = j.value("lotno_coupling", "");
+        meltno_coupling_ = j.value("meltno_coupling", "");
+        feed_num_ = j.value("feed_num", 0);
+        tube_no_ = j.value("tube_no", 0);
 
-        spdlog::info("从Redis恢复生产计划成功 order_no: {}", order_no);
+        spdlog::info("从Redis恢复生产计划成功 order_no: {}", order_no_);
     }
     catch (const std::exception &e)
     {
@@ -242,5 +272,5 @@ void CProductionPlan::RestoreFromJson(const string &jsonStr)
 
 bool CProductionPlan::IsEmpty()
 {
-    return feed_num <= 0;
+    return feed_num_ <= 0;
 }

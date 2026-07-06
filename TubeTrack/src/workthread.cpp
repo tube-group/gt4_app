@@ -434,6 +434,17 @@ void handleMoveTubeCmd(TubeTrackContext &ctx, const char *value)
         ctx.alignPos.Push(std::move(tube));
         ctx.alignPos.DebugOut();
     }
+    else if (cmd.from == "align" && cmd.to == "plan") // 反向：对齐工位 -> 生产计划
+    {
+        auto tube = ctx.alignPos.Pop();
+        if (!tube)
+        {
+            spdlog::warn("Align position is empty, no tube to move to Production plan");
+            return;
+        }
+        ctx.prodPlan.Push(std::move(tube));
+        // ctx.prodPlan.DebugOut();
+    }
     else if (cmd.from == "align" && cmd.to == "weight") // 对齐工位 -> 称重工位
     {
         moveTubeBetween(ctx.alignPos, ctx.weightPos, "Align position", "Weight position");

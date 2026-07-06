@@ -55,13 +55,18 @@ void CBasket::ReadParameterSet()
             bundle_type = row["bundle_type"].as<string>("TUB"); // 管捆类型
             weight_packaging = row["weight_packaging"].as<double>(0); // 包装材料重量
 
-            // // L3电文参数
-            // j_language_p = row["j_language_p"].as<string>("");
-            // j_count_p = row["j_count_p"].as<int>(0);
-            // j_count_em = row["j_count_em"].as<int>(0);
-
             spdlog::info("成品筐工位从数据库加载生产计划参数成功");
             spdlog::info("bundle_number_ 读取结果: {}", bundle_number_);
+
+            // 将下一根管捆的流水号写入Redis，NEXT_BUNDLE_FLOW_NO键用于前端显示
+            m_ctx->redis->set("NEXT_BUNDLE_FLOW_NO", std::to_string(bundle_flow_no_));
+            spdlog::info("下一管捆流水号已写入Redis: NEXT_BUNDLE_FLOW_NO={}", bundle_flow_no_);
+            m_ctx->redis->publish("RealDataChanged", "NEXT_BUNDLE_FLOW_NO");
+
+            // 将打捆根数写入Redis，BUNDLE_NUMBER键用于前端显示
+            m_ctx->redis->set("BUNDLE_NUMBER", std::to_string(bundle_number_));
+            spdlog::info("打捆根数已写入Redis: BUNDLE_NUMBER={}", bundle_number_);
+            m_ctx->redis->publish("RealDataChanged", "BUNDLE_NUMBER");
         }
     }
     catch (const std::exception &e)
@@ -366,6 +371,17 @@ bool CBasket::Bundle()
 
         // 所有操作成功，提交事务
         txn.commit();
+
+        // 将下一根管捆的流水号写入Redis，NEXT_BUNDLE_FLOW_NO键用于前端显示
+        m_ctx->redis->set("NEXT_BUNDLE_FLOW_NO", std::to_string(nextBundleFlowNo));
+        spdlog::info("下一管捆流水号已写入Redis: NEXT_BUNDLE_FLOW_NO={}", nextBundleFlowNo);
+        m_ctx->redis->publish("RealDataChanged", "NEXT_BUNDLE_FLOW_NO");
+
+        // 将最近成捆的管捆号写入Redis，LATEST_BUNDLE_NO键用于前端显示
+        m_ctx->redis->set("LATEST_BUNDLE_NO", bundleno);
+        spdlog::info("最近成捆的管捆号已写入Redis: LATEST_BUNDLE_NO={}", bundleno);
+        m_ctx->redis->publish("RealDataChanged", "LATEST_BUNDLE_NO");
+
         // 更新当前对象的bundle_flow_no为最新值
         bundle_flow_no_ = nextBundleFlowNo;
 

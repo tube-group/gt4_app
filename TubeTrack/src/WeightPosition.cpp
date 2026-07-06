@@ -146,9 +146,7 @@ void CWeightPosition::ReadParameterSet()
 
 void CWeightPosition::SetTubeWeight(int weight)
 {
-    // 获取当前工位的管子对象
-    CTube *tube = const_cast<CTube *>(Peek());
-    if (!tube)
+    if (m_tubes.empty())
     {
         spdlog::warn("无法设置管子重量: 工位无管子");
         return;
@@ -160,25 +158,30 @@ void CWeightPosition::SetTubeWeight(int weight)
         // 无效重量数据处理
         if (weight < 1)
         {
-            tube->weight = 0.0f;
-            tube->weight_ok = false;
+            m_tubes[0]->weight = 0.0f;
+            m_tubes[0]->weight_ok = false;
             m_bWbReleased = false; // 封锁步进梁，等待人工处理
+
+            //debug: 测试环境下置管子重量为500；
+            m_tubes[0]->weight = 500.0f; // 初始化重量为500.0f
+            m_tubes[0]->weight_ok = true; // 初始化重量合格状态为true
+            m_bWbReleased = true; // 释放步进梁，允许继续生产
 
             // 根据不同的错误码记录日志和报警
             if (weight == -1)
             {
                 spdlog::error("称重乱码，未获得有效的重量数据，请尝试人工称重");
-                RaiseWeightAlarm(m_ctx, *tube, weight, "称重乱码，未获得有效的重量数据，请尝试人工称重");
+                RaiseWeightAlarm(m_ctx, *m_tubes[0], weight, "称重乱码，未获得有效的重量数据，请尝试人工称重");
             }
             else if (weight == -2)
             {
                 spdlog::error("称重超时，未获得有效的重量数据，请尝试人工称重");
-                RaiseWeightAlarm(m_ctx, *tube, weight, "称重超时，未获得有效的重量数据，请尝试人工称重");
+                RaiseWeightAlarm(m_ctx, *m_tubes[0], weight, "称重超时，未获得有效的重量数据，请尝试人工称重");
             }
             else if (weight == 0)
             {
                 spdlog::error("称重数据为0，未获得有效的重量数据，请尝试人工称重");
-                RaiseWeightAlarm(m_ctx, *tube, weight, "称重数据为0，未获得有效的重量数据，请尝试人工称重");
+                RaiseWeightAlarm(m_ctx, *m_tubes[0], weight, "称重数据为0，未获得有效的重量数据，请尝试人工称重");
             }
         }
         else
@@ -186,23 +189,28 @@ void CWeightPosition::SetTubeWeight(int weight)
             // 读取重量kg，保护环重量0.01kg，转换为kg单位
             // 实际重量 = 读取重量 - 保护环重量
             float actualWeight = weight - weight_coupling_;
-            tube->weight = actualWeight;
+            m_tubes[0]->weight = actualWeight;
             // 没有长度数据，不进行管子判废
             spdlog::info("管子称重完成: 实际重量={}kg", actualWeight);
-            ClearWeightAlarm(m_ctx, *tube, weight, true);
-            UpdateForm(); // 更新称重工位显示
+            ClearWeightAlarm(m_ctx, *m_tubes[0], weight, true);
         }
     }
     else
     {
         // 称重未使能：跳过称重逻辑
-        tube->weight = 0.0f;
-        tube->weight_ok = false;
+        m_tubes[0]->weight = 0.0f;
+        m_tubes[0]->weight_ok = false;
         m_bWbReleased = true;
 
         spdlog::info("称重功能未使能，跳过称重");
-        ClearWeightAlarm(m_ctx, *tube, weight, false);
+        ClearWeightAlarm(m_ctx, *m_tubes[0], weight, false);
     }
+
+    UpdateForm(); // 更新称重工位显示
+}
+
+void CWeightPosition::EntryTriggerBeforePush(CTube &tube)
+{
 }
 
 void CWeightPosition::EntryTrigger(const CTube &tube)
