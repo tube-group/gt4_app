@@ -32,42 +32,38 @@ void CBasket::ReadParameterSet()
     {
         pqxx::nontransaction ntx(*m_ctx->pgConn);
         const pqxx::result result = ntx.exec(
-            "SELECT bundle_number, bundle_flow_no, bundle_first_type, "
-            "bundle_type, "
-            "weight_packaging "
-            /*"j_language_p, j_count_p, j_count_em "*/
-            "FROM parameter_set LIMIT 1");
+            "SELECT * FROM parameter_set LIMIT 1");
 
         if (result.empty())
         {
             spdlog::warn("parameter_set表无数据，使用默认成品料筐参数");
+            return;
         }
-        else
-        {
-            const auto &row = result[0];
 
-            // 打捆参数
-            this->bundle_number_ = row["bundle_number"].as<int>();         // 打捆根数
-            this->bundle_flow_no_ = row["bundle_flow_no"].as<int>();       // 管捆流水号
-            this->bundle_first_type_ = row["bundle_first_type"].as<int>(); // 管捆号首位(1油管2套管）
+        const auto &row = result[0];
 
-            // 生产参数
-            bundle_type = row["bundle_type"].as<string>("TUB"); // 管捆类型
-            weight_packaging = row["weight_packaging"].as<double>(0); // 包装材料重量
+        bundle_number_ = row["bundle_number"].as<int>();         // 打捆根数
+        bundle_flow_no_ = row["bundle_flow_no"].as<int>();       // 管捆流水号
+        bundle_first_type_ = row["bundle_first_type"].as<int>(); // 管捆号首位(1油管2套管）
+        product_job_point_ = row["produce_job_point"].as<string>(); // 作业点代码
+        direction_code_ = row["direction_code"].as<string>();     // 去向代码
+        bundle_type_ = row["bundle_type"].as<string>(); // 管捆类型
+        weight_packaging_ = row["weight_packaging"].as<double>(0); // 包装材料重量
+        melt_no_coupling_ = row["melt_no_coupling"].as<string>(""); // 接箍炉号
+        lot_no_coupling_ = row["lot_no_coupling"].as<string>(""); // 接箍批号
 
-            spdlog::info("成品筐工位从数据库加载生产计划参数成功");
-            spdlog::info("bundle_number_ 读取结果: {}", bundle_number_);
+        spdlog::info("成品筐工位从数据库加载生产计划参数成功");
+        spdlog::info("bundle_number_ 读取结果: {}", bundle_number_);
 
-            // 将下一根管捆的流水号写入Redis，NEXT_BUNDLE_FLOW_NO键用于前端显示
-            m_ctx->redis->set("NEXT_BUNDLE_FLOW_NO", std::to_string(bundle_flow_no_));
-            spdlog::info("下一管捆流水号已写入Redis: NEXT_BUNDLE_FLOW_NO={}", bundle_flow_no_);
-            m_ctx->redis->publish("RealDataChanged", "NEXT_BUNDLE_FLOW_NO");
+        // 将下一根管捆的流水号写入Redis，NEXT_BUNDLE_FLOW_NO键用于前端显示
+        m_ctx->redis->set("NEXT_BUNDLE_FLOW_NO", std::to_string(bundle_flow_no_));
+        spdlog::info("下一管捆流水号已写入Redis: NEXT_BUNDLE_FLOW_NO={}", bundle_flow_no_);
+        m_ctx->redis->publish("RealDataChanged", "NEXT_BUNDLE_FLOW_NO");
 
-            // 将打捆根数写入Redis，BUNDLE_NUMBER键用于前端显示
-            m_ctx->redis->set("BUNDLE_NUMBER", std::to_string(bundle_number_));
-            spdlog::info("打捆根数已写入Redis: BUNDLE_NUMBER={}", bundle_number_);
-            m_ctx->redis->publish("RealDataChanged", "BUNDLE_NUMBER");
-        }
+        // 将打捆根数写入Redis，BUNDLE_NUMBER键用于前端显示
+        m_ctx->redis->set("BUNDLE_NUMBER", std::to_string(bundle_number_));
+        spdlog::info("打捆根数已写入Redis: BUNDLE_NUMBER={}", bundle_number_);
+        m_ctx->redis->publish("RealDataChanged", "BUNDLE_NUMBER");
     }
     catch (const std::exception &e)
     {
@@ -91,12 +87,11 @@ bool CBasket::HasSpace()
 void CBasket::EntryTrigger(const CTube &tube)
 {
     spdlog::info("=== EntryTrigger 被调用 ===");
-    spdlog::info("当前管子数量: {}, 打捆根数: {}", Count(), BundleCount());
-    spdlog::info("条件判断: {} > 0 && {} >= {}", BundleCount(), Count(), BundleCount());
+    spdlog::info("当前管子数量: {}, 打捆根数: {}", Count(), bundle_number_);
     // 当成品料筐内管子数量达到打捆根数时，执行打捆操作
-    if (BundleCount() > 0 && Count() >= static_cast<size_t>(BundleCount()))
+    if (Count() >= bundle_number_)
     {
-        spdlog::info("成品料筐内管子数量 {} 已达到打捆根数 {}, 执行打捆操作", Count(), BundleCount());
+        spdlog::info("成品料筐内管子数量 {} 已达到打捆根数 {}, 执行打捆操作", Count(), bundle_number_);
         if (Bundle())
         {
             UpdateForm();
@@ -108,14 +103,21 @@ void CBasket::EntryTrigger(const CTube &tube)
     }
     else
     {
-        spdlog::info("成品料筐内管子数量 {} 未达到打捆根数 {}, 继续等待", Count(), BundleCount());
+        spdlog::info("成品料筐内管子数量 {} 未达到打捆根数 {}, 继续等待", Count(), bundle_number_);
     }
 }
 
 //---------------PushFront时触发打捆逻辑---------------
 bool CBasket::PushFront(unique_ptr<CTube> tube, int mode)
 {
-    return PushBack(std::move(tube), 0);
+    bool ret = PushFront(std::move(tube), 0);
+
+    if (Count() == bundle_number_)
+    {
+        Bundle();
+        UpdateForm();
+    }
+    return ret;
 }
 
 //---------------执行打捆操作，生成管捆信息并清空成品料筐---------------
@@ -163,7 +165,7 @@ bool CBasket::Bundle()
         spdlog::info("统计管子: roll_no={}", tube.roll_no);
     }
 
-    // 查询班次————————暂时取固定值：甲班，后续需要补充 (早/晚班+甲/乙/丙/丁班)
+    //mark 查询班次————————暂时取固定值：甲班，后续需要补充 (早/晚班+甲/乙/丙/丁班)
     int ban_ci = 11; // 当前班次
 
     // 获取当前日期时间
@@ -245,7 +247,7 @@ bool CBasket::Bundle()
 
     if (orderResult.empty())
     {
-        spdlog::warn("没有查到订单数据 order_no={}, item_no={}", order_no, item_no);
+        spdlog::warn("没有查到合同数据 order_no={}, item_no={}", order_no, item_no);
     }
     else
     {
@@ -283,30 +285,30 @@ bool CBasket::Bundle()
     double length_eng = std::round(lengthsum * 3.280839 * 1000.0) / 1000.0; // 英制长度 
     double length_from = std::round(lengthmin * 100.0) / 100.0;             // 最短
     double length_to = std::round(lengthmax * 100.0) / 100.0;
-    int theory_weight = static_cast<int>(std::round((lengthsum * weight_per_meter) + weight_ew)); // 理论重量
+    int theory_weight = static_cast<int>(std::round((lengthsum * (weight_per_meter + weight_ew)))); // 理论重量
     double theory_total_length = lengthsum;                                                       // 理论总长度
-    int gross_weight = static_cast<int>(weightsum + weight_packaging / 100.0);                    // 毛重
-    string bundle_type_str = bundle_type.substr(0, 3);                                            // 管捆状态(提取前 3 个字符)
+    int gross_weight = static_cast<int>(weightsum + weight_packaging_ / 100.0);                    // 毛重
     string ban_ci_str = std::to_string(ban_ci);                                                   // ban_ci是varchar(2)
     spdlog::info("计算管捆信息: lengthsum={}, weightsum={}, weight_eng={}, length_eng={}, length_from={}, length_to={}, theory_weight={}, gross_weight={}",
                  lengthsum, weightsum, weight_eng, length_eng, length_from, length_to, theory_weight, gross_weight);
 
-    // 2.删除重复流水号的管子数据(按业务键: order_no + item_no + flow_no)
-    size_t deleted_tube_rows = 0;
-    for (const auto &tubePtr : Tubes())
-    {
-        const auto &tube = *tubePtr;
-        const pqxx::result deleteResult = txn.exec(
-            "DELETE FROM api_tube_data_t "
-            "WHERE order_no = $1 AND item_no = $2 AND flow_no = $3",
-            pqxx::params{tube.order_no, tube.item_no, tube.flow_no});
-        deleted_tube_rows += deleteResult.affected_rows();
-    }
-    spdlog::info("已删除重复流水号的管子数据，共{}根", deleted_tube_rows);
-
-    // 3.在事务中同时插入管捆数据和插入管子数据
     try
     {
+        // 删除重复流水号的管子数据(按业务键: order_no + item_no + flow_no)
+        size_t deleted_tube_rows = 0;
+        for (const auto &tubePtr : Tubes())
+        {
+            const auto &tube = *tubePtr;
+            const pqxx::result deleteResult = txn.exec(
+                "DELETE FROM api_tube_data_t "
+                "WHERE order_no = $1 AND item_no = $2 AND flow_no = $3",
+                pqxx::params{tube.order_no, tube.item_no, tube.flow_no});
+            deleted_tube_rows += deleteResult.affected_rows();
+        }
+        spdlog::info("已删除重复流水号的管子数据，共{}根", deleted_tube_rows);
+
+        // 在事务中同时插入管捆数据和插入管子数据
+
         // 3.1 插入管捆主表——————api_bundle_data_t
         // 注意：这里的SQL语句需要根据实际的表结构进行调整，确保字段名称和顺序正确
         const pqxx::result insertBundleResult = txn.exec(
@@ -319,7 +321,7 @@ bool CBasket::Bundle()
             "thread_type_code, thread_type_sign, coupling_type_code, coupling_type_sign,"
             "order_no_old, toc, gross_weight, end_type, thread_type,"
             "diameter_down_ctrl, diameter_up_ctrl, wal_thick_down_ctrl, wal_thick_up_ctrl,"
-            "weight_per_meter, weight_ew) "
+            "weight_per_meter, weight_ew, product_job_point, direction_code,pono_id_coupling,lot_no_thread) "
             "VALUES ($1,$2, $3, $4, $5, $6,"
             "$7, $8, $9, $10, $11, $12, $13,"
             "$14, $15, $16, $17, $18, $19,"
@@ -328,17 +330,16 @@ bool CBasket::Bundle()
             "$31, $32, $33, $34,"
             "$35, $36,$37, $38, $39,"
             "$40, $41, $42, $43,"
-            "$44,$45)",
+            "$44,$45,$46,$47,$48,$49)",
             pqxx::params{order_no, item_no, bundleno, roll_no, melt_no, lot_no,
                          prod_code, prod_cname, mat_no, mat_text, std_sg_code, std_text, sg_text,
                          diameter, wall_thickness, weightsum, weight_eng, lengthsum, length_eng,
-                         length_from, length_to, tubecount, bundle_type_str, produce_time_bundle, ban_ci_str,
-                         theory_weight, theory_total_length,
-                         flow_no, end_type_code, end_type_sign,
+                         length_from, length_to, tubecount, bundle_type_, produce_time_bundle, ban_ci_str,
+                         theory_weight, theory_total_length, flow_no, end_type_code, end_type_sign,
                          thread_type_code, thread_type_sign, coupling_type_code, coupling_type_sign,
                          order_no_old, produce_time_tube, gross_weight, end_type, thread_type,
                          diameter_down_ctrl, diameter_up_ctrl, wal_thick_down_ctrl, wal_thick_up_ctrl,
-                         weight_per_meter, weight_ew});
+                         weight_per_meter, weight_ew, product_job_point_, direction_code_, melt_no_coupling_, lot_no_coupling_});
 
         // 插入管子明细表
         // 循环插入每根管子数据
@@ -364,47 +365,15 @@ bool CBasket::Bundle()
         {
             bundle_flow_no_ = 0; // 流水号达到9999后重置为0
         }
-        const int nextBundleFlowNo = bundle_flow_no_ + 1;
+        bundle_flow_no_ += 1;
         txn.exec(
             "UPDATE parameter_set SET bundle_flow_no = $1",
-            pqxx::params{nextBundleFlowNo});
+            pqxx::params{bundle_flow_no_});
 
         // 所有操作成功，提交事务
         txn.commit();
 
-        // 将下一根管捆的流水号写入Redis，NEXT_BUNDLE_FLOW_NO键用于前端显示
-        m_ctx->redis->set("NEXT_BUNDLE_FLOW_NO", std::to_string(nextBundleFlowNo));
-        spdlog::info("下一管捆流水号已写入Redis: NEXT_BUNDLE_FLOW_NO={}", nextBundleFlowNo);
-        m_ctx->redis->publish("RealDataChanged", "NEXT_BUNDLE_FLOW_NO");
-
-        // 将最近成捆的管捆号写入Redis，LATEST_BUNDLE_NO键用于前端显示
-        m_ctx->redis->set("LATEST_BUNDLE_NO", bundleno);
-        spdlog::info("最近成捆的管捆号已写入Redis: LATEST_BUNDLE_NO={}", bundleno);
-        m_ctx->redis->publish("RealDataChanged", "LATEST_BUNDLE_NO");
-
-        // 更新当前对象的bundle_flow_no为最新值
-        bundle_flow_no_ = nextBundleFlowNo;
-
-        spdlog::info("=== 打捆操作成功 ===");
-        spdlog::info("管捆号: {}, 根数: {}, 总重量: {}, 总长度: {}",
-                     bundleno, tubecount, weightsum, lengthsum);
-
-        // 输出插入的主表信息
-        spdlog::info("已插入管捆主表: order_no={}, item_no={}, bundle_no={}",
-                     order_no, item_no, bundleno);
-
-        // 向PLC发送打捆完成信号
-        unsigned int error;
-        TagPrintEvent a;
-        a.order_no = order_no;
-        a.item_no = item_no;
-        a.bundle_no = bundleno;
-        a.count = 2;
-
-        bool ret = writeb(m_ctx->gplatConn, "TAG_PRINT_EVENT", &a, sizeof(a), &error);
-        spdlog::info("向PLC发送打捆完成信号: {}, ret={}, error={}", bundleno, ret, error);
         Clear();
-        return true;
     }
     catch (const std::exception &e)
     {
@@ -412,4 +381,35 @@ bool CBasket::Bundle()
         // pqxx::work在析构时会自动回滚，无需手动调用
         return false;
     }
+
+    // 将下一根管捆的流水号写入Redis，NEXT_BUNDLE_FLOW_NO键用于前端显示
+    m_ctx->redis->set("NEXT_BUNDLE_FLOW_NO", std::to_string(bundle_flow_no_));
+    spdlog::info("下一管捆流水号已写入Redis: NEXT_BUNDLE_FLOW_NO={}", bundle_flow_no_);
+    m_ctx->redis->publish("RealDataChanged", "NEXT_BUNDLE_FLOW_NO");
+
+    // 将最近成捆的管捆号写入Redis，LATEST_BUNDLE_NO键用于前端显示
+    m_ctx->redis->set("LATEST_BUNDLE_NO", bundleno);
+    spdlog::info("最近成捆的管捆号已写入Redis: LATEST_BUNDLE_NO={}", bundleno);
+    m_ctx->redis->publish("RealDataChanged", "LATEST_BUNDLE_NO");
+
+    spdlog::info("=== 打捆操作成功 ===");
+    spdlog::info("管捆号: {}, 根数: {}, 总重量: {}, 总长度: {}",
+                    bundleno, tubecount, weightsum, lengthsum);
+
+    // 输出插入的主表信息
+    spdlog::info("已插入管捆主表: order_no={}, item_no={}, bundle_no={}",
+                    order_no, item_no, bundleno);
+
+    // 触发打标签事件
+    unsigned int error;
+    TagPrintEvent a;
+    a.order_no = order_no;
+    a.item_no = item_no;
+    a.bundle_no = bundleno;
+    a.count = 2;
+
+    bool ret = writeb(m_ctx->gplatConn, "TAG_PRINT_EVENT", &a, sizeof(a), &error);
+    spdlog::info("触发打标签事件: {}, ret={}, error={}", bundleno, ret, error);
+    
+    return true;
 }

@@ -298,6 +298,14 @@ bool CMonitor::handleCommand(const std::string &message)
 			writeb(ctx_.gplatConn, "RELEASE_ALL_POS_CMD", &value, sizeof(value), &error);
 			spdlog::info("处理release_all_pos_cmd命令: value={}", value);
 		}
+		else if (cmdName == "bundle_cmd")
+		{
+			unsigned int error;
+			int value = 1;
+			writeb(ctx_.gplatConn, "BUNDLE_CMD", &value, sizeof(value), &error);
+
+			spdlog::info("处理bundle_cmd命令: value={}", value);
+		}
 		else
 		{
 			spdlog::warn("未知的命令类型: {}", cmdName);

@@ -31,7 +31,7 @@ CREATE TABLE public.api_bundle_data_t (
 	bundle_type varchar(3) DEFAULT '',
 	produce_time varchar(14) DEFAULT '',
 	ban_ci varchar(2) DEFAULT '',
-	product_job_point varchar(4) DEFAULT 'T031',
+	product_job_point varchar(4) DEFAULT 'E101',
 	direction_code varchar(4) DEFAULT '',
 	theory_weight int DEFAULT 0,
 	theory_total_length numeric(7, 3) DEFAULT 0,

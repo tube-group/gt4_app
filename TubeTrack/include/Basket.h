@@ -17,11 +17,15 @@ public:
     bool Bundle();                                             // 执行打捆操作，成功后生成管捆信息并清空成品料筐
 
 private:
-    int bundle_number_;     // 打捆根数
-    int bundle_flow_no_;    // 管捆流水号
-    int bundle_first_type_; // 管捆号首位(1油管2套管）
+    int bundle_number_;          // 打捆根数
+    int bundle_flow_no_;         // 管捆流水号
+    int bundle_first_type_;      // 管捆号首位(1油管2套管）
+    string bundle_type_;         // 管捆类型
+    string product_job_point_;   // 作业点代码
+    string direction_code_;      // 去向代码
+    double weight_packaging_;    // 包装材料重量
+    string melt_no_coupling_; // 接箍炉号
+    string lot_no_coupling_;  // 接箍批号
 
     int max_count_ = 100; // 成品料筐最大容量，默认值为100根
-    string bundle_type;          // 管捆类型
-    double weight_packaging;    // 包装材料重量
 };

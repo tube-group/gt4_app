@@ -176,6 +176,7 @@ void workThread(TubeTrackContext &ctx)
     subscribe(ctx.gplatConn, "L2_WB_RELEASE", &err); 
     subscribe(ctx.gplatConn, "RELEASE_ALL_POS_CMD", &err);
     subscribe(ctx.gplatConn, "PARAMETER_SET_UPDATED", &err);// 订阅参数集更新事件
+    subscribe(ctx.gplatConn, "BUNDLE_CMD", &err); // 订阅打捆命令
 
     DoStatistics(ctx);
 
@@ -274,6 +275,12 @@ void workThread(TubeTrackContext &ctx)
             {
                 // 处理删除管子命令
                 handleDeleteTubeCmd(ctx, value);
+            }
+            else if (tagname == "BUNDLE_CMD")
+            {
+                // 处理打捆命令
+                spdlog::info("Handling BUNDLE_CMD");
+                ctx.basket.Bundle();
             }
             else if (tagname == "SET_CURRENT_CONTRACT_CMD")
             {
