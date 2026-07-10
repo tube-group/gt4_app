@@ -95,4 +95,10 @@ struct TagPrintEvent
   PodString<20> bundle_no; // 捆号
   int count; // 标签打印数量，默认为1
 };
+
+struct RequestOrderDataCmd
+{
+	PodString<10> order_no; // 合同号
+	PodString<3> item_no; // 项目号
+};
 #endif // USERCMD_H

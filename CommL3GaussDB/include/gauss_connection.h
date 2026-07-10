@@ -11,6 +11,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -29,6 +30,140 @@ namespace GaussDB
     class ResultSet
     {
     public:
+        class Row
+        {
+        public:
+            Row(const ResultSet &resultSet, int row)
+                : m_resultSet(resultSet), m_row(row)
+            {
+                m_resultSet.validateRowIndex(m_row);
+            }
+
+            bool isNull(int col) const
+            {
+                return m_resultSet.isNull(m_row, col);
+            }
+
+            bool isNull(std::string_view colName) const
+            {
+                return m_resultSet.isNull(m_row, colName);
+            }
+
+            std::optional<std::string> getOptionalValue(int col) const
+            {
+                return m_resultSet.getOptionalValue(m_row, col);
+            }
+
+            std::optional<std::string> getOptionalValue(std::string_view colName) const
+            {
+                return m_resultSet.getOptionalValue(m_row, colName);
+            }
+
+            std::string getValue(int col) const
+            {
+                return m_resultSet.getValue(m_row, col);
+            }
+
+            std::string getValue(std::string_view colName) const
+            {
+                return m_resultSet.getValue(m_row, colName);
+            }
+
+            std::string getString(int col) const
+            {
+                return getValue(col);
+            }
+
+            std::string getString(std::string_view colName) const
+            {
+                return getValue(colName);
+            }
+
+            std::optional<std::int32_t> getOptionalInt32(int col) const
+            {
+                return m_resultSet.getOptionalInt32(m_row, col);
+            }
+
+            std::optional<std::int32_t> getOptionalInt32(std::string_view colName) const
+            {
+                return m_resultSet.getOptionalInt32(m_row, colName);
+            }
+
+            std::optional<std::int32_t> getOptionalInt(int col) const
+            {
+                return getOptionalInt32(col);
+            }
+
+            std::optional<std::int32_t> getOptionalInt(std::string_view colName) const
+            {
+                return getOptionalInt32(colName);
+            }
+
+            std::int32_t getInt32(int col) const
+            {
+                return m_resultSet.getInt32(m_row, col);
+            }
+
+            std::int32_t getInt32(std::string_view colName) const
+            {
+                return m_resultSet.getInt32(m_row, colName);
+            }
+
+            std::int32_t getInt(int col) const
+            {
+                return getInt32(col);
+            }
+
+            std::int32_t getInt(std::string_view colName) const
+            {
+                return getInt32(colName);
+            }
+
+            std::optional<std::int64_t> getOptionalInt64(int col) const
+            {
+                return m_resultSet.getOptionalInt64(m_row, col);
+            }
+
+            std::optional<std::int64_t> getOptionalInt64(std::string_view colName) const
+            {
+                return m_resultSet.getOptionalInt64(m_row, colName);
+            }
+
+            std::int64_t getInt64(int col) const
+            {
+                return m_resultSet.getInt64(m_row, col);
+            }
+
+            std::int64_t getInt64(std::string_view colName) const
+            {
+                return m_resultSet.getInt64(m_row, colName);
+            }
+
+            std::optional<double> getOptionalDouble(int col) const
+            {
+                return m_resultSet.getOptionalDouble(m_row, col);
+            }
+
+            std::optional<double> getOptionalDouble(std::string_view colName) const
+            {
+                return m_resultSet.getOptionalDouble(m_row, colName);
+            }
+
+            double getDouble(int col) const
+            {
+                return m_resultSet.getDouble(m_row, col);
+            }
+
+            double getDouble(std::string_view colName) const
+            {
+                return m_resultSet.getDouble(m_row, colName);
+            }
+
+        private:
+            const ResultSet &m_resultSet;
+            int m_row = 0;
+        };
+
         explicit ResultSet(PGresult *res)
             : m_res(res, &PQclear)
         {
@@ -54,6 +189,11 @@ namespace GaussDB
             return PQgetisnull(m_res.get(), row, col) != 0;
         }
 
+        bool isNull(int row, std::string_view colName) const
+        {
+            return isNull(row, getColumnIndex(colName));
+        }
+
         std::optional<std::string> getOptionalValue(int row, int col) const
         {
             validateIndex(row, col);
@@ -64,9 +204,29 @@ namespace GaussDB
             return std::string(PQgetvalue(m_res.get(), row, col));
         }
 
+        std::optional<std::string> getOptionalValue(int row, std::string_view colName) const
+        {
+            return getOptionalValue(row, getColumnIndex(colName));
+        }
+
         std::string getValue(int row, int col) const
         {
             return requireValue(getOptionalValue(row, col), "TEXT");
+        }
+
+        std::string getValue(int row, std::string_view colName) const
+        {
+            return requireValue(getOptionalValue(row, colName), "TEXT");
+        }
+
+        std::string getString(int row, int col) const
+        {
+            return getValue(row, col);
+        }
+
+        std::string getString(int row, std::string_view colName) const
+        {
+            return getValue(row, colName);
         }
 
         std::optional<std::int32_t> getOptionalInt32(int row, int col) const
@@ -74,9 +234,39 @@ namespace GaussDB
             return parseOptionalInteger<std::int32_t>(row, col, "INT4");
         }
 
+        std::optional<std::int32_t> getOptionalInt32(int row, std::string_view colName) const
+        {
+            return parseOptionalInteger<std::int32_t>(row, getColumnIndex(colName), "INT4");
+        }
+
+        std::optional<std::int32_t> getOptionalInt(int row, int col) const
+        {
+            return getOptionalInt32(row, col);
+        }
+
+        std::optional<std::int32_t> getOptionalInt(int row, std::string_view colName) const
+        {
+            return getOptionalInt32(row, colName);
+        }
+
         std::int32_t getInt32(int row, int col) const
         {
             return requireValue(getOptionalInt32(row, col), "INT4");
+        }
+
+        std::int32_t getInt32(int row, std::string_view colName) const
+        {
+            return requireValue(getOptionalInt32(row, colName), "INT4");
+        }
+
+        std::int32_t getInt(int row, int col) const
+        {
+            return getInt32(row, col);
+        }
+
+        std::int32_t getInt(int row, std::string_view colName) const
+        {
+            return getInt32(row, colName);
         }
 
         std::optional<std::int64_t> getOptionalInt64(int row, int col) const
@@ -84,9 +274,19 @@ namespace GaussDB
             return parseOptionalInteger<std::int64_t>(row, col, "INT8");
         }
 
+        std::optional<std::int64_t> getOptionalInt64(int row, std::string_view colName) const
+        {
+            return parseOptionalInteger<std::int64_t>(row, getColumnIndex(colName), "INT8");
+        }
+
         std::int64_t getInt64(int row, int col) const
         {
             return requireValue(getOptionalInt64(row, col), "INT8");
+        }
+
+        std::int64_t getInt64(int row, std::string_view colName) const
+        {
+            return requireValue(getOptionalInt64(row, colName), "INT8");
         }
 
         std::optional<double> getOptionalDouble(int row, int col) const
@@ -100,9 +300,30 @@ namespace GaussDB
             return parseDouble(*value);
         }
 
+        std::optional<double> getOptionalDouble(int row, std::string_view colName) const
+        {
+            auto value = getOptionalValue(row, colName);
+            if (!value.has_value())
+            {
+                return std::nullopt;
+            }
+
+            return parseDouble(*value);
+        }
+
         double getDouble(int row, int col) const
         {
             return requireValue(getOptionalDouble(row, col), "FLOAT8");
+        }
+
+        double getDouble(int row, std::string_view colName) const
+        {
+            return requireValue(getOptionalDouble(row, colName), "FLOAT8");
+        }
+
+        Row getRow(int row) const
+        {
+            return Row(*this, row);
         }
 
         bool isCmdSuccess() const
@@ -162,12 +383,67 @@ namespace GaussDB
             return parsedValue;
         }
 
+        int getColumnIndex(std::string_view colName) const
+        {
+            for (int col = 0; col < getColCount(); ++col)
+            {
+                const char *columnName = PQfname(m_res.get(), col);
+                if (columnName != nullptr && std::string_view(columnName) == colName)
+                {
+                    return col;
+                }
+            }
+
+            throw std::out_of_range(buildColumnNameError(colName));
+        }
+
+        std::string buildColumnNameError(std::string_view colName) const
+        {
+            std::string message = "结果集不存在列名: ";
+            message.append(colName.data(), colName.size());
+
+            const int colCount = getColCount();
+            if (colCount > 0)
+            {
+                message += "，可用列名: ";
+                for (int col = 0; col < colCount; ++col)
+                {
+                    if (col > 0)
+                    {
+                        message += ", ";
+                    }
+
+                    const char *columnName = PQfname(m_res.get(), col);
+                    if (columnName != nullptr)
+                    {
+                        message += columnName;
+                    }
+                }
+            }
+
+            return message;
+        }
+
+        void validateRowIndex(int row) const
+        {
+            if (row < 0 || row >= getRowCount())
+            {
+                throw std::out_of_range("结果集行索引越界");
+            }
+        }
+
+        void validateColIndex(int col) const
+        {
+            if (col < 0 || col >= getColCount())
+            {
+                throw std::out_of_range("结果集列索引越界");
+            }
+        }
+
         void validateIndex(int row, int col) const
         {
-            if (row < 0 || row >= getRowCount() || col < 0 || col >= getColCount())
-            {
-                throw std::out_of_range("结果集索引越界");
-            }
+            validateRowIndex(row);
+            validateColIndex(col);
         }
 
         std::unique_ptr<PGresult, decltype(&PQclear)> m_res;

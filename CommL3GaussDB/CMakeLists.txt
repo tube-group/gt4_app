@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(CommL3)
+project(CommL3GaussDB)
 
 # 查找源文件
 # file(GLOB SOURCES "src/*.cpp")

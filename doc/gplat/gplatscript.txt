@@ -23,3 +23,5 @@ create SPRAY_RELEASE Boolean
 create L2_WB_RELEASE Boolean
 create YIELD_STATISTICS YieldStatistics
 create SPRAY_STRING string 256
+create API_ORDER_DATA_T OrderData
+create REQUEST_ORDER_DATA_CMD RequestOrderDataCmd

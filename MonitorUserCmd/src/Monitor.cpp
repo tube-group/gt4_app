@@ -145,6 +145,20 @@ bool CMonitor::handleCommand(const std::string &message)
 			spdlog::info("处理SetFeedNumCmd命令: feed_num={}", cmd.feed_num);
 
 		}
+		else if (cmdName == "RequestOrderDataCmd")
+		{
+			const auto &cmdPara = requireObjectCmdPara();
+
+			RequestOrderDataCmd cmd;
+
+			cmd.order_no = cmdPara["order_no"].get<std::string>();
+			cmd.item_no = cmdPara["item_no"].get<std::string>();
+
+			unsigned int error;
+			writeb(ctx_.gplatConn, "REQUEST_ORDER_DATA_CMD", &cmd, sizeof(cmd), &error);
+
+			spdlog::info("处理RequestOrderDataCmd命令: order_no={}, item_no={}", cmd.order_no.c_str(), cmd.item_no.c_str());
+		}
 		else if (cmdName == "MoveTubeCmd")
 		{
 			const auto &cmdPara = requireObjectCmdPara();

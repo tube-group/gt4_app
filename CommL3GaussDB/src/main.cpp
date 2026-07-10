@@ -167,7 +167,7 @@ struct AppConfig
 static bool loadConfig(int argc, char *argv[], AppConfig &app)
 {
     auto &config = CConfig::GetInstance();
-    std::string configFile = "../config/comml3.ini";
+    std::string configFile = "../config/comml3gaussdb.ini";
     if (!config.Load(configFile))
     {
         fprintf(stderr, "Failed to load config file: %s\n", configFile.c_str());
@@ -468,20 +468,20 @@ static bool testGauss(CommL3Context &ctx)
     //     return false;
     // }
 
-    try
-    {
-        // 向表hhcsth.api_tube_data_t里删除一条数据，条件是bundle_no=1234567，并输出是否成功
-        auto res = ctx.gaussConn->executeParams(
-            "DELETE FROM hhcsth.api_tube_data_t WHERE bundle_no=$1;",
-            std::vector<GaussDB::Connection::Param>{
-            GaussDB::Connection::Param::text("1234567")});
-        spdlog::info("删除成功，影响行数: {}", res.cmdTuples());
-    }
-    catch (const std::exception &e)
-    {
-        spdlog::error("高斯数据库删除数据失败: {}", e.what());
-        return false;
-    }
+    // try
+    // {
+    //     // 向表hhcsth.api_tube_data_t里删除一条数据，条件是bundle_no=1234567，并输出是否成功
+    //     auto res = ctx.gaussConn->executeParams(
+    //         "DELETE FROM hhcsth.api_tube_data_t WHERE bundle_no=$1;",
+    //         std::vector<GaussDB::Connection::Param>{
+    //         GaussDB::Connection::Param::text("1234567")});
+    //     spdlog::info("删除成功，影响行数: {}", res.cmdTuples());
+    // }
+    // catch (const std::exception &e)
+    // {
+    //     spdlog::error("高斯数据库删除数据失败: {}", e.what());
+    //     return false;
+    // }
 
     return true;
 }
@@ -527,7 +527,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    testGauss(ctx);
+    // testGauss(ctx);
 
     // // 8. 连接PostgreSQL
     // if (!initPostgreSQL(ctx)) {
@@ -546,9 +546,6 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    // // 启动工作线程
-    // std::thread workerThread(workThread, std::ref(ctx));
-
     // 9. 统一注入上下文到所有工位
     ctx.Init();
 
@@ -558,6 +555,8 @@ int main(int argc, char *argv[])
 
     // std::thread httpThread(&L2RcvL3::Run, &httpWorker);
     // std::thread cprThread(&L2SndL3::Test, &cprWorker);
+
+    std::thread workerThread(workThread, std::ref(ctx));
 
     // 主线程等待退出命令或信号
     while (true)
@@ -580,10 +579,10 @@ int main(int argc, char *argv[])
     //     cprThread.join();
     // }
 
-    // // 等待所有线程结束
-    // if (workerThread.joinable()) {
-    //     workerThread.join();
-    // }
+    // 等待所有线程结束
+    if (workerThread.joinable()) {
+        workerThread.join();
+    }
 
     // 资源清理
     ctx.Cleanup();

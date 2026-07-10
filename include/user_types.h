@@ -250,4 +250,254 @@ REGISTER_STRUCT(YieldStatistics,
 	FIELD_DESC(Int32, YieldStatistics, shift_count)
 )
 
+struct RequestOrderDataCmd
+{
+	PodString<10> order_no; // 合同号
+	PodString<3> item_no; // 项目号
+};
+
+REGISTER_STRUCT(RequestOrderDataCmd,
+	FIELD_DESC_STRING(RequestOrderDataCmd, order_no),
+	FIELD_DESC_STRING(RequestOrderDataCmd, item_no)
+)
+
+struct OrderData {
+	PodString<10> order_no; // 合同号
+	PodString<3> item_no; // 项目号
+	PodString<6> roll_no; // 轧批号
+	double diameter; // 外径
+	double wall_thickness; // 壁厚
+	PodString<1> prod_code; // 品名细分类代码
+	PodString<30> prod_cname; // 品名细分类
+	PodString<1> heat_treat_code; // 热处理方式代码
+	PodString<40> heat_treat_text; // 热处理方式正文
+	PodString<4> std_sg_code; // 标准钢级代码
+	PodString<100> std_text; // 标准正文
+	PodString<50> sg_text; // 钢级正文
+	PodString<4> mat_no; // 材质号
+	PodString<20> mat_text; // 材质正文
+	PodString<1> thread_type_code; // 螺纹类型代码
+	PodString<12> thread_type_sign; // 螺纹类型符号
+	PodString<1> end_type_code; // 管端类型代码
+	PodString<6> end_type_sign; // 管端类型符号
+	PodString<1> coupling_type_code; // 接箍类型代码
+	PodString<12> coupling_type_sign; // 接箍类型符号
+	PodString<1> thread_face_treat_mode_code; // 螺纹表面处理方式代码
+	PodString<20> thread_face_treat_mode; // 螺纹表面处理方式
+	double length_from; // 订货长度起
+	double length_to; // 订货长度止
+	PodString<2> order_unit_code; // 订货计量单位代码
+	PodString<4> order_unit; // 订货计量单位
+	double order_qty; // 订货数量
+	int order_tube; // 订货根数
+	double order_weight; // 订货重量
+	double fixed_order_weight; // 定尺订货重量
+	double unfixed_order_weight; // 非定尺订货重量
+	PodString<2> delivery_tolerance_code; // 提货公差单位代码
+	PodString<4> delivery_tolerance_unit; // 提货公差单位
+	int delivery_tolerance_from; // 提货公差起
+	int delivery_tolerance_to; // 提货公差至
+	int short_rate; // 短尺率
+	double short_from; // 短尺长度起
+	double short_to; // 短尺长度至
+	int single_bundle_weight_max; // 最大单捆重量
+	int single_bundle_tube_max; // 最大单捆根数
+	PodString<1> oil_code; // 涂油代码
+	PodString<50> oil_type; // 涂油正文
+	PodString<300> stamp_req; // 压印要求
+	PodString<400> stencil_req; // 喷印要求
+	PodString<50> label_req_1; // 标签要求1
+	PodString<50> label_req_2; // 标签要求2
+	PodString<50> label_req_3; // 标签要求3
+	PodString<50> label_req_4; // 标签要求4
+	PodString<50> label_req_5; // 标签要求5
+	PodString<50> label_req_6; // 标签要求6
+	PodString<50> label_req_7; // 标签要求7
+	PodString<50> label_req_8; // 标签要求8
+	PodString<100> qual_special_req; // 质量特殊要求
+	PodString<100> produce_special_req; // 生产特殊要求
+	double std_pressure_mpa; // 标准水压压力（MPA)
+	double std_pressure_psi; // 标准水压压力 (PSI)
+	int stabilivolt_time_min; // 最小稳压时间
+	PodString<1> anneal_flag; // 退火标志
+	double weight_per_meter; // 米重
+	double weight_ew; // EW值
+	double theory_weight_eng; // 名义重量
+	PodString<10> order_no_old; // 原合同号
+	PodString<50> color_circle; // 色环
+	PodString<20> color_circle_pos; // 色环位置
+	int finish_number; // 完成根数
+	double finish_length; // 完成长度
+	double finish_weight; // 完成重量
+	int finish_number_sh; // 短尺完成根数
+	double finish_length_sh; // 短尺完成长度
+	double finish_weight_sh; // 短尺完成重量
+	int last_flow_no; // 最后流水号
+	PodString<400> stencil_req_manual; // 人工喷印要求
+	PodString<50> label_req_1_manual; // 人工自由格式打印要求1
+	PodString<50> label_req_2_manual; // 人工自由格式打印要求2
+	PodString<50> label_req_3_manual; // 人工自由格式打印要求3
+	PodString<50> label_req_4_manual; // 人工自由格式打印要求4
+	PodString<50> label_req_5_manual; // 人工自由格式打印要求5
+	PodString<50> label_req_6_manual; // 人工自由格式打印要求6
+	PodString<50> label_req_7_manual; // 人工自由格式打印要求7
+	PodString<50> label_req_8_manual; // 人工自由格式打印要求8
+	PodString<4> colour; // 标签颜色
+	PodString<19> toc; // 修改时间
+	PodString<1> select_flag; // 选择标志: 0-未选, 1-已选
+	double order_qty_l2; // L2订货数量
+	double rolling_diameter; // 轧制外径
+	double rolling_thickness; // 轧制壁厚
+	PodString<1> weight_mode_code; // 计重方式代码
+	PodString<4> weight_mode_text; // 计重方式正文
+	double p_weight_tolerance_ul; // 单根重量允差上限
+	double p_weight_tolerance_ll; // 单根重量允差下限
+	double weight_req_flatside_wpe; // 称重要求平端WPE
+	double control_lenght_ul; // 内控长度上限
+	double control_lenght_ll; // 内控长度下限
+	int label_length_type; // 实验室长度类型: 0-无, 1-有
+	int label_weight_type; // 实验室重量类型: 0-无, 1-有
+	int label_type; // EMF标签类型: 0-无, 1-有
+	double height; // 高度 (mm)
+	PodString<12> end_type; // 管端类型
+	PodString<30> coupling_type; // 接箍类型
+	PodString<6> mic_no; // MIC编号
+	double diameter_down_ctrl; // 外径下限_内控
+	double diameter_up_ctrl; // 外径上限_内控
+	double wal_thick_down_ctrl; // 壁厚下限_内控
+	double wal_thick_up_ctrl; // 壁厚上限_内控
+	double height_down_ctrl; // 高度下限_内控
+	double height_up_ctrl; // 高度上限_内控
+	PodString<1> length_grade_code; // 长度等级编码
+	PodString<20> length_grade; // 长度等级
+	PodString<30> thread_type; // 螺纹类型
+	PodString<80> stamp_req_1_manual; // 针刻印要求1
+	PodString<80> stamp_req_2_manual; // 针刻印要求2
+	PodString<80> stamp_req_3_manual; // 针刻印要求3
+	PodString<80> stamp_req_4_manual; // 针刻印要求4
+	PodString<80> stamp_req_5_manual; // 针刻印要求5
+	PodString<80> stamp_req_6_manual; // 针刻印要求6
+	PodString<80> stamp_req_7_manual; // 针刻印要求7
+	PodString<80> stamp_req_8_manual; // 针刻印要求8
+};
+
+REGISTER_STRUCT(OrderData,
+	FIELD_DESC_STRING(OrderData, order_no),
+	FIELD_DESC_STRING(OrderData, item_no),
+	FIELD_DESC_STRING(OrderData, roll_no),
+	FIELD_DESC(Double, OrderData, diameter),
+	FIELD_DESC(Double, OrderData, wall_thickness),
+	FIELD_DESC_STRING(OrderData, prod_code),
+	FIELD_DESC_STRING(OrderData, prod_cname),
+	FIELD_DESC_STRING(OrderData, heat_treat_code),
+	FIELD_DESC_STRING(OrderData, heat_treat_text),
+	FIELD_DESC_STRING(OrderData, std_sg_code),
+	FIELD_DESC_STRING(OrderData, std_text),
+	FIELD_DESC_STRING(OrderData, sg_text),
+	FIELD_DESC_STRING(OrderData, mat_no),
+	FIELD_DESC_STRING(OrderData, mat_text),
+	FIELD_DESC_STRING(OrderData, thread_type_code),
+	FIELD_DESC_STRING(OrderData, thread_type_sign),
+	FIELD_DESC_STRING(OrderData, end_type_code),
+	FIELD_DESC_STRING(OrderData, end_type_sign),
+	FIELD_DESC_STRING(OrderData, coupling_type_code),
+	FIELD_DESC_STRING(OrderData, coupling_type_sign),
+	FIELD_DESC_STRING(OrderData, thread_face_treat_mode_code),
+	FIELD_DESC_STRING(OrderData, thread_face_treat_mode),
+	FIELD_DESC(Double, OrderData, length_from),
+	FIELD_DESC(Double, OrderData, length_to),
+	FIELD_DESC_STRING(OrderData, order_unit_code),
+	FIELD_DESC_STRING(OrderData, order_unit),
+	FIELD_DESC(Double, OrderData, order_qty),
+	FIELD_DESC(Int32, OrderData, order_tube),
+	FIELD_DESC(Double, OrderData, order_weight),
+	FIELD_DESC(Double, OrderData, fixed_order_weight),
+	FIELD_DESC(Double, OrderData, unfixed_order_weight),
+	FIELD_DESC_STRING(OrderData, delivery_tolerance_code),
+	FIELD_DESC_STRING(OrderData, delivery_tolerance_unit),
+	FIELD_DESC(Int32, OrderData, delivery_tolerance_from),
+	FIELD_DESC(Int32, OrderData, delivery_tolerance_to),
+	FIELD_DESC(Int32, OrderData, short_rate),
+	FIELD_DESC(Double, OrderData, short_from),
+	FIELD_DESC(Double, OrderData, short_to),
+	FIELD_DESC(Int32, OrderData, single_bundle_weight_max),
+	FIELD_DESC(Int32, OrderData, single_bundle_tube_max),
+	FIELD_DESC_STRING(OrderData, oil_code),
+	FIELD_DESC_STRING(OrderData, oil_type),
+	FIELD_DESC_STRING(OrderData, stamp_req),
+	FIELD_DESC_STRING(OrderData, stencil_req),
+	FIELD_DESC_STRING(OrderData, label_req_1),
+	FIELD_DESC_STRING(OrderData, label_req_2),
+	FIELD_DESC_STRING(OrderData, label_req_3),
+	FIELD_DESC_STRING(OrderData, label_req_4),
+	FIELD_DESC_STRING(OrderData, label_req_5),
+	FIELD_DESC_STRING(OrderData, label_req_6),
+	FIELD_DESC_STRING(OrderData, label_req_7),
+	FIELD_DESC_STRING(OrderData, label_req_8),
+	FIELD_DESC_STRING(OrderData, qual_special_req),
+	FIELD_DESC_STRING(OrderData, produce_special_req),
+	FIELD_DESC(Double, OrderData, std_pressure_mpa),
+	FIELD_DESC(Double, OrderData, std_pressure_psi),
+	FIELD_DESC(Int32, OrderData, stabilivolt_time_min),
+	FIELD_DESC_STRING(OrderData, anneal_flag),
+	FIELD_DESC(Double, OrderData, weight_per_meter),
+	FIELD_DESC(Double, OrderData, weight_ew),
+	FIELD_DESC(Double, OrderData, theory_weight_eng),
+	FIELD_DESC_STRING(OrderData, order_no_old),
+	FIELD_DESC_STRING(OrderData, color_circle),
+	FIELD_DESC_STRING(OrderData, color_circle_pos),
+	FIELD_DESC(Int32, OrderData, finish_number),
+	FIELD_DESC(Double, OrderData, finish_length),
+	FIELD_DESC(Double, OrderData, finish_weight),
+	FIELD_DESC(Int32, OrderData, finish_number_sh),
+	FIELD_DESC(Double, OrderData, finish_length_sh),
+	FIELD_DESC(Double, OrderData, finish_weight_sh),
+	FIELD_DESC(Int32, OrderData, last_flow_no),
+	FIELD_DESC_STRING(OrderData, stencil_req_manual),
+	FIELD_DESC_STRING(OrderData, label_req_1_manual),
+	FIELD_DESC_STRING(OrderData, label_req_2_manual),
+	FIELD_DESC_STRING(OrderData, label_req_3_manual),
+	FIELD_DESC_STRING(OrderData, label_req_4_manual),
+	FIELD_DESC_STRING(OrderData, label_req_5_manual),
+	FIELD_DESC_STRING(OrderData, label_req_6_manual),
+	FIELD_DESC_STRING(OrderData, label_req_7_manual),
+	FIELD_DESC_STRING(OrderData, label_req_8_manual),
+	FIELD_DESC_STRING(OrderData, colour),
+	FIELD_DESC_STRING(OrderData, toc),
+	FIELD_DESC_STRING(OrderData, select_flag),
+	FIELD_DESC(Double, OrderData, order_qty_l2),
+	FIELD_DESC(Double, OrderData, rolling_diameter),
+	FIELD_DESC(Double, OrderData, rolling_thickness),
+	FIELD_DESC_STRING(OrderData, weight_mode_code),
+	FIELD_DESC_STRING(OrderData, weight_mode_text),
+	FIELD_DESC(Double, OrderData, p_weight_tolerance_ul),
+	FIELD_DESC(Double, OrderData, p_weight_tolerance_ll),
+	FIELD_DESC(Double, OrderData, weight_req_flatside_wpe),
+	FIELD_DESC(Double, OrderData, control_lenght_ul),
+	FIELD_DESC(Double, OrderData, control_lenght_ll),
+	FIELD_DESC(Int32, OrderData, label_length_type),
+	FIELD_DESC(Int32, OrderData, label_weight_type),
+	FIELD_DESC(Int32, OrderData, label_type),
+	FIELD_DESC(Double, OrderData, height),
+	FIELD_DESC_STRING(OrderData, end_type),
+	FIELD_DESC_STRING(OrderData, coupling_type),
+	FIELD_DESC_STRING(OrderData, mic_no),
+	FIELD_DESC(Double, OrderData, diameter_down_ctrl),
+	FIELD_DESC(Double, OrderData, diameter_up_ctrl),
+	FIELD_DESC(Double, OrderData, wal_thick_down_ctrl),
+	FIELD_DESC(Double, OrderData, wal_thick_up_ctrl),
+	FIELD_DESC(Double, OrderData, height_down_ctrl),
+	FIELD_DESC(Double, OrderData, height_up_ctrl),
+	FIELD_DESC_STRING(OrderData, length_grade_code),
+	FIELD_DESC_STRING(OrderData, length_grade),
+	FIELD_DESC_STRING(OrderData, thread_type),
+	FIELD_DESC_STRING(OrderData, stamp_req_1_manual),
+	FIELD_DESC_STRING(OrderData, stamp_req_2_manual),
+	FIELD_DESC_STRING(OrderData, stamp_req_3_manual),
+	FIELD_DESC_STRING(OrderData, stamp_req_4_manual),
+	FIELD_DESC_STRING(OrderData, stamp_req_5_manual),
+	FIELD_DESC_STRING(OrderData, stamp_req_6_manual),
+	FIELD_DESC_STRING(OrderData, stamp_req_7_manual),
+	FIELD_DESC_STRING(OrderData, stamp_req_8_manual)
+)
 #endif // USER_TYPES_H_
