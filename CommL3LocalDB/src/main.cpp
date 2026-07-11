@@ -158,7 +158,7 @@ struct AppConfig
 {
     LogConfig logCfg;
     bool daemonMode = false;
-    std::string pidFile = "/tmp/comml3gaussdb.pid";
+    std::string pidFile = "/tmp/comml3localdb.pid";
     std::string gplatServer = "127.0.0.1";
     int gplatPort = 8777;
 };
@@ -167,7 +167,7 @@ struct AppConfig
 static bool loadConfig(int argc, char *argv[], AppConfig &app)
 {
     auto &config = CConfig::GetInstance();
-    std::string configFile = "../config/comml3gaussdb.ini";
+    std::string configFile = "../config/comml3localdb.ini";
     if (!config.Load(configFile))
     {
         fprintf(stderr, "Failed to load config file: %s\n", configFile.c_str());
@@ -177,12 +177,12 @@ static bool loadConfig(int argc, char *argv[], AppConfig &app)
     app.logCfg.log_console = config.GetBoolDefault("log_console", false);
     app.logCfg.level = config.GetStringDefault("level", app.logCfg.level);
     app.logCfg.pattern = config.GetStringDefault("pattern", app.logCfg.pattern);
-    app.logCfg.filename = config.GetStringDefault("filename", "log/comml3gaussdb.log");
+    app.logCfg.filename = config.GetStringDefault("filename", "log/comml3localdb.log");
     app.logCfg.immediate_flush = config.GetBoolDefault("immediate_flush", app.logCfg.immediate_flush);
     app.logCfg.max_size_mb = config.GetIntDefault("max_size", app.logCfg.max_size_mb);
     app.logCfg.max_files = config.GetIntDefault("max_files", app.logCfg.max_files);
     app.daemonMode = config.GetBoolDefault("daemon", false);
-    app.pidFile = config.GetStringDefault("pid_file", "/var/run/comml3gaussdb.pid");
+    app.pidFile = config.GetStringDefault("pid_file", "/var/run/comml3localdb.pid");
     app.gplatServer = config.GetStringDefault("gplat_server", app.gplatServer);
     app.gplatPort = config.GetIntDefault("gplat_port", app.gplatPort);
 
@@ -315,176 +315,81 @@ static bool initGplat(CommL3Context &ctx)
     }
 }
 
-// // ---- PostgreSQL连接 ----
-// static bool initPostgreSQL(CommL3Context& ctx)
+// ---- PostgreSQL连接 ----
+static bool initPostgreSQL(CommL3Context& ctx)
+{
+    auto &config = CConfig::GetInstance();
+    try {
+        // 读取PostgreSQL连接参数
+        std::string dbname = config.GetStringDefault("dbname", "mesl2");
+        std::string user = config.GetStringDefault("user", "l2user");
+        std::string password = config.GetStringDefault("password", "ggl2e=mc2");
+        std::string hostaddr = config.GetStringDefault("hostaddr", "127.0.0.1");
+        int port = config.GetIntDefault("port", 5432);
+        std::string clientEncoding = config.GetStringDefault("client_encoding", "GB18030");
+
+        // 构建连接字符串
+        std::string connStr = "dbname=" + dbname +
+                              " user=" + user +
+                              " password=" + password +
+                              " hostaddr=" + hostaddr +
+                              " port=" + std::to_string(port) +
+                              " client_encoding=" + clientEncoding;
+
+        ctx.pgConn = std::make_unique<pqxx::connection>(connStr);
+
+        if (ctx.pgConn->is_open()) {
+            spdlog::info("成功连接到 PostgreSQL 数据库: {}, client_encoding={}",
+                         dbname,
+                         clientEncoding);
+            return true;
+        } else {
+            spdlog::error("PostgreSQL 连接失败: 数据库未打开");
+            return false;
+        }
+
+    } catch (const std::exception& e) {
+        spdlog::error("PostgreSQL 连接失败: {}", e.what());
+        return false;
+    }
+}
+
+// ---- 高斯数据库连接 ----
+// static bool initGauss(CommL3Context &ctx)
 // {
 //     auto &config = CConfig::GetInstance();
-//     try {
-//         // 读取PostgreSQL连接参数
-//         std::string dbname = config.GetStringDefault("dbname", "mesl2");
-//         std::string user = config.GetStringDefault("user", "l2user");
-//         std::string password = config.GetStringDefault("password", "");
-//         std::string hostaddr = config.GetStringDefault("hostaddr", "127.0.0.1");
-//         int port = config.GetIntDefault("port", 5432);
+//     try
+//     {
+//         std::string host = config.GetStringDefault("gauss_host", "140.32.1.164");
+//         std::string dbname = config.GetStringDefault("gauss_dbname", "dbprodu3");
+//         std::string user = config.GetStringDefault("gauss_user", "hfwot");
+//         std::string password = config.GetStringDefault("gauss_password", "");
+//         int port = config.GetIntDefault("gauss_port", 8000);
 
-//         // 构建连接字符串
-//         std::string connStr = "dbname=" + dbname +
-//                               " user=" + user +
-//                               " password=" + password +
-//                               " hostaddr=" + hostaddr +
-//                               " port=" + std::to_string(port);
-
-//         ctx.pgConn = std::make_unique<pqxx::connection>(connStr);
-
-//         if (ctx.pgConn->is_open()) {
-//             spdlog::info("成功连接到 PostgreSQL 数据库: {}", dbname);
-//             return true;
-//         } else {
-//             spdlog::error("PostgreSQL 连接失败: 数据库未打开");
-//             return false;
+//         ctx.gaussConn = std::make_unique<GaussDB::Connection>(
+//             std::vector<GaussDB::Connection::ConnectParam>{
+//                 {"host", host},
+//                 {"port", std::to_string(port)},
+//                 {"dbname", dbname},
+//                 {"user", user},
+//                 {"password", password}});
+//         auto versionRes = ctx.gaussConn->execute("SELECT version();");
+//         auto serverVersion = versionRes.getOptionalValue(0, 0);
+//         if (!serverVersion.has_value())
+//         {
+//             throw std::runtime_error("version() 返回 NULL");
 //         }
+//         spdlog::info("成功连接到高斯数据库: {}, version={}", dbname, *serverVersion);
 
-//     } catch (const std::exception& e) {
-//         spdlog::error("PostgreSQL 连接失败: {}", e.what());
+//         return true;
+//     }
+//     catch (const std::exception &e)
+//     {
+//         spdlog::error("高斯数据库连接失败: {}", e.what());
+//         ctx.gaussConn.reset();
 //         return false;
 //     }
 // }
-
-// ---- 高斯数据库连接 ----
-static bool initGauss(CommL3Context &ctx)
-{
-    auto &config = CConfig::GetInstance();
-    try
-    {
-        std::string host = config.GetStringDefault("gauss_host", "140.32.1.164");
-        std::string dbname = config.GetStringDefault("gauss_dbname", "dbprodu3");
-        std::string user = config.GetStringDefault("gauss_user", "hfwot");
-        std::string password = config.GetStringDefault("gauss_password", "");
-        int port = config.GetIntDefault("gauss_port", 8000);
-
-        ctx.gaussConn = std::make_unique<GaussDB::Connection>(
-            std::vector<GaussDB::Connection::ConnectParam>{
-                {"host", host},
-                {"port", std::to_string(port)},
-                {"dbname", dbname},
-                {"user", user},
-                {"password", password}});
-        auto versionRes = ctx.gaussConn->execute("SELECT version();");
-        auto serverVersion = versionRes.getOptionalValue(0, 0);
-        if (!serverVersion.has_value())
-        {
-            throw std::runtime_error("version() 返回 NULL");
-        }
-        spdlog::info("成功连接到高斯数据库: {}, version={}", dbname, *serverVersion);
-
-        return true;
-    }
-    catch (const std::exception &e)
-    {
-        spdlog::error("高斯数据库连接失败: {}", e.what());
-        ctx.gaussConn.reset();
-        return false;
-    }
-}
-
-// ----测试高斯数据库插入、更新、删除数据的功能----
-static bool testGauss(CommL3Context &ctx)
-{
-    if (ctx.gaussConn == nullptr)
-    {
-        spdlog::error("高斯CRUD测试失败: 连接未初始化");
-        return false;
-    }
-
-    // CREATE TABLE hhcsth.api_tube_data_t (
-    // order_no varchar(10) NOT NULL,
-    // item_no varchar(3) NOT NULL,
-    // bundle_no varchar(7) NOT NULL,
-    // weight numeric(7, 3) DEFAULT 0 NULL,
-    // length numeric(6, 3) DEFAULT 0 NULL,
-    // flow_no int4 NOT NULL,
-    // tube_no int4 DEFAULT 0 NULL,
-    // CONSTRAINT pk_api_tube_data_t PRIMARY KEY (order_no, item_no, flow_no)
-
-    // // 查询表hhcsth.api_tube_data_t，条件是bundle_no='1016286'，并打印结果
-    // auto res = ctx.gaussConn->executeParams(
-    //     "SELECT order_no, item_no, bundle_no, weight, length, flow_no, tube_no "
-    //     "FROM hhcsth.api_tube_data_t "
-    //     "WHERE bundle_no=$1;",
-    //     {GaussDB::Connection::Param::text("1016286")});
-    // // 打印查询结果
-    // for (int i = 0; i < res.getRowCount(); ++i)
-    // {
-    //     std::string order_no = res.getValue(i, 0);
-    //     std::string item_no = res.getValue(i, 1);
-    //     std::string bundle_no = res.getValue(i, 2);
-    //     double weight = res.getDouble(i, 3);
-    //     double length = res.getDouble(i, 4);
-    //     int flow_no = res.getInt32(i, 5);
-    //     int tube_no = res.getInt32(i, 6);
-
-    //     spdlog::info("Row {}: order_no={}, item_no={}, bundle_no={}, weight={}, length={}, flow_no={}, tube_no={}",
-    //                  i, order_no, item_no, bundle_no, weight, length, flow_no, tube_no);
-    // }
-    // spdlog::info("查询结果行数: {}", res.getRowCount());
-
-    // try{
-    //     // 向表hhcsth.api_tube_data_t里插入一条数据，并输出是否成功
-    // auto res = ctx.gaussConn->executeParams(
-    //     "INSERT INTO hhcsth.api_tube_data_t (order_no, item_no, bundle_no, weight, length, flow_no, tube_no) "
-    //     "VALUES ($1, $2, $3, $4, $5, $6, $7);",
-    //     std::vector<GaussDB::Connection::Param>{
-    //         GaussDB::Connection::Param::text("1234567890"),
-    //         GaussDB::Connection::Param::text("1"),
-    //         GaussDB::Connection::Param::text("12345678"),
-    //         GaussDB::Connection::Param::numeric("0"),
-    //         GaussDB::Connection::Param::numeric("0"),
-    //         GaussDB::Connection::Param::int4(0), // 改为 int4
-    //         GaussDB::Connection::Param::int4(0)  // 改为 int4
-    //     });
-
-    // spdlog::info("插入成功，影响行数: {}", res.cmdTuples());
-
-    // }catch (const std::exception &e)
-    // {
-    //     spdlog::error("高斯数据库插入数据失败: {}", e.what());
-    //     return false;
-    // }
-
-    // try
-    // {
-    //     // 向表hhcsth.api_tube_data_t里更新一条数据，条件是bundle_no=1234567,更新weight为10，并输出是否成功
-    //     auto res = ctx.gaussConn->executeParams(
-    //         "UPDATE hhcsth.api_tube_data_t SET weight=$1 WHERE bundle_no=$2;",
-    //         std::vector<GaussDB::Connection::Param>{
-    //             GaussDB::Connection::Param::numeric("10"),
-    //             GaussDB::Connection::Param::text("1234567")});
-
-    //     spdlog::info("更新成功，影响行数: {}", res.cmdTuples());
-    // }
-    // catch (const std::exception &e)
-    // {
-    //     spdlog::error("高斯数据库更新数据失败: {}", e.what());
-    //     return false;
-    // }
-
-    // try
-    // {
-    //     // 向表hhcsth.api_tube_data_t里删除一条数据，条件是bundle_no=1234567，并输出是否成功
-    //     auto res = ctx.gaussConn->executeParams(
-    //         "DELETE FROM hhcsth.api_tube_data_t WHERE bundle_no=$1;",
-    //         std::vector<GaussDB::Connection::Param>{
-    //         GaussDB::Connection::Param::text("1234567")});
-    //     spdlog::info("删除成功，影响行数: {}", res.cmdTuples());
-    // }
-    // catch (const std::exception &e)
-    // {
-    //     spdlog::error("高斯数据库删除数据失败: {}", e.what());
-    //     return false;
-    // }
-
-    return true;
-}
 
 int main(int argc, char *argv[])
 {
@@ -519,24 +424,12 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    // 9. 连接高斯数据库
-    if (!initGauss(ctx))
-    {
+    // 8. 连接PostgreSQL
+    if (!initPostgreSQL(ctx)) {
         ctx.Cleanup();
         shutdownLogging();
         return EXIT_FAILURE;
     }
-
-    // testGauss(ctx);
-
-    // // 8. 连接PostgreSQL
-    // if (!initPostgreSQL(ctx)) {
-    //     ctx.Cleanup();
-    //     shutdownLogging();
-    //     return EXIT_FAILURE;
-    // }
-
-    // testGaussAndPostgreSQL(ctx);
 
     // 7. 连接 gPlat
     if (!initGplat(ctx))

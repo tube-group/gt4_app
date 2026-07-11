@@ -50,14 +50,11 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         nlohmann_json::nlohmann_json # nlohmann_json库
         cpr::cpr                 # cpr库
         httplib::httplib         # httplib库
+        anl                      # cpp-httplib 开启了异步DNS解析，需要链接anl库
         Threads::Threads
         ${GAUSS_PQ_LIB}          # GaussDB SDK 提供的 libpq
         ${HIGPLAT_LIB}           # 自有库 higplat
 )
-
-if(UNIX AND NOT APPLE)
-    target_link_libraries(${PROJECT_NAME} PRIVATE anl)
-endif()
 
 if(UNIX AND NOT APPLE)
     set_target_properties(${PROJECT_NAME} PROPERTIES
