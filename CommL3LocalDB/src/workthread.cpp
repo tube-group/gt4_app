@@ -22,6 +22,7 @@
 extern volatile sig_atomic_t g_running;
 
 void handleApiOrderData(CommL3Context &ctx, const char *value);
+void handleApiBundleDataEvent(CommL3Context &ctx, const char *value);
 
 void workThread(CommL3Context &ctx)
 {
@@ -67,7 +68,15 @@ void workThread(CommL3Context &ctx)
             {            
                 // 处理API_ORDER_DATA_T的逻辑
                 handleApiOrderData(ctx, value);
-                continue;
+            }
+            else if (tagname == "API_BUNDLE_DATA_EVENT")
+            {
+                // 处理API_BUNDLE_DATA_EVENT的逻辑
+                handleApiBundleDataEvent(ctx, value);
+            }
+            else
+            {
+                spdlog::warn("Unhandled tag: {}, value: {}", tagname, value);
             }
         }
         catch (const std::exception &ex)

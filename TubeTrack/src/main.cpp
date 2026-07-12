@@ -10,8 +10,8 @@
 #include <limits.h>    // PATH_MAX
 #include <getopt.h>    // getopt
 #include <csignal>     // signal, SIGINT, SIGTERM
-#include "../../include/iniconfig.h" // CConfig
-#include "../../include/logging.h"   // LogConfig
+#include "iniconfig.h" // CConfig
+#include "logging.h"   // LogConfig
 
 // 前向声明
 void workThread(TubeTrackContext& ctx);

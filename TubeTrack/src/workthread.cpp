@@ -12,7 +12,7 @@
 #include "logging.h"
 #include "higplat.h"
 #include "TubeTrackContext.h"
-#include "usercmd.h"
+#include "user_types.h"
 #include "WeightPosition.h"
 #include "DoStatistics.h"
 

@@ -261,6 +261,21 @@ REGISTER_STRUCT(RequestOrderDataCmd,
 	FIELD_DESC_STRING(RequestOrderDataCmd, item_no)
 )
 
+struct ApiBundleDataEvent
+{
+	PodString<1> flag; // 操作标志
+	PodString<10> order_no; // 合同号
+	PodString<3> item_no; // 项目号
+	PodString<7> bundle_no; // 管捆号
+};
+
+REGISTER_STRUCT(ApiBundleDataEvent,
+	FIELD_DESC_STRING(ApiBundleDataEvent, flag),
+	FIELD_DESC_STRING(ApiBundleDataEvent, order_no),
+	FIELD_DESC_STRING(ApiBundleDataEvent, item_no),
+	FIELD_DESC_STRING(ApiBundleDataEvent, bundle_no)
+)
+
 struct OrderData {
 	PodString<10> order_no; // 合同号
 	PodString<3> item_no; // 项目号
@@ -499,5 +514,370 @@ REGISTER_STRUCT(OrderData,
 	FIELD_DESC_STRING(OrderData, stamp_req_6_manual),
 	FIELD_DESC_STRING(OrderData, stamp_req_7_manual),
 	FIELD_DESC_STRING(OrderData, stamp_req_8_manual)
+)
+
+struct mmwe_tqmtiwea14_t
+{
+	PodString<1> operator_flag; // 增删标记
+	PodString<8> prod_date; // 生产日期
+	PodString<6> prod_tm; // 生产时间(6位)
+	PodString<1> prod_shift_no; // 生产班次
+	PodString<1> prod_shift_group; // 生产班组
+	PodString<4> prod_job_point; // 生产作业点
+	PodString<4> dest_code; // 去向代码
+	PodString<10> order_no; // 合同号
+	PodString<3> order_item_no; // 合同项目号
+	PodString<1> prod_code; // 品名细分类代码
+	PodString<30> prod_cname; // 品名细分类中文
+	double order_outer_dia; // 外径
+	double order_wal_thick; // 壁厚
+	double order_height; // 高度
+	PodString<4> std_sg_code; // 标准牌号(钢级)代码
+	PodString<50> sg_sign; // 牌号（钢级）
+	PodString<100> sg_std; // 牌号标准(标准正文)
+	PodString<4> mtrl_no; // 材质号
+	PodString<50> mtrl_text; // 材质正文
+	PodString<1> pipeend_type_code; // 管端型式代码
+	PodString<12> pipeend_type_sign; // 管端型式符号
+	PodString<30> pipeend_type; // 管端型式
+	PodString<1> thread_type_code; // 螺纹类型代码
+	PodString<12> thread_type_sign; // 螺纹类型符号
+	PodString<30> thread_type; // 螺纹类型
+	PodString<10> old_order_no; // 原合同号
+	PodString<10> rl_no; // 轧批号
+	PodString<10> pono; // 制造命令号(炉号)
+	PodString<12> sample_lot_no; // 试批号
+	PodString<20> mat_no; // 材料号(管捆号)
+	PodString<3> bundle_type; // 管捆类型
+	int mat_tube; // 材料根数
+	double mat_act_wt; // 材料重量(吨)
+	double mat_eng_wt; // 材料英制重量
+	double total_len; // 总长度
+	double eng_total_len; // 英制总长度
+	double len_from; // 长度起
+	double len_to; // 长度止
+	double mat_theory_wt; // 材料理论重量
+	double thy_total_len; // 理论总长度
+	PodString<1> order_end_flag; // 合同结束标记
+	double ctl_tube_dia_from; // 内控管体外径起
+	double ctl_tube_dia_to; // 内控管体外径止
+	double ctl_wal_thick_from; // 内控壁厚起
+	double ctl_wal_thick_to; // 内控壁厚止
+	double ctl_height_from; // 内控高度起
+	double ctl_height_to; // 内控高度止
+	PodString<10> coup_pono; // 接箍炉号
+	PodString<12> coup_sample_lot_no; // 接箍试批号
+	PodString<12> protect_size; // 保护环规格
+	PodString<7> protect_lot_no; // 保护环批号
+	PodString<60> protect_factory; // 保护环生产厂家
+	PodString<12> compound_size; // 螺纹脂规格
+	PodString<7> compound_lot_no; // 螺纹脂批号
+	PodString<60> compound_factory; // 螺纹脂生产厂家
+	PodString<12> coating_size; // 防腐涂层规格
+	PodString<7> coating_lot_no; // 防腐涂层批号
+	PodString<60> coating_factory; // 防腐涂层生产厂家
+	PodString<15> stock_place_no; // 材料库位号
+	PodString<7> tube_no_1; // 管号1
+	double tube_act_wt_1; // 单根管子重量1
+	double tube_eng_wt_1; // 单根管子英制重量1
+	double tube_theory_wt_1; // 单根管子理论重量1
+	double tube_len_1; // 单根管子长度1
+	double tube_eng_len_1; // 单根管子英制长度1
+	double tube_thy_len_1; // 单根管子理论长度1
+	int seq_id_1; // 流水号1
+	PodString<7> tube_no_2; // 管号2
+	double tube_act_wt_2; // 单根管子重量2
+	double tube_eng_wt_2; // 单根管子英制重量2
+	double tube_theory_wt_2; // 单根管子理论重量2
+	double tube_len_2; // 单根管子长度2
+	double tube_eng_len_2; // 单根管子英制长度2
+	double tube_thy_len_2; // 单根管子理论长度2
+	int seq_id_2; // 流水号2
+	PodString<7> tube_no_3; // 管号3
+	double tube_act_wt_3; // 单根管子重量3
+	double tube_eng_wt_3; // 单根管子英制重量3
+	double tube_theory_wt_3; // 单根管子理论重量3
+	double tube_len_3; // 单根管子长度3
+	double tube_eng_len_3; // 单根管子英制长度3
+	double tube_thy_len_3; // 单根管子理论长度3
+	int seq_id_3; // 流水号3
+	PodString<7> tube_no_4; // 管号4
+	double tube_act_wt_4; // 单根管子重量4
+	double tube_eng_wt_4; // 单根管子英制重量4
+	double tube_theory_wt_4; // 单根管子理论重量4
+	double tube_len_4; // 单根管子长度4
+	double tube_eng_len_4; // 单根管子英制长度4
+	double tube_thy_len_4; // 单根管子理论长度4
+	int seq_id_4; // 流水号4
+	PodString<7> tube_no_5; // 管号5
+	double tube_act_wt_5; // 单根管子重量5
+	double tube_eng_wt_5; // 单根管子英制重量5
+	double tube_theory_wt_5; // 单根管子理论重量5
+	double tube_len_5; // 单根管子长度5
+	double tube_eng_len_5; // 单根管子英制长度5
+	double tube_thy_len_5; // 单根管子理论长度5
+	int seq_id_5; // 流水号5
+	PodString<7> tube_no_6; // 管号6
+	double tube_act_wt_6; // 单根管子重量6
+	double tube_eng_wt_6; // 单根管子英制重量6
+	double tube_theory_wt_6; // 单根管子理论重量6
+	double tube_len_6; // 单根管子长度6
+	double tube_eng_len_6; // 单根管子英制长度6
+	double tube_thy_len_6; // 单根管子理论长度6
+	int seq_id_6; // 流水号6
+	PodString<7> tube_no_7; // 管号7
+	double tube_act_wt_7; // 单根管子重量7
+	double tube_eng_wt_7; // 单根管子英制重量7
+	double tube_theory_wt_7; // 单根管子理论重量7
+	double tube_len_7; // 单根管子长度7
+	double tube_eng_len_7; // 单根管子英制长度7
+	double tube_thy_len_7; // 单根管子理论长度7
+	int seq_id_7; // 流水号7
+	PodString<7> tube_no_8; // 管号8
+	double tube_act_wt_8; // 单根管子重量8
+	double tube_eng_wt_8; // 单根管子英制重量8
+	double tube_theory_wt_8; // 单根管子理论重量8
+	double tube_len_8; // 单根管子长度8
+	double tube_eng_len_8; // 单根管子英制长度8
+	double tube_thy_len_8; // 单根管子理论长度8
+	int seq_id_8; // 流水号8
+	PodString<7> tube_no_9; // 管号9
+	double tube_act_wt_9; // 单根管子重量9
+	double tube_eng_wt_9; // 单根管子英制重量9
+	double tube_theory_wt_9; // 单根管子理论重量9
+	double tube_len_9; // 单根管子长度9
+	double tube_eng_len_9; // 单根管子英制长度9
+	double tube_thy_len_9; // 单根管子理论长度9
+	int seq_id_9; // 流水号9
+	PodString<7> tube_no_10; // 管号10
+	double tube_act_wt_10; // 单根管子重量10
+	double tube_eng_wt_10; // 单根管子英制重量10
+	double tube_theory_wt_10; // 单根管子理论重量10
+	double tube_len_10; // 单根管子长度10
+	double tube_eng_len_10; // 单根管子英制长度10
+	double tube_thy_len_10; // 单根管子理论长度10
+	int seq_id_10; // 流水号10
+	PodString<7> tube_no_11; // 管号11
+	double tube_act_wt_11; // 单根管子重量11
+	double tube_eng_wt_11; // 单根管子英制重量11
+	double tube_theory_wt_11; // 单根管子理论重量11
+	double tube_len_11; // 单根管子长度11
+	double tube_eng_len_11; // 单根管子英制长度11
+	double tube_thy_len_11; // 单根管子理论长度11
+	int seq_id_11; // 流水号11
+	PodString<7> tube_no_12; // 管号12
+	double tube_act_wt_12; // 单根管子重量12
+	double tube_eng_wt_12; // 单根管子英制重量12
+	double tube_theory_wt_12; // 单根管子理论重量12
+	double tube_len_12; // 单根管子长度12
+	double tube_eng_len_12; // 单根管子英制长度12
+	double tube_thy_len_12; // 单根管子理论长度12
+	int seq_id_12; // 流水号12
+	PodString<7> tube_no_13; // 管号13
+	double tube_act_wt_13; // 单根管子重量13
+	double tube_eng_wt_13; // 单根管子英制重量13
+	double tube_theory_wt_13; // 单根管子理论重量13
+	double tube_len_13; // 单根管子长度13
+	double tube_eng_len_13; // 单根管子英制长度13
+	double tube_thy_len_13; // 单根管子理论长度13
+	int seq_id_13; // 流水号13
+	PodString<7> tube_no_14; // 管号14
+	double tube_act_wt_14; // 单根管子重量14
+	double tube_eng_wt_14; // 单根管子英制重量14
+	double tube_theory_wt_14; // 单根管子理论重量14
+	double tube_len_14; // 单根管子长度14
+	double tube_eng_len_14; // 单根管子英制长度14
+	double tube_thy_len_14; // 单根管子理论长度14
+	int seq_id_14; // 流水号14
+	PodString<7> tube_no_15; // 管号15
+	double tube_act_wt_15; // 单根管子重量15
+	double tube_eng_wt_15; // 单根管子英制重量15
+	double tube_theory_wt_15; // 单根管子理论重量15
+	double tube_len_15; // 单根管子长度15
+	double tube_eng_len_15; // 单根管子英制长度15
+	double tube_thy_len_15; // 单根管子理论长度15
+	int seq_id_15; // 流水号15
+};
+
+REGISTER_STRUCT(mmwe_tqmtiwea14_t,
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, operator_flag),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, prod_date),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, prod_tm),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, prod_shift_no),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, prod_shift_group),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, prod_job_point),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, dest_code),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, order_no),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, order_item_no),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, prod_code),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, prod_cname),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, order_outer_dia),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, order_wal_thick),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, order_height),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, std_sg_code),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, sg_sign),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, sg_std),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, mtrl_no),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, mtrl_text),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, pipeend_type_code),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, pipeend_type_sign),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, pipeend_type),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, thread_type_code),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, thread_type_sign),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, thread_type),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, old_order_no),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, rl_no),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, pono),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, sample_lot_no),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, mat_no),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, bundle_type),
+	FIELD_DESC(Int32, mmwe_tqmtiwea14_t, mat_tube),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, mat_act_wt),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, mat_eng_wt),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, total_len),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, eng_total_len),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, len_from),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, len_to),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, mat_theory_wt),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, thy_total_len),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, order_end_flag),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, ctl_tube_dia_from),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, ctl_tube_dia_to),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, ctl_wal_thick_from),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, ctl_wal_thick_to),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, ctl_height_from),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, ctl_height_to),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, coup_pono),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, coup_sample_lot_no),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, protect_size),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, protect_lot_no),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, protect_factory),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, compound_size),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, compound_lot_no),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, compound_factory),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, coating_size),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, coating_lot_no),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, coating_factory),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, stock_place_no),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, tube_no_1),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_act_wt_1),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_wt_1),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_theory_wt_1),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_len_1),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_len_1),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_thy_len_1),
+	FIELD_DESC(Int32, mmwe_tqmtiwea14_t, seq_id_1),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, tube_no_2),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_act_wt_2),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_wt_2),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_theory_wt_2),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_len_2),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_len_2),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_thy_len_2),
+	FIELD_DESC(Int32, mmwe_tqmtiwea14_t, seq_id_2),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, tube_no_3),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_act_wt_3),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_wt_3),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_theory_wt_3),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_len_3),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_len_3),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_thy_len_3),
+	FIELD_DESC(Int32, mmwe_tqmtiwea14_t, seq_id_3),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, tube_no_4),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_act_wt_4),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_wt_4),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_theory_wt_4),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_len_4),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_len_4),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_thy_len_4),
+	FIELD_DESC(Int32, mmwe_tqmtiwea14_t, seq_id_4),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, tube_no_5),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_act_wt_5),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_wt_5),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_theory_wt_5),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_len_5),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_len_5),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_thy_len_5),
+	FIELD_DESC(Int32, mmwe_tqmtiwea14_t, seq_id_5),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, tube_no_6),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_act_wt_6),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_wt_6),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_theory_wt_6),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_len_6),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_len_6),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_thy_len_6),
+	FIELD_DESC(Int32, mmwe_tqmtiwea14_t, seq_id_6),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, tube_no_7),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_act_wt_7),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_wt_7),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_theory_wt_7),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_len_7),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_len_7),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_thy_len_7),
+	FIELD_DESC(Int32, mmwe_tqmtiwea14_t, seq_id_7),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, tube_no_8),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_act_wt_8),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_wt_8),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_theory_wt_8),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_len_8),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_len_8),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_thy_len_8),
+	FIELD_DESC(Int32, mmwe_tqmtiwea14_t, seq_id_8),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, tube_no_9),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_act_wt_9),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_wt_9),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_theory_wt_9),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_len_9),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_len_9),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_thy_len_9),
+	FIELD_DESC(Int32, mmwe_tqmtiwea14_t, seq_id_9),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, tube_no_10),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_act_wt_10),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_wt_10),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_theory_wt_10),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_len_10),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_len_10),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_thy_len_10),
+	FIELD_DESC(Int32, mmwe_tqmtiwea14_t, seq_id_10),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, tube_no_11),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_act_wt_11),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_wt_11),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_theory_wt_11),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_len_11),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_len_11),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_thy_len_11),
+	FIELD_DESC(Int32, mmwe_tqmtiwea14_t, seq_id_11),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, tube_no_12),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_act_wt_12),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_wt_12),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_theory_wt_12),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_len_12),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_len_12),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_thy_len_12),
+	FIELD_DESC(Int32, mmwe_tqmtiwea14_t, seq_id_12),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, tube_no_13),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_act_wt_13),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_wt_13),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_theory_wt_13),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_len_13),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_len_13),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_thy_len_13),
+	FIELD_DESC(Int32, mmwe_tqmtiwea14_t, seq_id_13),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, tube_no_14),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_act_wt_14),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_wt_14),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_theory_wt_14),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_len_14),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_len_14),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_thy_len_14),
+	FIELD_DESC(Int32, mmwe_tqmtiwea14_t, seq_id_14),
+	FIELD_DESC_STRING(mmwe_tqmtiwea14_t, tube_no_15),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_act_wt_15),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_wt_15),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_theory_wt_15),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_len_15),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_eng_len_15),
+	FIELD_DESC(Double, mmwe_tqmtiwea14_t, tube_thy_len_15),
+	FIELD_DESC(Int32, mmwe_tqmtiwea14_t, seq_id_15),
 )
 #endif // USER_TYPES_H_

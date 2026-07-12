@@ -12,7 +12,7 @@
 #include "logging.h"
 #include "higplat.h"
 #include "TubeTrackContext.h"
-#include "statisticsthread.h"
+
 // 声明外部变量
 extern volatile sig_atomic_t g_running;
 

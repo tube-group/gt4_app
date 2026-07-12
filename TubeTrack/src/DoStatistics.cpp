@@ -1,4 +1,5 @@
 #include "DoStatistics.h"
+#include "user_types.h"
 
 void DoStatistics(TubeTrackContext &ctx)
 {

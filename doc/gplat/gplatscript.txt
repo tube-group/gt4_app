@@ -25,3 +25,5 @@ create YIELD_STATISTICS YieldStatistics
 create SPRAY_STRING string 256
 create API_ORDER_DATA_T OrderData
 create REQUEST_ORDER_DATA_CMD RequestOrderDataCmd
+create MMWE_TQMTIWEA14 mmwe_tqmtiwea14_t
+create API_BUNDLE_DATA_EVENT ApiBundleDataEvent

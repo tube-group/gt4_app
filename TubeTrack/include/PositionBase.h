@@ -1,6 +1,6 @@
 #pragma once
 #include "Tube.h"
-#include "../../include/usercmd.h"
+#include "user_types.h"
 #include <deque>
 #include <memory>
 #include <cstddef>

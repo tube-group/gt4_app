@@ -3,6 +3,7 @@
 #include "TubeTrackContext.h"
 #include "logging.h"
 #include "cmath"
+#include "user_types.h"
 
 void CBasket::UpdateForm()
 {
@@ -372,6 +373,15 @@ bool CBasket::Bundle()
 
         // 所有操作成功，提交事务
         txn.commit();
+
+        ApiBundleDataEvent bundleEvent;
+        bundleEvent.order_no = order_no;
+        bundleEvent.item_no = item_no;
+        bundleEvent.bundle_no = bundleno;
+        bundleEvent.flag = "I"; // 新增管捆事件
+        unsigned int error;
+        bool ret = writeb(m_ctx->gplatConn, "API_BUNDLE_DATA_EVENT", &bundleEvent, sizeof(bundleEvent), &error);
+        spdlog::info("触发管捆事件: {}, ret={}, error={}", bundleno, ret, error);
 
         Clear();
     }

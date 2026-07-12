@@ -27,6 +27,8 @@ inline const std::unordered_map<std::string, const StructInfo*>& GetStructRegist
 		REG(YieldStatistics),
 		REG(OrderData),
 		REG(RequestOrderDataCmd),
+		REG(ApiBundleDataEvent),
+		REG(mmwe_tqmtiwea14_t),
 		// 新增类型在此添加一行
 	};
 	return table;
