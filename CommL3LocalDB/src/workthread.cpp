@@ -31,6 +31,7 @@ void workThread(CommL3Context &ctx)
     // 订阅timer用于退出检测
     subscribe(ctx.gplatConn, "timer_500ms", &err);
     subscribe(ctx.gplatConn, "API_ORDER_DATA_T", &err);
+    subscribe(ctx.gplatConn, "API_BUNDLE_DATA_EVENT", &err);
 
     // 主循环：等待gPlat数据，处理TAG更新
     while (g_running)
