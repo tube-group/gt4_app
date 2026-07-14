@@ -326,7 +326,8 @@ static bool initPostgreSQL(CommL3Context& ctx)
         std::string password = config.GetStringDefault("password", "ggl2e=mc2");
         std::string hostaddr = config.GetStringDefault("hostaddr", "127.0.0.1");
         int port = config.GetIntDefault("port", 5432);
-        std::string clientEncoding = config.GetStringDefault("client_encoding", "GB18030");
+        std::string clientEncoding = config.GetStringDefault("client_encoding", "UTF8");
+        // std::string clientEncoding = config.GetStringDefault("client_encoding", "GB18030");
 
         // 构建连接字符串
         std::string connStr = "dbname=" + dbname +

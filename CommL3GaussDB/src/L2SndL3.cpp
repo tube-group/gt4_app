@@ -229,21 +229,9 @@ std::string read_test_command()
 
 } // namespace
 
-L2SndL3::L2SndL3(CommL3Context &ctx)
-	: ctx(ctx)
-	, l3_request_data_url_("http://140.32.1.189:9011/L3RequestData")
-	, rest_in_url_("http://140.32.1.189:10007/api/v1/restin")
+L2SndL3::L2SndL3()
+	: rest_in_url_("http://10.81.57.82:10007/api/v1/restin")
 {
-}
-
-void L2SndL3::Run()
-{
-	spdlog::info("L2SndL3 ready: L3RequestData={}, RestIn={}", l3_request_data_url_, rest_in_url_);
-}
-
-void L2SndL3::SetL3RequestDataUrl(const std::string &url)
-{
-	l3_request_data_url_ = url;
 }
 
 void L2SndL3::SetRestInUrl(const std::string &url)
@@ -328,13 +316,6 @@ cpr::Response L2SndL3::PostMessage(const std::string &url,
 	return response;
 }
 
-cpr::Response L2SndL3::PostToL3RequestData(const std::string &topic,
-										   const json &payload,
-										   const std::string &case_name) const
-{
-	return PostMessage(l3_request_data_url_, topic, payload, case_name);
-}
-
 cpr::Response L2SndL3::PostToRestIn(const std::string &topic,
 									const json &payload,
 									const std::string &case_name) const
@@ -384,44 +365,4 @@ cpr::Response L2SndL3::SendSingleRowToRestIn(
 	json rows = json::array();
 	rows.push_back(BuildRow(fields, values));
 	return SendRowsToRestIn(service_id, fields, rows, include_types, case_name);
-}
-
-void L2SndL3::Test()
-{
-	const auto cases = build_test_cases(*this);
-
-	while (ctx.running.load()) {
-		print_test_menu(cases);
-		const auto code = read_test_command();
-
-		if (code.empty()) {
-			if (!std::cin.good()) {
-				std::cout << "Input closed, exit test mode." << std::endl;
-				break;
-			}
-			std::cout << "Invalid input, please retry." << std::endl;
-			continue;
-		}
-
-		if (code == "0" || code == "EXIT" || code == "QUIT") {
-			std::cout << "Bye." << std::endl;
-			break;
-		}
-
-		auto it = std::find_if(cases.begin(), cases.end(), [&code](const TestCaseEntry &entry) {
-			return entry.code == code;
-		});
-
-		if (it == cases.end()) {
-			std::cout << "Unknown telegram: " << code << std::endl;
-			continue;
-		}
-
-		try {
-			it->handler();
-		} catch (const std::exception &ex) {
-			spdlog::error("Test send failed: {}", ex.what());
-			std::cout << "Send failed: " << ex.what() << std::endl;
-		}
-	}
 }

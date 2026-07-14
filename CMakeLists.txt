@@ -25,7 +25,7 @@ set(COMMON_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/include")
 
 # 添加所有子项目
 add_subdirectory(AlarmPublisher)
-add_subdirectory(CommL3GaussDB)
+# add_subdirectory(CommL3GaussDB)
 add_subdirectory(CommL3LocalDB)
 add_subdirectory(TubeTrack)
 add_subdirectory(FormDemo)

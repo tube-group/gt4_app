@@ -8,6 +8,8 @@ set(SOURCES
     src/L2RcvL3.cpp
     src/L2SndL3.cpp
     src/workthread.cpp
+    src/handleRequestOrderData.cpp
+    src/handleMMWE_TQMTIWEA13.cpp
 )
 
 set(GAUSS_SDK_DIR "${CMAKE_SOURCE_DIR}/third_party/gauss_sdk")
