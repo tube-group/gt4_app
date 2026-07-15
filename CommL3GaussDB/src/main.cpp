@@ -361,6 +361,7 @@ static bool initGauss(CommL3Context &ctx)
         std::string user = config.GetStringDefault("gauss_user", "hfwot");
         std::string password = config.GetStringDefault("gauss_password", "");
         int port = config.GetIntDefault("gauss_port", 8000);
+        std::string clientEncoding = config.GetStringDefault("gauss_client_encoding", "UTF8");
 
         ctx.gaussConn = std::make_unique<GaussDB::Connection>(
             std::vector<GaussDB::Connection::ConnectParam>{
@@ -368,14 +369,26 @@ static bool initGauss(CommL3Context &ctx)
                 {"port", std::to_string(port)},
                 {"dbname", dbname},
                 {"user", user},
-                {"password", password}});
+                {"password", password},
+                {"client_encoding", clientEncoding}});
         auto versionRes = ctx.gaussConn->execute("SELECT version();");
         auto serverVersion = versionRes.getOptionalValue(0, 0);
         if (!serverVersion.has_value())
         {
             throw std::runtime_error("version() 返回 NULL");
         }
-        spdlog::info("成功连接到高斯数据库: {}, version={}", dbname, *serverVersion);
+
+        auto encodingRes = ctx.gaussConn->execute("SHOW client_encoding;");
+        auto actualEncoding = encodingRes.getOptionalValue(0, 0);
+        if (!actualEncoding.has_value())
+        {
+            throw std::runtime_error("SHOW client_encoding 返回 NULL");
+        }
+
+        spdlog::info("成功连接到高斯数据库: {}, version={}, client_encoding={}",
+                     dbname,
+                     *serverVersion,
+                     *actualEncoding);
 
         return true;
     }

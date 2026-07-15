@@ -7,7 +7,7 @@
 #include <sw/redis++/redis++.h>
 #include "MonitorContext.h"
 #include "logging.h"
-#include "usercmd.h"
+#include "user_types.h"
 #include "higplat.h"
 #include <nlohmann/json.hpp>
 
@@ -319,6 +319,18 @@ bool CMonitor::handleCommand(const std::string &message)
 			writeb(ctx_.gplatConn, "BUNDLE_CMD", &value, sizeof(value), &error);
 
 			spdlog::info("处理bundle_cmd命令: value={}", value);
+		}
+		else if (cmdName == "api_bundle_data_event")
+		{
+			const auto &cmdPara = requireObjectCmdPara();
+
+			unsigned int error;
+			ApiBundleDataEvent cmd; 
+			cmd.flag = cmdPara["flag"].get<std::string>();
+			cmd.order_no = cmdPara["order_no"].get<std::string>();
+			cmd.item_no = cmdPara["item_no"].get<std::string>();	
+			cmd.bundle_no = cmdPara["bundle_no"].get<std::string>();
+			writeb(ctx_.gplatConn, "API_BUNDLE_DATA_EVENT", &cmd, sizeof(cmd), &error);
 		}
 		else
 		{

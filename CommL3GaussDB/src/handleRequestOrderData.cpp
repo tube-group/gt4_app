@@ -22,6 +22,67 @@ namespace
 
         return static_cast<int>(integralPart);
     }
+
+    std::string truncateUtf8ToBytes(const std::string &value, std::size_t maxBytes)
+    {
+        if (value.size() <= maxBytes)
+        {
+            return value;
+        }
+
+        std::size_t end = 0;
+        while (end < value.size() && end < maxBytes)
+        {
+            const unsigned char lead = static_cast<unsigned char>(value[end]);
+            std::size_t charLength = 1;
+
+            if ((lead & 0x80u) == 0)
+            {
+                charLength = 1;
+            }
+            else if ((lead & 0xE0u) == 0xC0u)
+            {
+                charLength = 2;
+            }
+            else if ((lead & 0xF0u) == 0xE0u)
+            {
+                charLength = 3;
+            }
+            else if ((lead & 0xF8u) == 0xF0u)
+            {
+                charLength = 4;
+            }
+            else
+            {
+                break;
+            }
+
+            if (end + charLength > value.size() || end + charLength > maxBytes)
+            {
+                break;
+            }
+
+            bool validContinuation = true;
+            for (std::size_t i = 1; i < charLength; ++i)
+            {
+                const unsigned char continuation = static_cast<unsigned char>(value[end + i]);
+                if ((continuation & 0xC0u) != 0x80u)
+                {
+                    validContinuation = false;
+                    break;
+                }
+            }
+
+            if (!validContinuation)
+            {
+                break;
+            }
+
+            end += charLength;
+        }
+
+        return value.substr(0, end);
+    }
 }
 
 bool getOrderDataFromGaussDB(CommL3Context &ctx, const std::string &orderNo, const std::string &itemNo, OrderData &orderData);
@@ -116,7 +177,10 @@ bool getOrderDataFromGaussDB(CommL3Context &ctx, const std::string &orderNo, con
             orderData.label_req_7 = row2.getString("lable_req_7");// 标签要求7
             orderData.label_req_8 = row2.getString("lable_req_8");// 标签要求8
             orderData.qual_special_req = "";// 质量特殊要求
-            orderData.produce_special_req = row2.getString("produce_special_req");// 生产特殊要求
+            // orderData.produce_special_req = "中文";// 生产特殊要求
+            orderData.produce_special_req = truncateUtf8ToBytes(
+                row2.getString("produce_special_req"),
+                decltype(orderData.produce_special_req)::capacity());// 生产特殊要求
             orderData.std_pressure_mpa = 0;// 标准水压压力（MPA)
             orderData.std_pressure_psi = 0;// 标准水压压力 (PSI)
             orderData.stabilivolt_time_min = 0;// 最小稳压时间
