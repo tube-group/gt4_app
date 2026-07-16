@@ -40,7 +40,7 @@ void CSprayPosition::ReadParameterSet()
             this->waste_length_enable_ = row["waste_length_enable"].as<int>();       // 长度判废
             this->length_limit_max_ = row["length_limit_max"].as<float>();           // 判废管长止
             this->length_limit_min_ = row["length_limit_min"].as<float>();           // 判废管长起
-            this->length_coupling_ = row["length_coupling"].as<float>() / 100.0f;    // 保护环长度
+            this->length_coupling_ = row["length_coupling"].as<float>();             // 保护环长度
             this->waste_weight_enable_ = row["waste_weight_enable"].as<int>();       // 重量判废
             this->weight_limit_max_ = std::abs(row["weight_limit_max"].as<float>()); // 管重偏差上限
             this->weight_limit_min_ = std::abs(row["weight_limit_min"].as<float>()); // 管重偏差下限

@@ -155,12 +155,13 @@ void handleApiOrderData(CommL3Context &ctx, const char *value)
                 "oil_type, stamp_req, stencil_req, label_req_1, label_req_2, label_req_3, label_req_4, "
                 "label_req_5, label_req_6, label_req_7, label_req_8, qual_special_req, produce_special_req, "
                 "std_pressure_mpa, std_pressure_psi, stabilivolt_time_min, anneal_flag, weight_per_meter, weight_ew, "
-                "theory_weight_eng, order_no_old, color_circle, color_circle_pos, toc) "
+                "theory_weight_eng, order_no_old, color_circle, color_circle_pos, label_req_1_manual, label_req_2_manual, "
+                "label_req_3_manual, label_req_4_manual, label_req_5_manual, label_req_6_manual, label_req_7_manual, label_req_8_manual, stencil_req_manual, toc) "
                 "VALUES ("
                 "$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, "
                 "$21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, "
                 "$39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, "
-                "$57, $58, $59, $60, $61, $62, $63, $64, $65)",
+                "$57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67, $68, $69, $70, $71, $72, $73, $74)",
                 pqxx::params{orderdata.order_no.to_string(),
                              orderdata.item_no.to_string(),
                              orderdata.roll_no.to_string(),
@@ -225,6 +226,15 @@ void handleApiOrderData(CommL3Context &ctx, const char *value)
                              orderdata.order_no_old.to_string(),
                              orderdata.color_circle.to_string(),
                              orderdata.color_circle_pos.to_string(),
+                             orderdata.label_req_1.to_string(),
+                             orderdata.label_req_2.to_string(),
+                             orderdata.label_req_3.to_string(),
+                             orderdata.label_req_4.to_string(),
+                             orderdata.label_req_5.to_string(),
+                             orderdata.label_req_6.to_string(),
+                             orderdata.label_req_7.to_string(),
+                             orderdata.label_req_8.to_string(),
+                             orderdata.stencil_req.to_string(),
                              current_time_str});
             txn.commit();
             spdlog::info("Order data inserted into database: order_no={}, item_no={}",

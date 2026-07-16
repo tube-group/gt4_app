@@ -103,7 +103,7 @@ struct GSPA19
         make_field("ORDER_NO", "合同号", 'C', 10, 0),
         make_field("MAT_NO", "材料号", 'C', 7, 0),
         make_field("RL_NO", "轧坯号", 'C', 6, 0),
-        make_field("PONO", "炉号", 'C', 6, 0),
+        make_field("PONO", "炉号", 'C', 10, 0),
         make_field("SAMPLE_LOT_NO", "试批号", 'C', 12, 0),
         make_field("ORDER_OUTER_DIA", "外径", 'D', 6, 2),
         make_field("ORDER_WAL_THICK", "壁厚", 'D', 5, 2),
