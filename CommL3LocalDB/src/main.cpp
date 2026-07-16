@@ -355,43 +355,6 @@ static bool initPostgreSQL(CommL3Context& ctx)
     }
 }
 
-// ---- 高斯数据库连接 ----
-// static bool initGauss(CommL3Context &ctx)
-// {
-//     auto &config = CConfig::GetInstance();
-//     try
-//     {
-//         std::string host = config.GetStringDefault("gauss_host", "140.32.1.164");
-//         std::string dbname = config.GetStringDefault("gauss_dbname", "dbprodu3");
-//         std::string user = config.GetStringDefault("gauss_user", "hfwot");
-//         std::string password = config.GetStringDefault("gauss_password", "");
-//         int port = config.GetIntDefault("gauss_port", 8000);
-
-//         ctx.gaussConn = std::make_unique<GaussDB::Connection>(
-//             std::vector<GaussDB::Connection::ConnectParam>{
-//                 {"host", host},
-//                 {"port", std::to_string(port)},
-//                 {"dbname", dbname},
-//                 {"user", user},
-//                 {"password", password}});
-//         auto versionRes = ctx.gaussConn->execute("SELECT version();");
-//         auto serverVersion = versionRes.getOptionalValue(0, 0);
-//         if (!serverVersion.has_value())
-//         {
-//             throw std::runtime_error("version() 返回 NULL");
-//         }
-//         spdlog::info("成功连接到高斯数据库: {}, version={}", dbname, *serverVersion);
-
-//         return true;
-//     }
-//     catch (const std::exception &e)
-//     {
-//         spdlog::error("高斯数据库连接失败: {}", e.what());
-//         ctx.gaussConn.reset();
-//         return false;
-//     }
-// }
-
 int main(int argc, char *argv[])
 {
     // 1. 加载配置 + 解析命令行
@@ -444,11 +407,8 @@ int main(int argc, char *argv[])
     ctx.Init();
 
     // 启动工作线程
-    // L2RcvL3 httpWorker(ctx);
-    // L2SndL3 cprWorker(ctx);
-
-    // std::thread httpThread(&L2RcvL3::Run, &httpWorker);
-    // std::thread cprThread(&L2SndL3::Test, &cprWorker);
+    L2RcvL3 httpWorker(ctx);
+    std::thread httpThread(&L2RcvL3::Run, &httpWorker);
 
     std::thread workerThread(workThread, std::ref(ctx));
 
@@ -464,14 +424,10 @@ int main(int argc, char *argv[])
     ctx.running.store(false);
 
     // 等待所有线程结束
-    // if (httpThread.joinable())
-    // {
-    //     httpThread.join();
-    // }
-    // if (cprThread.joinable())
-    // {
-    //     cprThread.join();
-    // }
+    if (httpThread.joinable())
+    {
+        httpThread.join();
+    }
 
     // 等待所有线程结束
     if (workerThread.joinable()) {

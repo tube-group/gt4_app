@@ -95,3 +95,27 @@ struct GSPA13
         make_field("SEQ_ID", "流水号", 'L', 7, 0),
     };
 };
+
+struct GSPA19
+{
+    inline static const FieldList fields = {
+        make_field("OPERATOR_FLAG", "增删标记", 'C', 1, 0),
+        make_field("ORDER_NO", "合同号", 'C', 10, 0),
+        make_field("MAT_NO", "材料号", 'C', 7, 0),
+        make_field("RL_NO", "轧坯号", 'C', 6, 0),
+        make_field("PONO", "炉号", 'C', 6, 0),
+        make_field("SAMPLE_LOT_NO", "试批号", 'C', 12, 0),
+        make_field("ORDER_OUTER_DIA", "外径", 'D', 6, 2),
+        make_field("ORDER_WAL_THICK", "壁厚", 'D', 5, 2),
+        make_field("SG_SIGN", "牌号（钢级）", 'C', 50, 0),
+        make_field("SG_STD", "牌号标准", 'C', 100, 0),
+        make_field("PIPEEND_TYPE_SIGN", "管端型式符号", 'C', 12, 0),
+        make_field("THREAD_TYPE_SIGN", "螺纹类型符号", 'C', 12, 0),
+        make_field("MAT_TUBE", "材料根数", 'L', 7, 0),
+        make_field("MAT_ACT_WT", "材料重量", 'D', 15, 6),
+        make_field("TOTAL_LEN", "总长度", 'D', 9, 3),
+        make_field("TUBE_NO", "管号", 'C', 0, 0),
+        make_field("TUBE_LEN", "单根管子长度", 'D', 12, 3),
+        make_field("TUBE_ACT_WT", "单根管子重量", 'D', 15, 6),
+    };
+};
