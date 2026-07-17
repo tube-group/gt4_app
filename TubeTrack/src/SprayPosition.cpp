@@ -42,8 +42,8 @@ void CSprayPosition::ReadParameterSet()
             this->length_limit_min_ = row["length_limit_min"].as<float>();           // 判废管长起
             this->length_coupling_ = row["length_coupling"].as<float>();             // 保护环长度
             this->waste_weight_enable_ = row["waste_weight_enable"].as<int>();       // 重量判废
-            this->weight_limit_max_ = std::abs(row["weight_limit_max"].as<float>()); // 管重偏差上限
-            this->weight_limit_min_ = std::abs(row["weight_limit_min"].as<float>()); // 管重偏差下限
+            this->weight_limit_max_ = row["weight_limit_max"].as<float>();           // 管重偏差上限
+            this->weight_limit_min_ = row["weight_limit_min"].as<float>();           // 管重偏差下限
             this->weight_per_meter_ = row["weight_per_meter"].as<float>();           // 米重(kg/m)
             this->weight_ew_ = row["weight_ew"].as<float>();                         // EW值
             this->spray_length_precision_ = row["spray_length_precision"].as<int>(); // 喷涂长度小数位数
@@ -90,14 +90,14 @@ void CSprayPosition::HandleLengthReady(float actlength)
     if (length_enable_)
     {
         // 处理长度数据
-        float length = actlength/1000.0f - length_coupling_; // 喷印长度=实际长度-保护环长度
+        float length = actlength / 1000.0f - length_coupling_; // 喷印长度=实际长度-保护环长度
         // 按指定精度四舍五入
         length = std::round(length * std::pow(10, spray_length_precision_)) / std::pow(10, spray_length_precision_);
         if (tube)
         {
             tube->length = length;
 
-            spdlog::info("管子流水号{}测得长度{}m，保护环长度{}m，喷印长度{}m", tube->flow_no, actlength/1000.0f, length_coupling_, tube->length);
+            spdlog::info("管子流水号{}测得长度{}m，保护环长度{}m，喷印长度{}m", tube->flow_no, actlength / 1000.0f, length_coupling_, tube->length);
             // 长度判废
             if (waste_length_enable_)
             {
@@ -120,16 +120,14 @@ void CSprayPosition::HandleLengthReady(float actlength)
             // 重量判废
             if (waste_weight_enable_)
             {
-                spdlog::info("重量判废启用，米重{}kg/m，EW值{}kg，重量偏差范围：{}% ~ {}%", weight_per_meter_, weight_ew_, weight_limit_min_ * 100, weight_limit_max_ * 100);
+                spdlog::info("重量判废启用，米重{}kg/m，EW值{}kg，重量偏差范围：{}% ~ {}%", weight_per_meter_, weight_ew_, weight_limit_min_, weight_limit_max_);
                 // 只有长度合格才判断重量
                 if (tube->length_ok)
                 {
                     // 计算管重偏差
                     float expected_weight = tube->length * weight_per_meter_ + weight_ew_; // 计算理论重量
-                    float upperPct = std::abs(weight_limit_max_) / 100.0f; // 取绝对值并转换为百分比（数据库存的是百分比整数，如5表示5%）
-                    float lowerPct = std::abs(weight_limit_min_) / 100.0f; 
-                    float weightMax = expected_weight * (1 + upperPct);          // 重量上限
-                    float weightMin = expected_weight * (1 - lowerPct);          // 重量下限
+                    float weightMax = expected_weight * (1 + weight_limit_max_ / 100);     // 重量上限
+                    float weightMin = expected_weight * (1 + weight_limit_min_ / 100);     // 重量下限
 
                     spdlog::info("管子流水号{}理论重量{}kg，实际重量{}kg，重量合格范围：{}kg ~ {}kg", tube->flow_no, expected_weight, tube->weight, weightMin, weightMax);
                     if (tube->weight < weightMin || tube->weight > weightMax)
@@ -147,9 +145,9 @@ void CSprayPosition::HandleLengthReady(float actlength)
                     tube->weight_ok = false; // 长度不合格不判断重量，默认重量不合格
                 }
 
-                //debug: 测试环境下，一律合格
-                tube->weight_ok = true;
-                m_bWbReleased = true;
+                // debug: 测试环境下，一律合格
+                //  tube->weight_ok = true;
+                //  m_bWbReleased = true;
             }
             else
             {
@@ -232,8 +230,9 @@ bool CSprayPosition::PrepairSpray()
         // 生成流水号
         if (tube->flow_no == 0 && tube->length_ok && tube->weight_ok) // 只有在流水号为0时才生成新流水号
         {
-            flow_no_++;
             tube->flow_no = flow_no_;
+            flow_no_++;
+            
             // 将生成的流水号写入数据库，更新喷印工位下一根管子流水号
             try
             {

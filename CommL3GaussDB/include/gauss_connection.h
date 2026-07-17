@@ -2,8 +2,10 @@
 
 #include <libpq-fe.h>
 
+#include <algorithm>
 #include <charconv>
 #include <cerrno>
+#include <cctype>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -528,11 +530,24 @@ namespace GaussDB
 
         ResultSet execute(const std::string &sql)
         {
-            return consumeResult(PQexec(m_conn.get(), sql.c_str()), sql, "SQL 执行失败");
+            ensureReady();
+            if (!isReconnectRetrySafeSql(sql))
+            {
+                return consumeResult(PQexec(m_conn.get(), sql.c_str()), sql, "SQL 执行失败");
+            }
+
+            return executeWithReconnect(
+                [&]()
+                {
+                    return PQexec(m_conn.get(), sql.c_str());
+                },
+                sql,
+                "SQL 执行失败");
         }
 
         ResultSet executeParams(const std::string &sql, const std::vector<Param> &params)
         {
+            ensureReady();
             std::vector<const char *> paramValues;
             std::vector<int> paramLengths;
             std::vector<int> paramFormats;
@@ -568,6 +583,42 @@ namespace GaussDB
         ResultSet executeParams(const std::string &sql, const std::vector<std::string> &params) = delete;
 
     private:
+        template <typename ExecuteFunc>
+        ResultSet executeWithReconnect(ExecuteFunc &&executeFunc, const std::string &sql, const char *errorPrefix)
+        {
+            PGresult *rawResult = executeFunc();
+            if (!shouldReconnectAfterFailure(rawResult))
+            {
+                return consumeResult(rawResult, sql, errorPrefix);
+            }
+
+            const std::string originalError = buildFailureError(errorPrefix, rawResult, sql);
+            if (rawResult != nullptr)
+            {
+                PQclear(rawResult);
+                rawResult = nullptr;
+            }
+
+            try
+            {
+                resetConnection();
+            }
+            catch (const std::exception &resetError)
+            {
+                throw std::runtime_error(originalError + "\n连接重置失败: " + resetError.what());
+            }
+
+            rawResult = executeFunc();
+            try
+            {
+                return consumeResult(rawResult, sql, errorPrefix);
+            }
+            catch (const std::exception &retryError)
+            {
+                throw std::runtime_error(originalError + "\n重连后重试仍失败: " + retryError.what());
+            }
+        }
+
         void openWithConninfo(const std::string &connInfo)
         {
             PGconn *conn = PQconnectdb(connInfo.c_str());
@@ -596,6 +647,30 @@ namespace GaussDB
             ensureConnected();
         }
 
+        void ensureReady()
+        {
+            if (m_conn == nullptr)
+            {
+                throw std::runtime_error("数据库连接返回空连接");
+            }
+
+            if (PQstatus(m_conn.get()) != CONNECTION_OK)
+            {
+                resetConnection();
+            }
+        }
+
+        void resetConnection()
+        {
+            if (m_conn == nullptr)
+            {
+                throw std::runtime_error("数据库连接返回空连接");
+            }
+
+            PQreset(m_conn.get());
+            ensureConnected();
+        }
+
         void ensureConnected()
         {
             if (m_conn == nullptr || PQstatus(m_conn.get()) != CONNECTION_OK)
@@ -605,6 +680,106 @@ namespace GaussDB
                                            : std::string("数据库连接返回空连接");
                 throw std::runtime_error("高斯数据库连接失败: " + errorMsg);
             }
+        }
+
+        bool shouldReconnectAfterFailure(PGresult *rawResult) const
+        {
+            if (rawResult == nullptr)
+            {
+                return m_conn == nullptr ||
+                       PQstatus(m_conn.get()) != CONNECTION_OK ||
+                       looksLikeConnectionFailure(PQerrorMessage(m_conn.get()));
+            }
+
+            const ExecStatusType status = PQresultStatus(rawResult);
+            if (status == PGRES_COMMAND_OK || status == PGRES_TUPLES_OK)
+            {
+                return false;
+            }
+
+            const char *sqlState = PQresultErrorField(rawResult, PG_DIAG_SQLSTATE);
+            if (sqlState != nullptr && sqlState[0] == '0' && sqlState[1] == '8')
+            {
+                return true;
+            }
+
+            return (m_conn != nullptr && PQstatus(m_conn.get()) != CONNECTION_OK) ||
+                   looksLikeConnectionFailure(PQresultErrorMessage(rawResult));
+        }
+
+        bool looksLikeConnectionFailure(const char *message) const
+        {
+            if (message == nullptr || message[0] == '\0')
+            {
+                return false;
+            }
+
+            std::string normalized(message);
+            std::transform(
+                normalized.begin(),
+                normalized.end(),
+                normalized.begin(),
+                [](unsigned char ch)
+                {
+                    return static_cast<char>(std::tolower(ch));
+                });
+
+            return normalized.find("ssl error") != std::string::npos ||
+                   normalized.find("unexpected eof") != std::string::npos ||
+                   normalized.find("server closed the connection unexpectedly") != std::string::npos ||
+                   normalized.find("connection not open") != std::string::npos ||
+                   normalized.find("broken pipe") != std::string::npos ||
+                   normalized.find("connection reset by peer") != std::string::npos;
+        }
+
+        bool isReconnectRetrySafeSql(std::string_view sql) const
+        {
+            const auto firstNonSpace = sql.find_first_not_of(" \t\r\n");
+            if (firstNonSpace == std::string_view::npos)
+            {
+                return false;
+            }
+
+            sql.remove_prefix(firstNonSpace);
+
+            return startsWithInsensitive(sql, "select") ||
+                   startsWithInsensitive(sql, "show") ||
+                   startsWithInsensitive(sql, "with") ||
+                   startsWithInsensitive(sql, "explain");
+        }
+
+        bool startsWithInsensitive(std::string_view value, std::string_view prefix) const
+        {
+            if (value.size() < prefix.size())
+            {
+                return false;
+            }
+
+            for (std::size_t index = 0; index < prefix.size(); ++index)
+            {
+                const unsigned char valueCh = static_cast<unsigned char>(value[index]);
+                const unsigned char prefixCh = static_cast<unsigned char>(prefix[index]);
+                if (std::tolower(valueCh) != std::tolower(prefixCh))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        std::string buildFailureError(const char *errorPrefix, PGresult *rawResult, const std::string &sql) const
+        {
+            if (rawResult == nullptr)
+            {
+                std::string message = std::string(errorPrefix) + ": ";
+                message += m_conn != nullptr ? PQerrorMessage(m_conn.get()) : "数据库连接返回空连接";
+                message += "\nSQL: ";
+                message += sql;
+                return message;
+            }
+
+            return buildResultError(errorPrefix, rawResult, sql);
         }
 
         ResultSet consumeResult(PGresult *rawResult, const std::string &sql, const char *errorPrefix)
