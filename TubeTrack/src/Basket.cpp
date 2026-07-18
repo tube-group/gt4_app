@@ -167,7 +167,9 @@ bool CBasket::Bundle()
     }
 
     //mark 查询班次————————暂时取固定值：甲班，后续需要补充 (早/晚班+甲/乙/丙/丁班)
-    int ban_ci = 11; // 当前班次
+    unsigned int err;
+    int ban_ci = 0; // 当前班次
+    readb(m_ctx->gplatConn, "SHIFT_NO", &ban_ci, sizeof(ban_ci), &err);
 
     // 获取当前日期时间
     struct tm t;

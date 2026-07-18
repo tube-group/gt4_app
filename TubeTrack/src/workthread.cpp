@@ -15,6 +15,7 @@
 #include "user_types.h"
 #include "WeightPosition.h"
 #include "DoStatistics.h"
+#include "CalculateShift.h"
 
 // 声明外部变量
 extern volatile sig_atomic_t g_running;
@@ -373,6 +374,12 @@ void workThread(TubeTrackContext &ctx)
 
 void handleTask500MS(TubeTrackContext &ctx) {
     unsigned int err;
+
+    int shiftNo;
+    std::string shiftStr;
+    CalcShiftNow(shiftStr, shiftNo);
+    writeb(ctx.gplatConn, "SHIFT_NO", &shiftNo, sizeof(shiftNo), &err);
+    writeb_string2(ctx.gplatConn, "SHIFT_NAME", shiftStr, &err);
 
     bool weightRelease = ctx.weightPos.WbReleased();
     bool sprayRelease = ctx.sprayPos.WbReleased();

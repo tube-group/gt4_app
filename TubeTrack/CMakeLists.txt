@@ -21,6 +21,7 @@ set(SOURCES
     src/workthread.cpp
     src/statisticsthread.cpp
     src/DoStatistics.cpp
+    src/CalculateShift.cpp
 )
 
 
