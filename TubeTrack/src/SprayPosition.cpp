@@ -59,8 +59,8 @@ void CSprayPosition::ReadParameterSet()
             m_ctx->redis->publish("RealDataChanged", "NEXT_TUBE_FLOW_NO");
 
             unsigned int error = 0;
-            // write_plc_bool(m_ctx->gplatConn, "[S7_GT4_1200]DB12,X0.3", spray_enable_ != 0, &error);
-            // write_plc_bool(m_ctx->gplatConn, "[S7_GT4_1200]DB12,X0.4", qrcode_spray_enable_ != 0, &error);
+            write_plc_bool(m_ctx->gplatConn, "COUP_DISABLE", spray_enable_ != 0, &error);
+            write_plc_bool(m_ctx->gplatConn, "STAMP_DISABLE", qrcode_spray_enable_ != 0, &error);
 
             spdlog::info("喷印工位从数据库加载生产计划参数成功");
         }
@@ -77,7 +77,7 @@ void CSprayPosition::StartManualLength()
     // 标记手动测长状态，等待人工输入长度数据
     m_bManualLength = true;
     unsigned int error;
-    // write_plc_bool(m_ctx->gplatConn, "[S7_GT4_1200]DB12,X0.7", true, &error);
+    write_plc_bool(m_ctx->gplatConn, "LENGTH_START", true, &error);
 }
 
 //---------------处理测长完成事件-------------------------
@@ -170,22 +170,22 @@ void CSprayPosition::HandleLengthReady(float actlength)
     {
         // 废管处理
         spdlog::warn("废管不喷印！");
-        // write_plc_bool(m_ctx->gplatConn, "[S7_GT4_1200]DB12,X0.2", true, &error);          // 废管标志
-        // write_plc_string(m_ctx->gplatConn, "[S7_GT4_1200]DB12,STRING6.254", "", &error);   // 喷印字符串清空
-        // write_plc_string(m_ctx->gplatConn, "[S7_GT4_1200]DB12,STRING518.254", "", &error); // 发送二维码喷印内容
-        // write_plc_bool(m_ctx->gplatConn, "[S7_GT4_1200]DB12,X0.1", false, &error);         // 喷印完成
-        // write_plc_bool(m_ctx->gplatConn, "[S7_GT4_1200]DB12,X1.2", false, &error);         // 条码喷印完成
-        // write_plc_bool(m_ctx->gplatConn, "[S7_GT4_1200]DB12,X1.4", false, &error);         // 管体喷印完成
-        // write_plc_bool(m_ctx->gplatConn, "[S7_GT4_1200]DB12,X0.0", true, &error);          // 发送标志位置位
-        // std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        // write_plc_bool(m_ctx->gplatConn, "[S7_GT4_1200]DB12,X1.3", true, &error); // 启动管体喷印
-        // write_plc_bool(m_ctx->gplatConn, "[S7_GT4_1200]DB12,X1.1", true, &error); // 启动条码喷印
+        write_plc_bool(m_ctx->gplatConn, "SPRAY_WASTE_FLAG", true, &error);          // 废管标志
+        write_plc_string(m_ctx->gplatConn, "SPRAY_STRING_TO_L1", "", &error);   // 喷印字符串清空
+        write_plc_string(m_ctx->gplatConn, "BARCODE_STRING_TO_L1", "", &error); // 发送二维码喷印内容
+        write_plc_bool(m_ctx->gplatConn, "SPRAY_FINISH_NOUSE", false, &error);         // 喷印完成
+        write_plc_bool(m_ctx->gplatConn, "QUICK_MARK_FINISH", false, &error);         // 条码喷印完成
+        write_plc_bool(m_ctx->gplatConn, "SPRAY_FINISH", false, &error);         // 管体喷印完成
+        write_plc_bool(m_ctx->gplatConn, "SPRAY_START_NOUSE", true, &error);          // 发送标志位置位
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        write_plc_bool(m_ctx->gplatConn, "SPRAY_START", true, &error); // 启动管体喷印
+        write_plc_bool(m_ctx->gplatConn, "QUICK_MARK_START", true, &error); // 启动条码喷印
         spdlog::info("流水号{}的管子长度{}m，重量{}kg，判定为废管", tube->flow_no, tube->length, tube->weight);
     }
     else
     {
         // 合格管处理
-        // write_plc_bool(m_ctx->gplatConn, "SPRAY_WASTE_FLAG", false, &error); // 废管标志
+        write_plc_bool(m_ctx->gplatConn, "SPRAY_WASTE_FLAG", false, &error); // 废管标志
         if (PrepairSpray())
         {
             StartSpray(); // 启动喷印

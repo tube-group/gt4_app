@@ -7,5 +7,6 @@ class CScraptRoller : public CPositionBase
 public:
     CScraptRoller(string redisKey, string positionName) : CPositionBase(redisKey, positionName) {}
 
+    void EntryTrigger(const CTube &tube) override;
     void UpdateForm() override; // 刷新画面
 };

@@ -95,42 +95,42 @@ bool CCarvePosition::LoadCarveRequests(const CTube &tube, CarveReqArray &request
 // 将刻印参数发送给PLC
 bool CCarvePosition::SendCarveRequestsToPlc(const CarveReqArray &requests) const
 {
-    // if (m_ctx == nullptr)
-    // {
-    //     spdlog::error("刻印工位上下文为空，无法下发PLC");
-    //     return false;
-    // }
+    if (m_ctx == nullptr)
+    {
+        spdlog::error("刻印工位上下文为空，无法下发PLC");
+        return false;
+    }
 
-    // if (m_ctx->gplatConn < 0)
-    // {
-    //     spdlog::error("刻印工位PLC连接不可用，gplatConn={}", m_ctx->gplatConn);
-    //     return false;
-    // }
+    if (m_ctx->gplatConn < 0)
+    {
+        spdlog::error("刻印工位PLC连接不可用，gplatConn={}", m_ctx->gplatConn);
+        return false;
+    }
 
-    // unsigned int error = 0;
-    // const std::array<std::pair<const char *, std::string>, 5> writeRequests{{
-    //     {"[S7_GT4_1200]DB12,STRING1030.254", ""},          // 清空缓冲区
-    //     {"[S7_GT4_1200]DB12,STRING1286.254", requests[0]}, // 第1行刻印
-    //     {"[S7_GT4_1200]DB12,STRING1542.254", requests[1]}, // 第2行刻印
-    //     {"[S7_GT4_1200]DB12,STRING1798.254", requests[2]}, // 第3行刻印
-    //     {"[S7_GT4_1200]DB12,STRING2054.254", requests[3]}, // 第4行刻印
-    // }};
+    unsigned int error = 0;
+    const std::array<std::pair<const char *, std::string>, 5> writeRequests{{
+        // {"[S7_GT4_1200]DB12,STRING1030.254", ""},          // 清空缓冲区
+        {"CARVE_PARA1", requests[0]}, // 第1行刻印
+        {"CARVE_PARA2", requests[1]}, // 第2行刻印
+        // {"[S7_GT4_1200]DB12,STRING1798.254", requests[2]}, // 第3行刻印
+        // {"[S7_GT4_1200]DB12,STRING2054.254", requests[3]}, // 第4行刻印
+    }};
 
-    // // 依次写入刻印参数到PLC
-    // for (const auto &[tag, value] : writeRequests)
-    // {
-    //     if (!write_plc_string(m_ctx->gplatConn, tag, value, &error))
-    //     {
-    //         spdlog::error("写入刻印字符串失败，tag={}, error={}", tag, error);
-    //         return false;
-    //     }
-    // }
-    // // 写入刻印启动位,触发刻印启动
-    // if (!write_plc_bool(m_ctx->gplatConn, "[S7_GT4_1200]DB12,X1.5", true, &error))
-    // {
-    //     spdlog::error("写入刻印启动位失败，tag=[S7_GT4_1200]DB12,X1.5, error={}", error);
-    //     return false;
-    // }
+    // 依次写入刻印参数到PLC
+    for (const auto &[tag, value] : writeRequests)
+    {
+        if (!write_plc_string(m_ctx->gplatConn, tag, value, &error))
+        {
+            spdlog::error("写入刻印字符串失败，tag={}, error={}", tag, error);
+            return false;
+        }
+    }
+    // 写入刻印启动位,触发刻印启动
+    if (!write_plc_bool(m_ctx->gplatConn, "STAMP_START", true, &error))
+    {
+        spdlog::error("写入刻印启动位失败，tag=STAMP_START, error={}", error);
+        return false;
+    }
 
     spdlog::info(
         "刻印数据已下发到PLC req1='{}', req2='{}', req3='{}', req4='{}', req5='{}', req6='{}', req7='{}', req8='{}'",
@@ -178,6 +178,9 @@ void CCarvePosition::ReadParameterSet()
             this->carve_enable_ = row["carve_enable"].as<int>(); // 刻印允许
 
             spdlog::info("刻印工位从数据库加载生产计划参数成功");
+
+            unsigned int err;
+            write_plc_bool(m_ctx->gplatConn, "CARVE_ENABLE", carve_enable_ != 0, &err);
         }
     }
     catch (const std::exception &e)
@@ -189,6 +192,11 @@ void CCarvePosition::ReadParameterSet()
 // 管子push进入刻印工位后触发刻印功能
 void CCarvePosition::EntryTrigger(const CTube &tube)
 {
+    unsigned int err;
+    bool status = tube.length_ok && tube.weight_ok;
+    write_plc_bool(m_ctx->gplatConn, "CARVE_ENABLE", status, &err);
+    spdlog::info("通知PLC刻印工位的管子是否为废管: status={}", status);
+
     // 标记不合格管子————前向工位里管子数据被手动修改为不合格
     if (!tube.length_ok || !tube.weight_ok)
     {

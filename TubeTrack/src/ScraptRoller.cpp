@@ -14,3 +14,12 @@ void CScraptRoller::UpdateForm()
         m_ctx->redis->publish("RealDataChanged", m_redisKey);
     }
 }
+
+void CScraptRoller::EntryTrigger(const CTube &tube)
+{
+    // 当管子进入废料辊道工位时触发
+    unsigned int err;
+    ushort status = (tube.length_ok && tube.weight_ok) ? (ushort)1 : (ushort)3;
+    write_plc_ushort(m_ctx->gplatConn, "WASTE_ROLLER_FLAG", status, &err);
+    spdlog::info("通知PLC出废工位的管子是否为废管: status={}", status);
+}

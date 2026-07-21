@@ -412,28 +412,6 @@ void CPositionBase::DebugOut()
 	return;
 }
 
-// string CPositionBase::convertToJson(const CTube & tube)
-// {
-// 	// 使用nlohmann/json库实现生产计划转换为JSON格式字符串
-//     nlohmann::json j;
-//     j["order_no"] = tube.order_no;
-//     j["item_no"] = tube.item_no;
-//     j["roll_no"] = tube.roll_no;
-//     j["melt_no"] = tube.melt_no;
-//     j["lot_no"] = tube.lot_no;
-// 	j["tube_no"] = tube.tube_no;
-// 	j["flow_no"] = tube.flow_no;
-//     j["lotno_coupling"] = tube.lotno_coupling;
-//     j["meltno_coupling"] = tube.meltno_coupling;
-// 	j["length"] = tube.length;
-// 	j["weight"] = tube.weight;
-// 	j["lengthOk"] = tube.lengthOk;
-// 	j["weightOk"] = tube.weightOk;
-// 	j["bSprayed"] = tube.bSprayed;
-
-//     return j.dump(4);
-// }
-
 // 直接获取当前工位管子信息并转换为JSON字符串
 string CPositionBase::convertToJson()
 {

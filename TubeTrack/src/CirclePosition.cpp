@@ -16,13 +16,22 @@ void CCirclePosition::UpdateForm()
     }
 }
 
+void CCirclePosition::EntryTrigger(const CTube &tube)
+{
+    // 当管子进入色环工位时触发
+    unsigned int err;
+    bool status = tube.length_ok && tube.weight_ok;
+    write_plc_bool(m_ctx->gplatConn, "CIRCLE_ENABLE", status, &err);
+    spdlog::info("通知PLC色环工位的管子是否为废管: status={}", status);
+}
+
 void CCirclePosition::ReadParameterSet()
 {
     try
     {
         pqxx::nontransaction ntx(*m_ctx->pgConn);
         const pqxx::result result = ntx.exec(
-            "SELECT circle_enable "
+            "SELECT circle_enable,gun1,gun2,gun3,gun4,gun5,diameter "
             "FROM parameter_set "
             "LIMIT 1");
         if (result.empty())
@@ -36,6 +45,15 @@ void CCirclePosition::ReadParameterSet()
             this->circle_enable_ = row["circle_enable"].as<int>(); // 色环允许
 
             spdlog::info("色环工位从数据库加载生产计划参数成功");
+
+            unsigned int err;
+            write_plc_bool(m_ctx->gplatConn, "CIRCLE_ENABLE", circle_enable_ != 0, &err);
+            write_plc_bool(m_ctx->gplatConn, "CIRCLE1_ENABLE", row["gun1"].as<int>() != 0, &err);
+            write_plc_bool(m_ctx->gplatConn, "CIRCLE2_ENABLE", row["gun2"].as<int>() != 0, &err);
+            write_plc_bool(m_ctx->gplatConn, "CIRCLE3_ENABLE", row["gun3"].as<int>() != 0, &err);
+            write_plc_bool(m_ctx->gplatConn, "CIRCLE4_ENABLE", row["gun4"].as<int>() != 0, &err);
+            write_plc_bool(m_ctx->gplatConn, "CIRCLE5_ENABLE", row["gun5"].as<int>() != 0, &err);
+            write_plc_float(m_ctx->gplatConn, "TUBE_DIA", row["diameter"].as<float>(), &err);
         }
     }
     catch (const std::exception &e)
