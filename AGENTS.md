@@ -23,6 +23,7 @@
 - The root [CMakeLists.txt](CMakeLists.txt) builds seven subprojects: CommL3, TubeTrack, FormDemo, MonitorUserCmd, MonitorPlcData, SprayWeight, and TagPrint.
 - [TubeTrack/src/workthread.cpp](TubeTrack/src/workthread.cpp) is the main steel-tube flow orchestration entry point. Shared runtime state is concentrated in [TubeTrack/include/TubeTrackContext.h](TubeTrack/include/TubeTrackContext.h).
 - CommL3 handles Gauss or PostgreSQL-facing communication.
+- `CommL3GaussDB` and `CommL3LocalDB` solve similar data-integration problems but are not interchangeable copies. Fix the owning module instead of mirroring edits into both trees by default.
 - MonitorUserCmd and MonitorPlcData are Redis-driven listener processes.
 - SprayWeight and TagPrint are downstream operational modules. FormDemo is a demo subscriber.
 - Cross-module command and event payloads live in [include/usercmd.h](include/usercmd.h). Shared utility headers live under [include](include).
@@ -32,6 +33,7 @@
 - Runtime configuration is kept in module-specific files under [config](config). When changing a config key, update the matching parser or usage in the same change.
 - Treat values in the INI files as deployment data. Do not normalize or rotate host, account, or password settings unless the user asked for that specific change.
 - Third-party dependencies are resolved mostly through find_package. [TubeTrack/CMakeLists.txt](TubeTrack/CMakeLists.txt) also requires higplat from /usr/local/lib.
+- SQL-driven struct and field-mapping work usually starts from [doc/database](doc/database) and lands in shared model headers such as [include/user_types.h](include/user_types.h) or the owning CommL3 handler. Keep field names, comments, and string wrapper usage aligned across those files.
 - The root [README.md](README.md) is intentionally minimal. When documenting behavior, link to the owning source file, config file, or docs folder instead of duplicating details here.
 
 ## Working Guidance
@@ -39,4 +41,5 @@
 - Start from the module that directly owns the behavior instead of changing several executables at once.
 - For TubeTrack work, preserve the existing ownership and handoff model around ProductionPlan::Pop() and downstream Push() calls.
 - Do not assume Windows build parity from the preset configuration; Windows sessions often need manual CMake configuration.
+- Be careful with low-level data fixes in CommL3 code: preserve existing `PodString` and struct lifetime semantics, and avoid introducing raw memory operations on non-trivial structs.
 - For database or gplat related work, use [doc/database](doc/database) and [doc/gplat](doc/gplat) as the first references and keep this file high level.
