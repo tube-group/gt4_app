@@ -72,90 +72,7 @@ bool moveTubeBetween(CPositionBase &source,
 
 void workThread(TubeTrackContext &ctx)
 {
-    // 测试喷印功能
-    float simulatedLength = 10.0f; // 模拟测长值
-    spdlog::info("Handling LENGTH_FINISH: Simulated MEA_LEN={}", simulatedLength);
-    ctx.sprayPos.HandleLengthReady(simulatedLength);
-
-    // // // 手工模拟管子的完整流程。
-
-    // // 第 0 步：步进梁在基位
-    // bool on = true;
-    // handleWbBase(ctx, reinterpret_cast<const char *>(&on));
-
-    // // 第 1 步：投料到对齐工位
-    // spdlog::info("第 1 步：投料到对齐工位");
-    // handleAlignPosOn(ctx, reinterpret_cast<const char *>(&on));
-
-    // // 第 2 步：对齐工位下料，管子被收集到步进梁 1 号位
-    // spdlog::info("第 2 步：对齐工位下料，管子被收集到步进梁 1 号位");
-    // bool off = false;
-    // handleWbBase(ctx, reinterpret_cast<const char *>(&off));
-    // handleAlignPosOn(ctx, reinterpret_cast<const char *>(&off));
-
-    // // // // 第 3 步：投新管 + 分发，步进梁 1 号位的管子下到称重工位
-    // // // spdlog::info("第 3 步：投新管，步进梁 1 号位的管子下到称重工位");
-    // // // handleAlignPosOn(ctx, reinterpret_cast<const char *>(&on)); // 关键：用对齐信号
-
-    // // 第 3 步：不投新管子+分发，步进梁 1 号位的管子下到称重工位
-    // spdlog::info("第 3 步：步进梁 1 号位的管子下到称重工位");
-    // handleWbBase(ctx, reinterpret_cast<const char *>(&off));
-    // handleWeiPosOn(ctx, reinterpret_cast<const char *>(&on)); // 用称重信号触发分发
-
-    // // 第 4 步：称重工位下料，管子回到步进梁 2 号位
-    // spdlog::info("第 4 步：称重工位下料，管子回到步进梁 2 号位");
-    // handleWeiPosOn(ctx, reinterpret_cast<const char *>(&off));
-
-    // // // // 第 5 步：投新管 + 分发，步进梁 2 号位的管子下到刻印工位
-    // // // spdlog::info("第 5 步：投新管，步进梁 2 号位的管子下到刻印工位");
-    // // // handleAlignPosOn(ctx, reinterpret_cast<const char *>(&on));
-
-    // // 第 5 步：分发，步进梁 2 号位的管子下到刻印工位（不投新料）
-    // spdlog::info("第 5 步：步进梁 2 号位的管子下到刻印工位");
-    // handlePrtPosOn(ctx, reinterpret_cast<const char *>(&on)); // 用刻印信号触发分发
-
-    // // 第 6 步：刻印工位下料，管子回到步进梁 3 号位
-    // spdlog::info("第 6 步：刻印工位下料，管子回到步进梁 3 号位");
-    // handlePrtPosOn(ctx, reinterpret_cast<const char *>(&off));
-
-    // // // // 第 7 步：投新管 + 分发，步进梁 3 号位的管子下到喷印工位
-    // // // spdlog::info("第 7 步：投新管，步进梁 3 号位的管子下到喷印工位");
-    // // // handleAlignPosOn(ctx, reinterpret_cast<const char *>(&on));
-
-    // // 第 7 步：分发，步进梁 3 号位的管子下到喷印工位（不投新料）
-    // spdlog::info("第 7 步：步进梁 3 号位的管子下到喷印工位");
-    // handleSpyPosOn(ctx, reinterpret_cast<const char *>(&on)); // 用喷印信号触发分发
-
-    // // 第 8 步：喷印工位下料，管子回到步进梁 4 号位
-    // spdlog::info("第 8 步：喷印工位下料，管子回到步进梁 4 号位");
-    // handleSpyPosOn(ctx, reinterpret_cast<const char *>(&off));
-
-    // // // // 第 9 步：投新管 + 分发，步进梁 4 号位的管子下到色环工位
-    // // // spdlog::info("第 9 步：投新管，步进梁 4 号位的管子下到色环工位");
-    // // // handleAlignPosOn(ctx, reinterpret_cast<const char *>(&on));
-
-    // // 第 9 步：分发，步进梁 4 号位的管子下到色环工位（不投新料）
-    // spdlog::info("第 9 步：步进梁 4 号位的管子下到色环工位");
-    // handleCirPosOn(ctx, reinterpret_cast<const char *>(&on)); // 用色环信号触发分发
-
-    // // 第 10 步：色环工位下料，管子回到步进梁 5 号位
-    // spdlog::info("第 10 步：色环工位下料，管子回到步进梁 5 号位");
-    // handleCirPosOn(ctx, reinterpret_cast<const char *>(&off));
-
-    // // // // 第 11 步：投新管 + 分发，步进梁 5 号位的管子下到出料辊道（离开系统）
-    // // // spdlog::info("第 11 步：投新管，步进梁 5 号位的管子下到出料辊道");
-    // // // handleAlignPosOn(ctx, reinterpret_cast<const char *>(&on));
-    // // // handleScrRollerOn(ctx, reinterpret_cast<const char *>(&on));
-
-    // // 第 11 步：分发，步进梁 5 号位的管子下到出料辊道（离开系统）
-    // spdlog::info("第 11 步：步进梁 5 号位的管子下到出料辊道");
-    // handleScrRollerOn(ctx, reinterpret_cast<const char *>(&on)); // 用出料辊道信号触发分发
-
-    // // 第 12 步：出料辊道下料，管子进入缓冲区
-    // spdlog::info("第 12 步：出料辊道下料，管子进入缓冲区");
-    // handleScrRollerOn(ctx, reinterpret_cast<const char *>(&off));
-
-    unsigned int err;
+    unsigned int err = 0;
 
     // 订阅timer用于退出检测
     subscribe(ctx.gplatConn, "timer_500ms", &err);
@@ -185,7 +102,7 @@ void workThread(TubeTrackContext &ctx)
     // 主循环：等待gPlat数据，处理TAG更新
     while (g_running)
     {
-        char value[1024] = {0};
+        char value[2048] = {0};
         std::string tagname;
 
         try
@@ -194,8 +111,8 @@ void workThread(TubeTrackContext &ctx)
 
             if (!ret)
             {
-                spdlog::warn("waitpostdata failed, reconnecting gPlat...");
-                // 断线重连逻辑
+                spdlog::warn("waitpostdata failed; retrying gPlat receive, tagname={}, err={}", tagname, err);
+                sleep(1);
                 continue;
             }
 

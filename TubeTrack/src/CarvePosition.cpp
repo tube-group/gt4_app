@@ -53,12 +53,6 @@ void CCarvePosition::ConvertCarveRequests(CarveReqArray &requests) const
 // 从数据库加载刻印参数
 bool CCarvePosition::LoadCarveRequests(const CTube &tube, CarveReqArray &requests) const
 {
-    // if (m_ctx == nullptr || m_ctx->pgConn == nullptr)
-    // {
-    //     spdlog::error("刻印工位数据库连接不可用");
-    //     return false;
-    // }
-
     try
     {
         pqxx::nontransaction ntx(*m_ctx->pgConn);
@@ -108,25 +102,31 @@ bool CCarvePosition::SendCarveRequestsToPlc(const CarveReqArray &requests) const
     }
 
     unsigned int error = 0;
-    const std::array<std::pair<const char *, std::string>, 5> writeRequests{{
-        // {"[S7_GT4_1200]DB12,STRING1030.254", ""},          // 清空缓冲区
+    const std::array<std::pair<const char *, std::string>, 2> writeRequests{{
         {"CARVE_PARA1", requests[0]}, // 第1行刻印
         {"CARVE_PARA2", requests[1]}, // 第2行刻印
-        // {"[S7_GT4_1200]DB12,STRING1798.254", requests[2]}, // 第3行刻印
-        // {"[S7_GT4_1200]DB12,STRING2054.254", requests[3]}, // 第4行刻印
     }};
 
     // 依次写入刻印参数到PLC
     for (const auto &[tag, value] : writeRequests)
     {
-        if (!write_plc_string(m_ctx->gplatConn, tag, value, &error))
+        if (write_plc_string(m_ctx->gplatConn, tag, value, &error))
         {
-            spdlog::error("写入刻印字符串失败，tag={}, error={}", tag, error);
+            spdlog::info("写入刻印字符串成功，tag={}, value={}", tag, value);
+        }
+        else
+        {
+            spdlog::error("写入刻印字符串失败，tag={}, value={}, error={}", tag, value, error);
             return false;
         }
     }
+
     // 写入刻印启动位,触发刻印启动
-    if (!write_plc_bool(m_ctx->gplatConn, "STAMP_START", true, &error))
+    if (write_plc_bool(m_ctx->gplatConn, "STAMP_START", true, &error))
+    {
+        spdlog::info("写入刻印启动位成功，tag=STAMP_START");
+    }
+    else
     {
         spdlog::error("写入刻印启动位失败，tag=STAMP_START, error={}", error);
         return false;
@@ -142,6 +142,7 @@ bool CCarvePosition::SendCarveRequestsToPlc(const CarveReqArray &requests) const
         requests[5],
         requests[6],
         requests[7]);
+
     return true;
 }
 
@@ -227,7 +228,11 @@ void CCarvePosition::EntryTrigger(const CTube &tube)
     ConvertCarveRequests(carveRequests);
 
     // 将转换后的针刻印数据发送给PLC
-    if (!SendCarveRequestsToPlc(carveRequests))
+    if (SendCarveRequestsToPlc(carveRequests))
+    {
+        spdlog::info("发送PLC成功");
+    }
+    else
     {
         spdlog::error("发送PLC失败");
         // 如果下发PLC失败，记录错误日志并释放步进梁封锁，允许管子通过

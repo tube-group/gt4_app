@@ -118,11 +118,15 @@ bool getOrderDataFromGaussDB(CommL3Context &ctx, const std::string &orderNo, con
         std::string query2 = "SELECT * FROM ompo.tom01tr WHERE order_no = '" + orderNo + "'";
         auto result2 = ctx.gaussConn->execute(query2);
 
-        if (result1.getRowCount() > 0 && result2.getRowCount() > 0)
+        std::string query3 = "select wt_ew from qmto.tqmtotwh5 WHERE order_no = '" + orderNo + "'";
+        auto result3 = ctx.gaussConn->execute(query3);
+
+        if (result1.getRowCount() > 0 && result2.getRowCount() > 0 && result3.getRowCount() > 0)
         {
             // 我们只取第一行数据
             auto row1 = result1.getRow(0);
             auto row2 = result2.getRow(0);
+            auto row3 = result3.getRow(0);
             orderData.order_no = row1.getString("order_no");
             orderData.item_no = row2.getString("order_item_no");
             orderData.roll_no = row2.getString("current_rl_no");// 轧批号
@@ -186,7 +190,7 @@ bool getOrderDataFromGaussDB(CommL3Context &ctx, const std::string &orderNo, con
             orderData.stabilivolt_time_min = 0;// 最小稳压时间
             orderData.anneal_flag = "";// 退火标志
             orderData.weight_per_meter = row2.getDouble("wt_per_meter");// 米重
-            orderData.weight_ew = 0;// EW值
+            orderData.weight_ew = row3.getDouble("wt_ew");// EW值
             orderData.theory_weight_eng = row2.getDouble("wt_l_eng");// 名义重量
             orderData.order_no_old = "";// 原合同号
             orderData.color_circle = "";// 色环
@@ -196,7 +200,7 @@ bool getOrderDataFromGaussDB(CommL3Context &ctx, const std::string &orderNo, con
         }
         else
         {
-            spdlog::warn("No data found for order_no={}, item_no={}", orderNo, itemNo);
+            spdlog::warn("No data found for order_no={}, result1.getRowCount()={}, result2.getRowCount()={}, result3.getRowCount()={}", orderNo, result1.getRowCount(), result2.getRowCount(), result3.getRowCount());
             return false;
         }
     }

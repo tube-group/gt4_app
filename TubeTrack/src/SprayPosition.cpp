@@ -171,8 +171,8 @@ void CSprayPosition::HandleLengthReady(float actlength)
         // 废管处理
         spdlog::warn("废管不喷印！");
         write_plc_bool(m_ctx->gplatConn, "SPRAY_WASTE_FLAG", true, &error);          // 废管标志
-        write_plc_string(m_ctx->gplatConn, "SPRAY_STRING_TO_L1", "", &error);   // 喷印字符串清空
-        write_plc_string(m_ctx->gplatConn, "BARCODE_STRING_TO_L1", "", &error); // 发送二维码喷印内容
+        // write_plc_string(m_ctx->gplatConn, "SPRAY_STRING_TO_L1", "", &error);   // 喷印字符串清空
+        // write_plc_string(m_ctx->gplatConn, "BARCODE_STRING_TO_L1", "", &error); // 发送二维码喷印内容
         write_plc_bool(m_ctx->gplatConn, "SPRAY_FINISH_NOUSE", false, &error);         // 喷印完成
         write_plc_bool(m_ctx->gplatConn, "QUICK_MARK_FINISH", false, &error);         // 条码喷印完成
         write_plc_bool(m_ctx->gplatConn, "SPRAY_FINISH", false, &error);         // 管体喷印完成

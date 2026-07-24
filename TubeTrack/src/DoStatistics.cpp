@@ -35,7 +35,7 @@ void DoStatistics(TubeTrackContext &ctx)
         }
 
         // 创建统计对象并初始化统计对象
-        YieldStatistics yieldStatis;
+        YieldStatistics yieldStatis{};
         yieldStatis.order_no = order_no;
         yieldStatis.item_no = item_no;
         yieldStatis.melt_no = melt_no;
@@ -177,10 +177,10 @@ void DoStatistics(TubeTrackContext &ctx)
         spdlog::info("Lot Length: {}", yieldStatis.lot_length);
         spdlog::info("Lot Count: {}", yieldStatis.lot_count);
 
-        unsigned int err;
+        unsigned int err = 0;
         if (writeb(ctx.gplatConn, "YIELD_STATISTICS", &yieldStatis, sizeof(yieldStatis), &err))
         {
-            //把yieldStatis对象转换为JSON字符串并写入redis的yield_statistics键
+            // 把yieldStatis对象转换为JSON字符串并写入redis的yield_statistics键
             nlohmann::json j;
             j["order_no"] = yieldStatis.order_no.to_string();
             j["item_no"] = yieldStatis.item_no.to_string();
@@ -192,13 +192,20 @@ void DoStatistics(TubeTrackContext &ctx)
             j["lot_weight"] = yieldStatis.lot_weight;
             j["lot_length"] = yieldStatis.lot_length;
             j["lot_count"] = yieldStatis.lot_count;
-            std::string jsonStr = j.dump(); 
+            std::string jsonStr = j.dump();
             ctx.redis->set("YIELD_STATISTICS", jsonStr);
 
             // 发布详细消息到RealDataChanged 主题
             ctx.redis->publish("RealDataChanged", "YIELD_STATISTICS");
         }
-
+        else
+        {
+            spdlog::error(
+                "Failed to write gPlat tag YIELD_STATISTICS (connection={}, bytes={}, err={}); verify the deployed gPlat script creates this tag with the current YieldStatistics type",
+                ctx.gplatConn,
+                sizeof(yieldStatis),
+                err);
+        }
     }
     catch (const std::exception &e)
     {
