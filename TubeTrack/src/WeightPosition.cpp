@@ -215,14 +215,4 @@ void CWeightPosition::EntryTriggerBeforePush(CTube &tube)
 
 void CWeightPosition::EntryTrigger(const CTube &tube)
 {
-    // Push管子进入称重工位后触发称重功能
-    unsigned int error;
-    int a = 1;
-    bool ret = writeb(m_ctx->gplatConn, "START_WEIGHT_EVENT", &a, sizeof(a), &error);
-    spdlog::info("EntryTrigger: START_WEIGHT_EVENT triggered for tube {}, writeb return: {}, error code: {}", tube.tube_no, ret, error);
-
-    if (!ret)
-    {
-        spdlog::error("writeb failed with return code: {}", ret);
-    }
 }

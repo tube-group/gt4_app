@@ -95,8 +95,8 @@ void workThread(TubeTrackContext &ctx)
     subscribe(ctx.gplatConn, "RELEASE_ALL_POS_CMD", &err);
     subscribe(ctx.gplatConn, "PARAMETER_SET_UPDATED", &err); // 订阅参数集更新事件
     subscribe(ctx.gplatConn, "BUNDLE_CMD", &err);            // 订阅打捆命令
-    subscribe(ctx.gplatConn, "STAMP_FINISH", &err); // 订阅刻印完成命令
-    subscribe(ctx.gplatConn, "STAMP_START", &err); 
+    subscribe(ctx.gplatConn, "STAMP_FINISH", &err);          // 订阅刻印完成命令
+    subscribe(ctx.gplatConn, "STAMP_START", &err);
     subscribedelaypost(ctx.gplatConn, "STAMP_START", "STAMP_START_DELAY", 3000, &err);
     subscribe(ctx.gplatConn, "LENGTH_START", &err);
     subscribedelaypost(ctx.gplatConn, "LENGTH_START", "LENGTH_START_DELAY", 3000, &err);
@@ -107,7 +107,7 @@ void workThread(TubeTrackContext &ctx)
     subscribe(ctx.gplatConn, "SPRAY_FINISH", &err); // 订阅喷印完成事件
     subscribedelaypost(ctx.gplatConn, "SPRAY_FINISH", "SPRAY_FINISH_DELAY", 3000, &err);
 
-    //复位发给PLC的命令信号
+    // 复位发给PLC的命令信号
     write_plc_bool(ctx.gplatConn, "SPRAY_START_NOUSE", false, &err);
     write_plc_bool(ctx.gplatConn, "STAMP_START", false, &err);
     write_plc_bool(ctx.gplatConn, "LENGTH_START", false, &err);
@@ -330,7 +330,7 @@ void workThread(TubeTrackContext &ctx)
                 spdlog::info("Handling LENGTH_FINISH: MEA_LEN={}", meaLen);
                 ctx.sprayPos.HandleLengthReady(meaLen);
 
-                //复位启动测长信号
+                // 复位启动测长信号
                 write_plc_bool(ctx.gplatConn, "LENGTH_START", false, &err);
             }
             else if (tagname == "L2_WB_RELEASE")
@@ -833,17 +833,25 @@ void moveTubeToWbase(TubeTrackContext &ctx)
         return;
     }
     // 从对齐、称重、刻印、喷印、色环工位弹出管子，推送到步进梁
-    auto tube1 = ctx.alignPos.Pop();
-    auto tube2 = ctx.weightPos.Pop();
-    auto tube3 = ctx.carvePos.Pop();
-    auto tube4 = ctx.sprayPos.Pop();
-    auto tube5 = ctx.circlePos.Pop();
+    auto tubeAlign = ctx.alignPos.Pop();
+    auto tubeWeight = ctx.weightPos.Pop();
+    auto tubeCarve = ctx.carvePos.Pop();
+    auto tubeSpray = ctx.sprayPos.Pop();
+    auto tubeCircle = ctx.circlePos.Pop();
+
+    // 封锁步进梁
+    ctx.carvePos.BlockWB();
+    ctx.weightPos.BlockWB();
+    if (ctx.sprayPos.IsSprayEnable())
+    {
+        ctx.sprayPos.BlockWB();
+    }
 
     unsigned int err;
-    //通知PLC出废工位的管子是否为废管
-    if (tube5!= nullptr)
+    // 通知PLC出废工位的管子是否为废管
+    if (tubeCircle != nullptr)
     {
-        ushort status = (tube5->length_ok && tube5->weight_ok) ? (ushort)1 : (ushort)3;
+        ushort status = (tubeCircle->length_ok && tubeCircle->weight_ok) ? (ushort)1 : (ushort)3;
         write_plc_ushort(ctx.gplatConn, "WASTE_ROLLER_FLAG", status, &err);
         spdlog::info("通知PLC出废工位的管子是否为废管: status={}", status);
     }
@@ -853,9 +861,9 @@ void moveTubeToWbase(TubeTrackContext &ctx)
         spdlog::info("通知PLC出废工位的管子是否为废管: status=1");
     }
 
-    if (tube4 != nullptr)
+    if (tubeSpray != nullptr)
     {
-        bool circleStatus = (tube4->length_ok && tube4->weight_ok && ctx.circlePos.IsCircleEnable()) ? true : false;
+        bool circleStatus = (tubeSpray->length_ok && tubeSpray->weight_ok && ctx.circlePos.IsCircleEnable()) ? true : false;
         write_plc_bool(ctx.gplatConn, "CIRCLE_ENABLE", circleStatus, &err);
         spdlog::info("发出色环允许信号: {}", circleStatus);
     }
@@ -866,9 +874,9 @@ void moveTubeToWbase(TubeTrackContext &ctx)
         spdlog::info("发出色环允许信号: {}", circleStatus);
     }
 
-    if (tube3 != nullptr)
+    if (tubeCarve != nullptr)
     {
-        bool sprayStatus = (tube3->length_ok && tube3->weight_ok && ctx.sprayPos.IsSprayEnable()) ? true : false;
+        bool sprayStatus = (tubeCarve->length_ok && tubeCarve->weight_ok && ctx.sprayPos.IsSprayEnable()) ? true : false;
         write_plc_bool(ctx.gplatConn, "SPRAY_ENABLE", sprayStatus, &err);
         spdlog::info("发出喷印允许信号: {}", sprayStatus);
     }
@@ -879,9 +887,9 @@ void moveTubeToWbase(TubeTrackContext &ctx)
         spdlog::info("发出喷印允许信号: {}", sprayStatus);
     }
 
-    if (tube2!=nullptr)
+    if (tubeWeight != nullptr)
     {
-        bool carveStatus = (tube2->length_ok && tube2->weight_ok && ctx.carvePos.IsCarveEnable()) ? true : false;
+        bool carveStatus = (tubeWeight->length_ok && tubeWeight->weight_ok && ctx.carvePos.IsCarveEnable()) ? true : false;
         write_plc_bool(ctx.gplatConn, "CARVE_ENABLE", carveStatus, &err);
         spdlog::info("发出压印允许信号: {}", carveStatus);
     }
@@ -892,15 +900,15 @@ void moveTubeToWbase(TubeTrackContext &ctx)
         spdlog::info("发出压印允许信号: {}", carveStatus);
     }
 
-    //复位启动信号
-    write_plc_bool(ctx.gplatConn, "LENGTH_START", false, &err);  //启动测长
-    write_plc_bool(ctx.gplatConn, "SPRAY_START", false, &err);  //启动管体喷印
-    write_plc_bool(ctx.gplatConn, "QUICK_MARK_START", false, &err);  //启动条码喷印
-    
-    //复位喷印工位废管标志
-    write_plc_bool(ctx.gplatConn, "SPRAY_WASTE_FLAG", false, &err);  //喷印工位废管标志
-    
-    ctx.walkingBeam.Push(std::move(tube1), std::move(tube2), std::move(tube3), std::move(tube4), std::move(tube5));
+    // 复位启动信号
+    write_plc_bool(ctx.gplatConn, "LENGTH_START", false, &err);     // 启动测长
+    write_plc_bool(ctx.gplatConn, "SPRAY_START", false, &err);      // 启动管体喷印
+    write_plc_bool(ctx.gplatConn, "QUICK_MARK_START", false, &err); // 启动条码喷印
+
+    // 复位喷印工位废管标志
+    write_plc_bool(ctx.gplatConn, "SPRAY_WASTE_FLAG", false, &err); // 喷印工位废管标志
+
+    ctx.walkingBeam.Push(std::move(tubeAlign), std::move(tubeWeight), std::move(tubeCarve), std::move(tubeSpray), std::move(tubeCircle));
     ctx.walkingBeam.DebugOut();
 }
 
@@ -913,12 +921,83 @@ void moveTubeToPosion(TubeTrackContext &ctx)
         return;
     }
 
+    if (!ctx.scraptRoller.IsEmpty())
+    {
+        spdlog::warn("Scrapt roller is not empty, cannot move tubes to positions");
+        // mark
+        ctx.scraptRoller.DebugOut();
+        ctx.scraptRoller.Clear();
+    }
+
     // 从步进梁弹出管子，推送到称重、刻印、喷印、色环、废料辊道工位
     ctx.weightPos.Push(ctx.walkingBeam.Pop(1));
     ctx.carvePos.Push(ctx.walkingBeam.Pop(2));
     ctx.sprayPos.Push(ctx.walkingBeam.Pop(3));
     ctx.circlePos.Push(ctx.walkingBeam.Pop(4));
     ctx.scraptRoller.Push(ctx.walkingBeam.Pop(5));
+
+    // mark 称重工位无管，释放称重工位(如果实物有管呢)
+    if (ctx.weightPos.IsEmpty())
+    {
+        ctx.weightPos.ReleaseWB();
+    }
+
+    unsigned int err;
+    // 通知PLC出废工位的管子是否为废管
+    auto scrapTube = ctx.scraptRoller.Peek();
+    if (scrapTube != nullptr)
+    {
+        ushort status = (scrapTube->length_ok && scrapTube->weight_ok) ? (ushort)1 : (ushort)3;
+        write_plc_ushort(ctx.gplatConn, "WASTE_ROLLER_FLAG", status, &err);
+        spdlog::info("通知PLC出废工位的管子是否为废管: status={}", status);
+    }
+    else
+    {
+        write_plc_ushort(ctx.gplatConn, "WASTE_ROLLER_FLAG", (ushort)1, &err);
+        spdlog::info("通知PLC出废工位的管子是否为废管: status=1");
+    }
+
+    auto circleTube = ctx.circlePos.Peek();
+    if (circleTube != nullptr)
+    {
+        bool circleStatus = (circleTube->length_ok && circleTube->weight_ok && ctx.circlePos.IsCircleEnable()) ? true : false;
+        write_plc_bool(ctx.gplatConn, "CIRCLE_ENABLE", circleStatus, &err);
+        spdlog::info("发出色环允许信号: {}", circleStatus);
+    }
+    else
+    {
+        bool circleStatus = ctx.circlePos.IsCircleEnable() ? true : false;
+        write_plc_bool(ctx.gplatConn, "CIRCLE_ENABLE", circleStatus, &err);
+        spdlog::info("发出色环允许信号: {}", circleStatus);
+    }
+
+    auto sprayTube = ctx.sprayPos.Peek();
+    if (sprayTube != nullptr)
+    {
+        bool sprayStatus = (sprayTube->length_ok && sprayTube->weight_ok && ctx.sprayPos.IsSprayEnable()) ? true : false;
+        write_plc_bool(ctx.gplatConn, "SPRAY_ENABLE", sprayStatus, &err);
+        spdlog::info("发出喷印允许信号: {}", sprayStatus);
+    }
+    else
+    {
+        bool sprayStatus = ctx.sprayPos.IsSprayEnable() ? true : false;
+        write_plc_bool(ctx.gplatConn, "SPRAY_ENABLE", sprayStatus, &err);
+        spdlog::info("发出喷印允许信号: {}", sprayStatus);
+    }
+
+    auto carveTube = ctx.carvePos.Peek();
+    if (carveTube != nullptr)
+    {
+        bool carveStatus = (carveTube->length_ok && carveTube->weight_ok && ctx.carvePos.IsCarveEnable()) ? true : false;
+        write_plc_bool(ctx.gplatConn, "CARVE_ENABLE", carveStatus, &err);
+        spdlog::info("发出压印允许信号: {}", carveStatus);
+    }
+    else
+    {
+        bool carveStatus = ctx.carvePos.IsCarveEnable() ? true : false;
+        write_plc_bool(ctx.gplatConn, "CARVE_ENABLE", carveStatus, &err);
+        spdlog::info("发出压印允许信号: {}", carveStatus);
+    }
 }
 
 //--------处理对齐信号ALIGN_POS_ON--------
@@ -981,6 +1060,20 @@ void handleWeiPosOn(TubeTrackContext &ctx, const char *value)
     {
         // 从步进梁弹出管子，推送到称重、刻印、喷印、色环，出废辊道工位
         moveTubeToPosion(ctx);
+
+        // 管子进入称重工位后触发称重功能
+        const CTube *tube = ctx.weightPos.Peek();
+        if (tube != nullptr)
+        {
+            unsigned int error;
+            int a = 1;
+            bool ret = writeb(ctx.gplatConn, "START_WEIGHT_EVENT", &a, sizeof(a), &error);
+            spdlog::info("启动称重");
+        }
+        else
+        {
+            spdlog::warn("No tube in weight position to start weighing");
+        }
     }
 }
 
@@ -1033,7 +1126,7 @@ void handleSpyPosOn(TubeTrackContext &ctx, const char *value)
             if (tube->length_ok && tube->weight_ok)
             {
                 unsigned int err;
-                write_plc_bool(ctx.gplatConn, "LENGTH_START", true, &err);  //启动测长
+                write_plc_bool(ctx.gplatConn, "LENGTH_START", true, &err); // 启动测长
                 spdlog::info("启动测长");
             }
         }
@@ -1111,7 +1204,8 @@ void handleWbBase(TubeTrackContext &ctx, const char *value)
 
     if (isOn)
     {
-        //复位发给PLC的命令信号
-        write_plc_bool(ctx.gplatConn, "SPRAY_START_NOUSE", false, nullptr);
+        // 复位发给PLC的命令信号
+        unsigned int err;
+        write_plc_bool(ctx.gplatConn, "SPRAY_START_NOUSE", false, &err);
     }
 }
