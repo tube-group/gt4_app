@@ -95,6 +95,24 @@ void workThread(TubeTrackContext &ctx)
     subscribe(ctx.gplatConn, "RELEASE_ALL_POS_CMD", &err);
     subscribe(ctx.gplatConn, "PARAMETER_SET_UPDATED", &err); // 订阅参数集更新事件
     subscribe(ctx.gplatConn, "BUNDLE_CMD", &err);            // 订阅打捆命令
+    subscribe(ctx.gplatConn, "STAMP_FINISH", &err); // 订阅刻印完成命令
+    subscribe(ctx.gplatConn, "STAMP_START", &err); 
+    subscribedelaypost(ctx.gplatConn, "STAMP_START", "STAMP_START_DELAY", 3000, &err);
+    subscribe(ctx.gplatConn, "LENGTH_START", &err);
+    subscribedelaypost(ctx.gplatConn, "LENGTH_START", "LENGTH_START_DELAY", 3000, &err);
+    subscribe(ctx.gplatConn, "QUICK_MARK_START", &err);
+    subscribedelaypost(ctx.gplatConn, "QUICK_MARK_START", "QUICK_MARK_START_DELAY", 3000, &err);
+    subscribe(ctx.gplatConn, "SPRAY_START", &err);
+    subscribedelaypost(ctx.gplatConn, "SPRAY_START", "SPRAY_START_DELAY", 3000, &err);
+    subscribe(ctx.gplatConn, "SPRAY_FINISH", &err); // 订阅喷印完成事件
+    subscribedelaypost(ctx.gplatConn, "SPRAY_FINISH", "SPRAY_FINISH_DELAY", 3000, &err);
+
+    //复位发给PLC的命令信号
+    write_plc_bool(ctx.gplatConn, "SPRAY_START_NOUSE", false, &err);
+    write_plc_bool(ctx.gplatConn, "STAMP_START", false, &err);
+    write_plc_bool(ctx.gplatConn, "LENGTH_START", false, &err);
+    write_plc_bool(ctx.gplatConn, "QUICK_MARK_START", false, &err);
+    write_plc_bool(ctx.gplatConn, "SPRAY_START", false, &err);
 
     DoStatistics(ctx);
 
@@ -144,7 +162,81 @@ void workThread(TubeTrackContext &ctx)
             // 处理其他TAG更新
             spdlog::info("Received gPlat post: {}", tagname);
 
-            if (tagname == "ALIGN_POS_ON")
+            if (tagname == "STAMP_START")
+            {
+                bool val = read_value<bool>(value);
+                spdlog::info("STAMP_START value changed to {}", val);
+            }
+            else if (tagname == "STAMP_START_DELAY")
+            {
+                bool val = read_value<bool>(value);
+                if (val)
+                {
+                    spdlog::info("STAMP_START_DELAY triggered, reset STAMP_START");
+                    write_plc_bool(ctx.gplatConn, "STAMP_START", false, &err);
+                }
+            }
+            else if (tagname == "LENGTH_START")
+            {
+                bool val = read_value<bool>(value);
+                spdlog::info("LENGTH_START value changed to {}", val);
+            }
+            else if (tagname == "LENGTH_START_DELAY")
+            {
+                bool val = read_value<bool>(value);
+                if (val)
+                {
+                    spdlog::info("LENGTH_START_DELAY triggered, reset LENGTH_START");
+                    write_plc_bool(ctx.gplatConn, "LENGTH_START", false, &err);
+                }
+            }
+            else if (tagname == "QUICK_MARK_START")
+            {
+                bool val = read_value<bool>(value);
+                spdlog::info("QUICK_MARK_START value changed to {}", val);
+            }
+            else if (tagname == "QUICK_MARK_START_DELAY")
+            {
+                bool val = read_value<bool>(value);
+                if (val)
+                {
+                    spdlog::info("QUICK_MARK_START_DELAY triggered, reset QUICK_MARK_START");
+                    write_plc_bool(ctx.gplatConn, "QUICK_MARK_START", false, &err);
+                }
+            }
+            else if (tagname == "SPRAY_START")
+            {
+                bool val = read_value<bool>(value);
+                spdlog::info("SPRAY_START value changed to {}", val);
+            }
+            else if (tagname == "SPRAY_START_DELAY")
+            {
+                bool val = read_value<bool>(value);
+                if (val)
+                {
+                    spdlog::info("SPRAY_START_DELAY triggered, reset SPRAY_START");
+                    write_plc_bool(ctx.gplatConn, "SPRAY_START", false, &err);
+                }
+            }
+            else if (tagname == "SPRAY_FINISH")
+            {
+                bool val = read_value<bool>(value);
+                spdlog::info("SPRAY_FINISH value changed to {}", val);
+                if (val)
+                {
+                    ctx.sprayPos.HandleSprayFinish();
+                }
+            }
+            else if (tagname == "SPRAY_FINISH_DELAY")
+            {
+                bool val = read_value<bool>(value);
+                if (val)
+                {
+                    spdlog::info("SPRAY_FINISH_DELAY triggered, reset SPRAY_START_NOUSE");
+                    write_plc_bool(ctx.gplatConn, "SPRAY_START_NOUSE", false, &err);
+                }
+            }
+            else if (tagname == "ALIGN_POS_ON")
             {
                 // 处理对齐工位检测信号
                 handleAlignPosOn(ctx, value);
@@ -224,7 +316,6 @@ void workThread(TubeTrackContext &ctx)
                 bool lengthFinish = read_value<bool>(value);
                 if (!lengthFinish)
                 {
-                    spdlog::debug("LENGTH_FINISH reset to false, ignore");
                     continue;
                 }
 
@@ -238,6 +329,9 @@ void workThread(TubeTrackContext &ctx)
 
                 spdlog::info("Handling LENGTH_FINISH: MEA_LEN={}", meaLen);
                 ctx.sprayPos.HandleLengthReady(meaLen);
+
+                //复位启动测长信号
+                write_plc_bool(ctx.gplatConn, "LENGTH_START", false, &err);
             }
             else if (tagname == "L2_WB_RELEASE")
             {
@@ -275,6 +369,15 @@ void workThread(TubeTrackContext &ctx)
                 ctx.sprayPos.UpdateForm();
                 ctx.circlePos.UpdateForm();
                 ctx.basket.UpdateForm();
+            }
+            else if (tagname == "STAMP_FINISH")
+            {
+                bool stampFinish = read_value<bool>(value);
+                if (stampFinish)
+                {
+                    spdlog::info("Handling STAMP_FINISH: value={}", stampFinish);
+                    ctx.carvePos.HandleCarveFinish();
+                }
             }
             else
             {
@@ -1005,4 +1108,10 @@ void handleWbBase(TubeTrackContext &ctx, const char *value)
     spdlog::info("WB_BASE isOn: {}", isOn);
 
     ctx.walkingBeam.SetAtBase(isOn);
+
+    if (isOn)
+    {
+        //复位发给PLC的命令信号
+        write_plc_bool(ctx.gplatConn, "SPRAY_START_NOUSE", false, nullptr);
+    }
 }

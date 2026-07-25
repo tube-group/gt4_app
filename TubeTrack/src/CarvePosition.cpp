@@ -133,15 +133,10 @@ bool CCarvePosition::SendCarveRequestsToPlc(const CarveReqArray &requests) const
     }
 
     spdlog::info(
-        "刻印数据已下发到PLC req1='{}', req2='{}', req3='{}', req4='{}', req5='{}', req6='{}', req7='{}', req8='{}'",
+        "刻印数据已下发到PLC req1='{}', req2='{}', req3='{}'",
         requests[0],
         requests[1],
-        requests[2],
-        requests[3],
-        requests[4],
-        requests[5],
-        requests[6],
-        requests[7]);
+        requests[2]);
 
     return true;
 }
@@ -207,7 +202,8 @@ void CCarvePosition::EntryTrigger(const CTube &tube)
     }
 
     // 检查是否需要刻印
-    bool needCarve = carve_enable_ && IsOccupied();
+    // bool needCarve = carve_enable_ && IsOccupied();
+    bool needCarve = carve_enable_;
     if (!needCarve)
     {
         ReleaseWB();
@@ -245,7 +241,7 @@ void CCarvePosition::EntryTrigger(const CTube &tube)
 }
 
 // 处理刻印完成后的逻辑
-void CCarvePosition::HandleCarveFinish(int status)
+void CCarvePosition::HandleCarveFinish()
 {
     ReleaseWB(); // 释放步进梁封锁
 }

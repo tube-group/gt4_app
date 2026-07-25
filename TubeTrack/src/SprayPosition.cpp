@@ -74,8 +74,6 @@ void CSprayPosition::ReadParameterSet()
 //---------------启动手动测长-------------------------
 void CSprayPosition::StartManualLength()
 {
-    // 标记手动测长状态，等待人工输入长度数据
-    m_bManualLength = true;
     unsigned int error;
     write_plc_bool(m_ctx->gplatConn, "LENGTH_START", true, &error);
 }
@@ -191,8 +189,6 @@ void CSprayPosition::HandleLengthReady(float actlength)
             StartSpray(); // 启动喷印
         }
     }
-
-    m_bManualLength = false; // 重置手动测长状态
 
     UpdateForm(); // 刷新画面
 }
@@ -430,7 +426,6 @@ void CSprayPosition::StartSprayManual()
 void CSprayPosition::EntryTrigger(const CTube &tube)
 {
     // 管子进入工位，记录进入时间，处理废管状态，并根据废管状态自动释放或封锁步进梁
-    m_bManualLength = false; // 重置手动测长状态
     // 记录进入时间（合格管和废管都需要记录）
     m_tEnterTime = std::chrono::system_clock::now();
     // 废管处理
@@ -442,17 +437,9 @@ void CSprayPosition::EntryTrigger(const CTube &tube)
 }
 
 //---------------处理喷印完成事件，status表示喷印结果状态-------------------------
-void CSprayPosition::HandleSprayFinish(int status)
+void CSprayPosition::HandleSprayFinish()
 {
-    m_bManualLength = false;
-    if (status == 0) // 喷印成功
-    {
-        m_bWbReleased = true;
-    }
-    else
-    {
-        m_bWbReleased = false; // 喷印失败，封锁步进梁，等待人工处理
-    }
+    m_bWbReleased = true;
 }
 
 //---------------设置后缓冲区对象-------------------------

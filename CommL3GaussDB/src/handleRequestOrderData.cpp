@@ -121,12 +121,14 @@ bool getOrderDataFromGaussDB(CommL3Context &ctx, const std::string &orderNo, con
         std::string query3 = "select wt_ew from qmto.tqmtotwh5 WHERE order_no = '" + orderNo + "'";
         auto result3 = ctx.gaussConn->execute(query3);
 
-        if (result1.getRowCount() > 0 && result2.getRowCount() > 0 && result3.getRowCount() > 0)
+        // mark
+        // if (result1.getRowCount() > 0 && result2.getRowCount() > 0 && result3.getRowCount() > 0)
+        if (result1.getRowCount() > 0 && result2.getRowCount() > 0)
         {
             // 我们只取第一行数据
             auto row1 = result1.getRow(0);
             auto row2 = result2.getRow(0);
-            auto row3 = result3.getRow(0);
+            // auto row3 = result3.getRow(0);
             orderData.order_no = row1.getString("order_no");
             orderData.item_no = row2.getString("order_item_no");
             orderData.roll_no = row2.getString("current_rl_no");// 轧批号
@@ -151,7 +153,7 @@ bool getOrderDataFromGaussDB(CommL3Context &ctx, const std::string &orderNo, con
             orderData.thread_face_treat_mode = row2.getString("thread_face_treat_mode");// 螺纹表面处理方式
             orderData.length_from = row1.getDouble("order_len_min");// 订货长度起/订货长度下限
             orderData.length_to = row1.getDouble("order_len_max");// 订货长度止/订货长度上限
-            orderData.order_unit_code = row1.getString("order_unit_code");// 订货计量单位代码
+            orderData.order_unit_code = row1.getString("order_unit_code");// 订货计量单位代码0
             orderData.order_unit = "";// 订货计量单位
             orderData.order_qty = row1.getDouble("order_qty");// 订货数量
             orderData.order_tube = row1.getInt("order_tube");// 订货根数
@@ -190,7 +192,16 @@ bool getOrderDataFromGaussDB(CommL3Context &ctx, const std::string &orderNo, con
             orderData.stabilivolt_time_min = 0;// 最小稳压时间
             orderData.anneal_flag = "";// 退火标志
             orderData.weight_per_meter = row2.getDouble("wt_per_meter");// 米重
-            orderData.weight_ew = row3.getDouble("wt_ew");// EW值
+            if (result3.getRowCount() > 0)
+            {
+                auto row3 = result3.getRow(0);
+                orderData.weight_ew = row3.getDouble("wt_ew");// EW值
+            }
+            else
+            {
+                orderData.weight_ew = 0.1; // 如果没有查询到数据，设置为默认值
+            }
+            // orderData.weight_ew = row3.getDouble("wt_ew");// EW值
             orderData.theory_weight_eng = row2.getDouble("wt_l_eng");// 名义重量
             orderData.order_no_old = "";// 原合同号
             orderData.color_circle = "";// 色环
@@ -210,3 +221,12 @@ bool getOrderDataFromGaussDB(CommL3Context &ctx, const std::string &orderNo, con
         return false;
     }
 }
+// 工序表TQMTOTWH5这个表需要和tom01tr用whole_backlog和order_no 联表查询。因为工序会有多条记录。
+// select b.ORDER_NO,c.CURRENT_RL_NO,b.ORDER_OUTER_DIA,b.ORDER_THICK,b.ORDER_HEIGHT,b.PROD_CODE,b.PROD_CNAME,c.HOT_TREAT_METHOD_CODE,c.HOT_TREAT_METHOD,b.STD_SG_CODE,b.SG_STD,b.SG_SIGN,
+// c.MTRL_NO,c.mtrl_text,c.PIPEEND_TYPE_CODE,c.PIPEEND_TYPE_SIGN,c.PIPEEND_TYPE,c.THREAD_TYPE_CODE,c.THREAD_TYPE_SIGN,c.THREAD_TYPE,c.COUP_TYPE_CODE,c.COUP_TYPE_SIGN,c.COUP_TYPE,
+// c.THREAD_FACE_TREAT_MODE_CODE,c.THREAD_FACE_TREAT_MODE,c.CTL_LEN_FROM,c.CTL_LEN_TO,b.ORDER_UNIT_CODE,b.ORDER_QTY,b.ORDER_TUBE,b.ORDER_WT,c.ORDER_FIX_WT,c.ORDER_UNFIX_WT,
+// b.DELIVY_TOL_UNIT_CODE,b.DELIVY_TOL_MAX,b.DELIVY_TOL_MIN,b.ORDER_SHORT_RATE,b.ORDER_SHORT_MIN,b.ORDER_SHORT_MAX,c.SINGLE_BUNDLE_WT_MAX,c.SINGLE_BUNDLE_TUBE_MAX,c.OIL_KIND_CODE,
+// c.OIL_KIND,c.STAMP_REQ,c.STENCIL_REQ,c.LABLE_REQ_1,c.LABLE_REQ_2,c.LABLE_REQ_3,c.LABLE_REQ_4,c.LABLE_REQ_5,c.LABLE_REQ_6,c.LABLE_REQ_7,c.LABLE_REQ_8,b.manu_remark,c.SPECIAL_REMARK,
+// a.STD_PRESSURE_MPA,a.STD_PRESSURE_PSI,a.STBL_VOLT_TIME_MIN,c.WT_PER_METER,a.WT_EW,c.WT_L_ENG,b.mic,c.CTL_TUBE_DIA_FROM,c.CTL_TUBE_DIA_TO,c.CTL_WAL_THICK_FROM,c.CTL_WAL_THICK_TO,
+// c.CTL_HEIGHT_FROM,c.CTL_HEIGHT_TO,c.LEN_GRADE_CODE,c.LEN_GRADE from qmto.tqmtotwh5 as a ,ompo.tom01 as b, ompo.tom01tr as c 
+// where a.order_no = b.order_no and a.order_no = c.order_no and a.whole_backlog = c.whole_backlog

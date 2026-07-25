@@ -10,9 +10,9 @@ public:
 
     void UpdateForm() override;                           // 刷新画面
     void ReadParameterSet();                              // 从数据库读取刻印工位参数
-    bool IsCarveEnable() const { return carve_enable_; } // 判断刻印是否允许
+    bool IsCarveEnable() const { return carve_enable_; }  // 判断刻印是否允许
     void EntryTrigger(const CTube &tube) override;        // 重写触发器，进行刻印参数准备和PLC通信
-    void HandleCarveFinish(int status);                   // 处理刻印完成后的逻辑
+    void HandleCarveFinish();                             // 处理刻印完成后的逻辑
 
 private:
     using CarveReqArray = std::array<std::string, 8>; // 刻印参数数组类型定义，参数个数是8个

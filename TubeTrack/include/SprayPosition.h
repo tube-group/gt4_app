@@ -12,7 +12,6 @@ public:
     CSprayPosition(string redisKey, string positionName) : CPositionBase(redisKey, positionName)
     {
         spray_length_precision_ = 2; // 默认长度精度为2位小数
-        m_bManualLength = false;     // 默认自动测长
         flow_no_ = 0;                // 默认流水号从0开始
         m_backBuffer = nullptr;      // 默认后缓冲区为空
         // 从数据库中读取最后一次喷涂管道的记录时间，用于恢复或初始化喷涂位置的时间状态
@@ -37,7 +36,7 @@ public:
     void StartSprayManual();                     // 启动喷印（手动测长）
     void EntryTrigger(const CTube &tube) override;
     bool IsSprayEnable() { return spray_enable_; } // 返回喷印允许状态
-    void HandleSprayFinish(int status);            // 处理喷印完成事件，status表示喷印结果状态
+    void HandleSprayFinish();                      // 处理喷印完成事件，status表示喷印结果状态
 
 private:
     int length_enable_;          // 测长允许
@@ -46,7 +45,6 @@ private:
     float length_limit_min_;     // 判废管长起
     float length_coupling_ = 0;  // 保护环长度
     int spray_length_precision_; // 喷涂长度小数位数(长度精度)
-    bool m_bManualLength;
 
     int waste_weight_enable_; // 重量判废
     float weight_limit_max_;  // 管重偏差上限
