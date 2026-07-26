@@ -145,10 +145,13 @@ bool getOrderDataFromGaussDB(CommL3Context &ctx, const std::string &orderNo, con
             orderData.mat_text = row2.getString("mtrl_text");// 材质正文
             orderData.thread_type_code = row2.getString("thread_type_code");// 螺纹类型代码
             orderData.thread_type_sign = row2.getString("thread_type_sign");// 螺纹类型符号
+            orderData.thread_type = row2.getString("thread_type");// 螺纹类型
             orderData.end_type_code = row2.getString("pipeend_type_code");// 管端类型代码（管端型式代码）
             orderData.end_type_sign = row2.getString("pipeend_type_sign");// 管端类型符号（管端型式符号）
+            orderData.end_type = row2.getString("pipeend_type");// 管端类型（管端型式）
             orderData.coupling_type_code = row2.getString("coup_type_code");// 接箍类型代码
             orderData.coupling_type_sign = row2.getString("coup_type_sign");// 接箍类型符号
+            orderData.coupling_type = row2.getString("coup_type");// 接箍类型
             orderData.thread_face_treat_mode_code = row2.getString("thread_face_treat_mode_code");// 螺纹表面处理方式代码
             orderData.thread_face_treat_mode = row2.getString("thread_face_treat_mode");// 螺纹表面处理方式
             orderData.length_from = row1.getDouble("order_len_min");// 订货长度起/订货长度下限
@@ -206,6 +209,13 @@ bool getOrderDataFromGaussDB(CommL3Context &ctx, const std::string &orderNo, con
             orderData.order_no_old = "";// 原合同号
             orderData.color_circle = "";// 色环
             orderData.color_circle_pos = "";// 色环位置
+
+            orderData.diameter_down_ctrl = row2.getDouble("ctl_tube_dia_from");// 控制外径下限
+            orderData.diameter_up_ctrl = row2.getDouble("ctl_tube_dia_to");// 控制外径上限
+            orderData.wal_thick_down_ctrl = row2.getDouble("ctl_wal_thick_from");// 控制壁厚下限
+            orderData.wal_thick_up_ctrl = row2.getDouble("ctl_wal_thick_to");// 控制壁厚上限
+            orderData.height_down_ctrl = row2.getDouble("ctl_height_from");// 控制高度下限
+            orderData.height_up_ctrl = row2.getDouble("ctl_height_to");// 控制高度上限
 
             return true;
         }

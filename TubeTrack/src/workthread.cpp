@@ -31,10 +31,12 @@ void handleWbBase(TubeTrackContext &ctx, const char *value);
 void moveTubeToWbase(TubeTrackContext &ctx);
 void moveTubeToPosion(TubeTrackContext &ctx);
 void handleMoveTubeCmd(TubeTrackContext &ctx, const char *value);           // 处理移动管子命令
+void executeMoveTubeCmd(TubeTrackContext &ctx, const MoveTubeCmd &cmd);      // 执行移动管子命令
 void handleModifyTubeCmd(TubeTrackContext &ctx, const char *value);         // 处理修改管子命令
 void handleDeleteTubeCmd(TubeTrackContext &ctx, const char *value);         // 处理删除管子命令
 void handleSetCurrentContractCmd(TubeTrackContext &ctx, const char *value); // 处理设置当前合同命令
 void handleAddTubeCmd(TubeTrackContext &ctx, const char *value);            // 处理添加管子命令
+void autoBundle(TubeTrackContext &ctx);                                     // 自动打捆处理
 
 bool moveTubeBetween(CPositionBase &source,
                      CPositionBase &target,
@@ -91,7 +93,7 @@ void workThread(TubeTrackContext &ctx)
     subscribe(ctx.gplatConn, "ADD_TUBE_CMD", &err);
     subscribe(ctx.gplatConn, "FINISH_WEIGHT_EVENT", &err);
     subscribe(ctx.gplatConn, "LENGTH_FINISH", &err); // 订阅测长完成事件
-    subscribe(ctx.gplatConn, "L2_WB_RELEASE", &err);
+    // subscribe(ctx.gplatConn, "L2_WB_RELEASE", &err); //MonitorUserCmd已处理
     subscribe(ctx.gplatConn, "RELEASE_ALL_POS_CMD", &err);
     subscribe(ctx.gplatConn, "PARAMETER_SET_UPDATED", &err); // 订阅参数集更新事件
     subscribe(ctx.gplatConn, "BUNDLE_CMD", &err);            // 订阅打捆命令
@@ -114,7 +116,7 @@ void workThread(TubeTrackContext &ctx)
     write_plc_bool(ctx.gplatConn, "QUICK_MARK_START", false, &err);
     write_plc_bool(ctx.gplatConn, "SPRAY_START", false, &err);
 
-    DoStatistics(ctx);
+    // DoStatistics(ctx);
 
     int loop = 0; // 用于统计1分钟的循环次数
     // 主循环：等待gPlat数据，处理TAG更新
@@ -137,18 +139,19 @@ void workThread(TubeTrackContext &ctx)
             // timer唤醒，仅用于检查g_running
             if (tagname == "timer_500ms")
             {
-                spdlog::debug("Timer tick, g_running={}", g_running);
                 handleTask500MS(ctx);
                 continue;
             }
 
             if (tagname == "timer_1s")
             {
-                spdlog::debug("Timer 1s tick, g_running={}", g_running);
                 loop++;
-                if (loop >= 60)
+                if (loop >= 10)
                 {
                     DoStatistics(ctx);
+                    spdlog::info("开始自动打捆处理");
+                    autoBundle(ctx); // 自动打捆处理
+                    spdlog::info("自动打捆处理完成");
                     loop = 0;
                 }
                 continue;
@@ -333,12 +336,12 @@ void workThread(TubeTrackContext &ctx)
                 // 复位启动测长信号
                 write_plc_bool(ctx.gplatConn, "LENGTH_START", false, &err);
             }
-            else if (tagname == "L2_WB_RELEASE")
-            {
-                bool l2WbRelease = read_value<bool>(value);
-                ctx.redis->set("L2_WB_RELEASE", l2WbRelease ? "true" : "false");
-                ctx.redis->publish("RealDataChanged", "L2_WB_RELEASE");
-            }
+            // else if (tagname == "L2_WB_RELEASE")    //MonitorUserCmd已处理
+            // {
+            //     bool l2WbRelease = read_value<bool>(value);
+            //     ctx.redis->set("L2_WB_RELEASE", l2WbRelease ? "true" : "false");
+            //     ctx.redis->publish("RealDataChanged", "L2_WB_RELEASE");
+            // }
             else if (tagname == "RELEASE_ALL_POS_CMD")
             {
                 int releaseAllPosCmd = read_value<int>(value);
@@ -461,6 +464,11 @@ void handleTask500MS(TubeTrackContext &ctx)
 void handleMoveTubeCmd(TubeTrackContext &ctx, const char *value)
 {
     MoveTubeCmd cmd = read_value<MoveTubeCmd>(value);
+    executeMoveTubeCmd(ctx, cmd);
+}
+
+void executeMoveTubeCmd(TubeTrackContext &ctx, const MoveTubeCmd &cmd)
+{
     spdlog::info("Handling MOVE_TUBE_CMD: from={}, to={}", cmd.from.c_str(), cmd.to.c_str());
 
     if (cmd.from == "plan" && cmd.to == "align") // 生产计划 -> 对齐工位
@@ -657,6 +665,7 @@ void handleModifyTubeCmd(TubeTrackContext &ctx, const char *value)
             bool status = tube->length_ok && tube->weight_ok;
             unsigned int err;
             write_plc_bool(ctx.gplatConn, "SPRAY_WASTE_FLAG", status, &err);
+            spdlog::info("Updated SPRAY_WASTE_FLAG to {} based on tube status: length_ok={}, weight_ok={}", status, tube->length_ok, tube->weight_ok);
         }
     }
 
@@ -1208,4 +1217,40 @@ void handleWbBase(TubeTrackContext &ctx, const char *value)
         unsigned int err;
         write_plc_bool(ctx.gplatConn, "SPRAY_START_NOUSE", false, &err);
     }
+}
+
+void autoBundle(TubeTrackContext &ctx)
+{
+    int buffercount, basketcount, bundlecount;
+
+    buffercount = ctx.backBuffer.Count();
+    basketcount = ctx.basket.Count();
+    bundlecount = ctx.basket.BundleCount();
+
+    spdlog::info("自动打捆: 缓冲区管子数={}, 成品料筐管子数={}, 打捆根数={}", buffercount, basketcount, bundlecount);
+
+    // 如果缓冲区的管子数小于5支,或者成品料筐里有管子,或者缓冲区根数小于打捆根数则不启动自动打捆
+    if (buffercount < 5 || basketcount > 0 || buffercount < bundlecount)
+        return;
+
+    MoveTubeCmd cmd;
+    cmd.from = std::string("backbuffer");
+    cmd.to = std::string("basket");
+    spdlog::info("自动打捆: 从缓冲区移动管子到成品料筐, 打捆根数={}, from={}, to={}", bundlecount, cmd.from.c_str(), cmd.to.c_str());
+    for (int i = 0; i < bundlecount; i++)
+    {
+        executeMoveTubeCmd(ctx, cmd);
+    }
+
+    // MoveTubeCmd cmd;
+    // cmd.from = "backbuffer";
+    // cmd.to = "basket";
+    // spdlog::info("自动打捆: 从缓冲区移动管子到成品料筐, 打捆根数={}, from={}, to={}", bundlecount, cmd.from.c_str(), cmd.to.c_str());
+    // unsigned int err;
+    // for (int i = 0; i < bundlecount; i++)
+    // {
+    //     writeb(ctx.gplatConn, "MOVE_TUBE_CMD", &cmd, sizeof(cmd), &err);
+    // }
+
+    spdlog::info("自动打捆: 从缓冲区移动管子到成品料筐");
 }

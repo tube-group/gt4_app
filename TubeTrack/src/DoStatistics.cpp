@@ -65,18 +65,6 @@ void DoStatistics(TubeTrackContext &ctx)
             yieldStatis.order_length = totallength;
             yieldStatis.order_count = totalcount;
         }
-        // 模拟测试：日志输出最后的yieldStatis对象信息
-        spdlog::info("=== first  ===");
-        spdlog::info("Order No: {}", yieldStatis.order_no.to_string());
-        spdlog::info("Item No: {}", yieldStatis.item_no.to_string());
-        spdlog::info("Melt No: {}", yieldStatis.melt_no.to_string());
-        spdlog::info("Lot No: {}", yieldStatis.lot_no.to_string());
-        spdlog::info("Order Weight: {}", yieldStatis.order_weight);
-        spdlog::info("Order Length: {}", yieldStatis.order_length);
-        spdlog::info("Order Count: {}", yieldStatis.order_count);
-        spdlog::info("Lot Weight: {}", yieldStatis.lot_weight);
-        spdlog::info("Lot Length: {}", yieldStatis.lot_length);
-        spdlog::info("Lot Count: {}", yieldStatis.lot_count);
 
         // 汇总当前合同完成量 ————各缓存位置累加
         ctx.basket.Statistics(order_no, item_no, totalweight, totallength, totalcount);
@@ -180,6 +168,8 @@ void DoStatistics(TubeTrackContext &ctx)
         unsigned int err = 0;
         if (writeb(ctx.gplatConn, "YIELD_STATISTICS", &yieldStatis, sizeof(yieldStatis), &err))
         {
+            spdlog::info("Successfully wrote gPlat tag YIELD_STATISTICS (connection={}, bytes={})", ctx.gplatConn, sizeof(yieldStatis));
+
             // 把yieldStatis对象转换为JSON字符串并写入redis的yield_statistics键
             nlohmann::json j;
             j["order_no"] = yieldStatis.order_no.to_string();

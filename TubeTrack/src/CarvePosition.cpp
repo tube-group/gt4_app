@@ -155,7 +155,8 @@ void CCarvePosition::UpdateForm()
 }
 
 // 从数据库读取刻印工位参数
-void CCarvePosition::ReadParameterSet()
+void CCarvePosition::
+ReadParameterSet()
 {
     try
     {

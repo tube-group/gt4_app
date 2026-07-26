@@ -74,6 +74,7 @@ struct TubeTrackContext {
         prodPlan.ReadParameterSet();
         weightPos.ReadParameterSet();
         carvePos.ReadParameterSet();
+        spdlog::info("读取喷印工位参数");
         sprayPos.ReadParameterSet();
         circlePos.ReadParameterSet();
         basket.ReadParameterSet();

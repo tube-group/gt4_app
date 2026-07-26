@@ -14,22 +14,26 @@ void handleApiOrderData(CommL3Context &ctx, const char *value)
     // 将数据存储到数据库
     // 首先查询数据库中是否已经存在该合同号
     bool exists = false;
-    try {
+    try
+    {
         pqxx::work txn(*ctx.pgConn);
         pqxx::result r = txn.exec(
             "SELECT COUNT(*) FROM api_order_data_t WHERE order_no = $1",
             pqxx::params{orderdata.order_no.to_string()});
-        if (r[0][0].as<int>() > 0) {
+        if (r[0][0].as<int>() > 0)
+        {
             spdlog::info("Order data already exists in database: order_no={}",
                          orderdata.order_no.to_string());
             exists = true;
         }
-    } catch (const std::exception &e) {
+    }
+    catch (const std::exception &e)
+    {
         spdlog::error("Error checking order data existence: {}", e.what());
         return;
     }
 
-    //获取当前时间的yyyymmddhhmmss格式字符串
+    // 获取当前时间的yyyymmddhhmmss格式字符串
     std::string current_time_str;
     {
         time_t now = time(nullptr);
@@ -40,9 +44,11 @@ void handleApiOrderData(CommL3Context &ctx, const char *value)
         current_time_str = buf;
     }
 
-    if (exists) {
+    if (exists)
+    {
         // 如果合同数据已存在，选择更新
-        try {
+        try
+        {
             pqxx::work txn(*ctx.pgConn);
             txn.exec(
                 "UPDATE api_order_data_t SET "
@@ -60,8 +66,9 @@ void handleApiOrderData(CommL3Context &ctx, const char *value)
                 "label_req_4 = $46, label_req_5 = $47, label_req_6 = $48, label_req_7 = $49, label_req_8 = $50, "
                 "qual_special_req = $51, produce_special_req = $52, std_pressure_mpa = $53, std_pressure_psi = $54, "
                 "stabilivolt_time_min = $55, anneal_flag = $56, weight_per_meter = $57, weight_ew = $58, "
-                "theory_weight_eng = $59, order_no_old = $60, color_circle = $61, color_circle_pos = $62, item_no = $63, toc = $64 "
-                "WHERE order_no = $65",
+                "theory_weight_eng = $59, order_no_old = $60, color_circle = $61, color_circle_pos = $62, item_no = $63, toc = $64, end_type = $65, thread_type = $66, coupling_type = $67, "
+                "diameter_down_ctrl = $68, diameter_up_ctrl = $69, wal_thick_down_ctrl = $70, wal_thick_up_ctrl = $71, height_down_ctrl = $72, height_up_ctrl = $73 "
+                "WHERE order_no = $74",
                 pqxx::params{orderdata.roll_no.to_string(),
                              orderdata.diameter,
                              orderdata.wall_thickness,
@@ -126,22 +133,34 @@ void handleApiOrderData(CommL3Context &ctx, const char *value)
                              orderdata.color_circle_pos.to_string(),
                              orderdata.item_no.to_string(),
                              current_time_str,
+                             orderdata.end_type.to_string(),
+                             orderdata.thread_type.to_string(),
+                             orderdata.coupling_type.to_string(),
+                             orderdata.diameter_down_ctrl,
+                             orderdata.diameter_up_ctrl,
+                             orderdata.wal_thick_down_ctrl,
+                             orderdata.wal_thick_up_ctrl,
+                             orderdata.height_down_ctrl,
+                             orderdata.height_up_ctrl,
                              orderdata.order_no.to_string()});
 
             txn.commit();
             spdlog::info("Order data updated in database: order_no={}, item_no={}", orderdata.order_no.c_str(), orderdata.item_no.c_str());
 
-            //通知前台合同数据已更新
+            // 通知前台合同数据已更新
             ctx.redis->set("REQUEST_ORDER_RESULT", "UPDATED");
             ctx.redis->publish("RealDataChanged", "REQUEST_ORDER_RESULT");
-        } catch (const std::exception &e) {
+        }
+        catch (const std::exception &e)
+        {
             spdlog::error("Error updating order data: {}, order_no={}", e.what(), orderdata.order_no.c_str());
         }
     }
     else
     {
         // 如果合同数据不存在，插入新数据
-        try {
+        try
+        {
             pqxx::work txn(*ctx.pgConn);
             txn.exec(
                 "INSERT INTO api_order_data_t ("
@@ -156,12 +175,14 @@ void handleApiOrderData(CommL3Context &ctx, const char *value)
                 "label_req_5, label_req_6, label_req_7, label_req_8, qual_special_req, produce_special_req, "
                 "std_pressure_mpa, std_pressure_psi, stabilivolt_time_min, anneal_flag, weight_per_meter, weight_ew, "
                 "theory_weight_eng, order_no_old, color_circle, color_circle_pos, label_req_1_manual, label_req_2_manual, "
-                "label_req_3_manual, label_req_4_manual, label_req_5_manual, label_req_6_manual, label_req_7_manual, label_req_8_manual, stencil_req_manual, toc) "
+                "label_req_3_manual, label_req_4_manual, label_req_5_manual, label_req_6_manual, label_req_7_manual, label_req_8_manual, stencil_req_manual, toc, end_type, thread_type, coupling_type, "
+                "diameter_down_ctrl, diameter_up_ctrl, wal_thick_down_ctrl, wal_thick_up_ctrl, height_down_ctrl, height_up_ctrl) "
                 "VALUES ("
                 "$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, "
                 "$21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, "
                 "$39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, "
-                "$57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67, $68, $69, $70, $71, $72, $73, $74)",
+                "$57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67, $68, $69, $70, $71, $72, $73, $74, $75, $76, $77, "
+                "$78, $79, $80, $81, $82, $83)",
                 pqxx::params{orderdata.order_no.to_string(),
                              orderdata.item_no.to_string(),
                              orderdata.roll_no.to_string(),
@@ -235,15 +256,26 @@ void handleApiOrderData(CommL3Context &ctx, const char *value)
                              orderdata.label_req_7.to_string(),
                              orderdata.label_req_8.to_string(),
                              orderdata.stencil_req.to_string(),
-                             current_time_str});
+                             current_time_str,
+                             orderdata.end_type.to_string(),
+                             orderdata.thread_type.to_string(),
+                             orderdata.coupling_type.to_string(),
+                             orderdata.diameter_down_ctrl,
+                             orderdata.diameter_up_ctrl,
+                             orderdata.wal_thick_down_ctrl,
+                             orderdata.wal_thick_up_ctrl,
+                             orderdata.height_down_ctrl,
+                             orderdata.height_up_ctrl});
             txn.commit();
             spdlog::info("Order data inserted into database: order_no={}, item_no={}",
                          orderdata.order_no.c_str(), orderdata.item_no.c_str());
 
-            //通知前台合同数据已插入
+            // 通知前台合同数据已插入
             ctx.redis->set("REQUEST_ORDER_RESULT", "INSERTED");
             ctx.redis->publish("RealDataChanged", "REQUEST_ORDER_RESULT");
-        } catch (const std::exception &e) {
+        }
+        catch (const std::exception &e)
+        {
             spdlog::error("Error inserting order data: {}", e.what());
         }
     }

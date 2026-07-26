@@ -58,6 +58,12 @@ void CSprayPosition::ReadParameterSet()
             spdlog::info("喷印工位下一根管子流水号已写入Redis: NEXT_TUBE_FLOW_NO={}", flow_no_);
             m_ctx->redis->publish("RealDataChanged", "NEXT_TUBE_FLOW_NO");
 
+            spdlog::info("喷印工位参数从数据库加载成功: length_enable={}, waste_length_enable={}, length_limit_max={}, length_limit_min={}, length_coupling={}, waste_weight_enable={}, weight_limit_max={}, weight_limit_min={}, weight_per_meter={}, weight_ew={}, spray_length_precision={}, spray_length_type={}, spray_weight_type={}, spray_enable={}, qrcode_spray_enable={}, flow_no={}",
+                length_enable_, waste_length_enable_, length_limit_max_, length_limit_min_, length_coupling_,
+                waste_weight_enable_, weight_limit_max_, weight_limit_min_, weight_per_meter_, weight_ew_,
+                spray_length_precision_, spray_length_type_, spray_weight_type_, spray_enable_, qrcode_spray_enable_,
+                flow_no_);
+
             unsigned int error = 0;
             write_plc_bool(m_ctx->gplatConn, "COUP_DISABLE", spray_enable_ != 0, &error);
             write_plc_bool(m_ctx->gplatConn, "STAMP_DISABLE", qrcode_spray_enable_ != 0, &error);

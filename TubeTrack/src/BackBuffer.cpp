@@ -21,7 +21,7 @@ void CBackBuffer::DebugOut()
     // 输出测量点后缓冲区管子数量
     if (m_ctx && m_ctx->redis)
     {
-        spdlog::info("{}: {} = {}", m_positionName, m_redisKey, convertToJson());
+        // spdlog::info("{}: {} = {}", m_positionName, m_redisKey, convertToJson());
     }
 }
 
