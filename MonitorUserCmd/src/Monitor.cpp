@@ -312,6 +312,58 @@ bool CMonitor::handleCommand(const std::string &message)
 			writeb(ctx_.gplatConn, "RELEASE_ALL_POS_CMD", &value, sizeof(value), &error);
 			spdlog::info("处理release_all_pos_cmd命令: value={}", value);
 		}
+		else if (cmdName == "release_nbwb_cmd")
+		{
+			const auto &cmdPara = requireCmdPara();
+
+			unsigned int error;
+			int value = 0;
+			// cmdPara支持int/string/bool，0表示封锁步进梁，非0表示释放步进梁
+			if (cmdPara.is_number_integer())
+			{
+				value = cmdPara.get<int>();
+			}
+			else if (cmdPara.is_string())
+			{
+				value = std::stoi(cmdPara.get<std::string>());
+			}
+			else if (cmdPara.is_boolean())
+			{
+				value = cmdPara.get<bool>() ? 1 : 0;
+			}
+			else
+			{
+				throw std::runtime_error("cmd_para类型非法, 期望int/string/bool");
+			}
+			bool boolValue = (value != 0);
+			// writeb(ctx_.gplatConn, "NB_WB_RELEASE_BLOCK_CMD", &boolValue, sizeof(boolValue), &error);
+			write_plc_bool(ctx_.gplatConn, "NBWB_RELEASE", boolValue, &error);
+			spdlog::info("处理release_nbwb_cmd命令: value={}", boolValue);
+		}
+		else if (cmdName == "manual_spray_cmd")
+		{
+			unsigned int error;
+			int value = 1;
+			writeb(ctx_.gplatConn, "MANUAL_SPRAY_CMD", &value, sizeof(value), &error);
+
+			spdlog::info("处理manual_spray_cmd命令: value={}", value);
+		}
+		else if (cmdName == "manual_carve_cmd")
+		{
+			unsigned int error;
+			int value = 1;
+			writeb(ctx_.gplatConn, "MANUAL_CARVE_CMD", &value, sizeof(value), &error);
+
+			spdlog::info("处理manual_carve_cmd命令: value={}", value);
+		}
+		else if (cmdName == "manual_length_cmd")
+		{
+			unsigned int error;
+			int value = 1;
+			writeb(ctx_.gplatConn, "MANUAL_LENGTH_CMD", &value, sizeof(value), &error);
+
+			spdlog::info("处理manual_length_cmd命令: value={}", value);
+		}
 		else if (cmdName == "bundle_cmd")
 		{
 			unsigned int error;

@@ -42,6 +42,9 @@ public:
     // 判断步进梁是否为空
     bool IsEmpty() const;
 
+    // 判断步进梁某个工位是否为空
+    bool IsPositionEmpty(int position) const;
+
     // 清空所有工位
     void Clear();
 

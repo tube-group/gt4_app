@@ -62,12 +62,15 @@ bool moveTubeBetween(CPositionBase &source,
         return false;
     }
 
+    target.DisableTrigger();
     if (!target.Push(std::move(tube)))
     {
         spdlog::error("Failed to push tube from {} to {}", sourceName, targetName);
+        target.EnableTrigger();
         return false;
     }
 
+    target.EnableTrigger();
     target.DebugOut();
     return true;
 }
@@ -96,6 +99,9 @@ void workThread(TubeTrackContext &ctx)
     // subscribe(ctx.gplatConn, "L2_WB_RELEASE", &err); //MonitorUserCmd已处理
     subscribe(ctx.gplatConn, "RELEASE_ALL_POS_CMD", &err);
     subscribe(ctx.gplatConn, "PARAMETER_SET_UPDATED", &err); // 订阅参数集更新事件
+    subscribe(ctx.gplatConn, "MANUAL_SPRAY_CMD", &err);
+    subscribe(ctx.gplatConn, "MANUAL_CARVE_CMD", &err);
+    subscribe(ctx.gplatConn, "MANUAL_LENGTH_CMD", &err);
     subscribe(ctx.gplatConn, "BUNDLE_CMD", &err);            // 订阅打捆命令
     subscribe(ctx.gplatConn, "STAMP_FINISH", &err);          // 订阅刻印完成命令
     subscribe(ctx.gplatConn, "STAMP_START", &err);
@@ -146,7 +152,7 @@ void workThread(TubeTrackContext &ctx)
             if (tagname == "timer_1s")
             {
                 loop++;
-                if (loop >= 10)
+                if (loop >= 60)
                 {
                     DoStatistics(ctx);
                     spdlog::info("开始自动打捆处理");
@@ -192,6 +198,12 @@ void workThread(TubeTrackContext &ctx)
                     spdlog::info("LENGTH_START_DELAY triggered, reset LENGTH_START");
                     write_plc_bool(ctx.gplatConn, "LENGTH_START", false, &err);
                 }
+            }
+            else if (tagname == "MANUAL_LENGTH_CMD")
+            {
+                spdlog::info("MANUAL_LENGTH_CMD received, triggering LENGTH_START");
+                unsigned int err = 0;
+                 write_plc_bool(ctx.gplatConn, "LENGTH_START", true, &err);
             }
             else if (tagname == "QUICK_MARK_START")
             {
@@ -373,6 +385,14 @@ void workThread(TubeTrackContext &ctx)
                 ctx.circlePos.UpdateForm();
                 ctx.basket.UpdateForm();
             }
+            else if (tagname == "MANUAL_SPRAY_CMD")
+            {
+                ctx.sprayPos.HandleSprayManual();
+            }
+            else if (tagname == "MANUAL_CARVE_CMD")
+            {
+                ctx.carvePos.HandleManualCarve();
+            }
             else if (tagname == "STAMP_FINISH")
             {
                 bool stampFinish = read_value<bool>(value);
@@ -417,6 +437,7 @@ void handleTask500MS(TubeTrackContext &ctx)
 
     bool weightRelease = ctx.weightPos.WbReleased();
     bool sprayRelease = ctx.sprayPos.WbReleased();
+    bool carveRelease = ctx.carvePos.WbReleased();
 
     bool l2WbRelease;
     readb(ctx.gplatConn, "L2_WB_RELEASE", &l2WbRelease, sizeof(l2WbRelease), &err);
@@ -437,13 +458,22 @@ void handleTask500MS(TubeTrackContext &ctx)
         ctx.redis->publish("RealDataChanged", "SPRAY_RELEASE");
     }
 
-    bool wbRelease = weightRelease && sprayRelease && l2WbRelease;
+    writeb(ctx.gplatConn, "CARVE_RELEASE", &carveRelease, sizeof(carveRelease), &err);
+    bool carveReleaseRedis = ctx.redis->get("CARVE_RELEASE") == "true";
+    if (carveReleaseRedis != carveRelease)
+    { // 如果Redis中的值与当前状态不一致，则更新Redis，避免重复发布
+        ctx.redis->set("CARVE_RELEASE", carveRelease ? "true" : "false");
+        ctx.redis->publish("RealDataChanged", "CARVE_RELEASE");
+    }
+
+    bool wbRelease = weightRelease && sprayRelease && carveRelease && l2WbRelease;
 
     if (wbRelease)
     {
         if (ctx.prodPlan.Count() == 0)
         {
             // Program.qbdConnection.LogAlarm("yjg4_Alarm", "投料支数为0，禁止释放步进梁，请设置投料支数！", 9);
+            spdlog::warn("Production plan count is 0, cannot release WB, please set production plan count!");
             unsigned int err;
             write_plc_bool(ctx.gplatConn, "WB_RELEASE", false, &err);
         }
@@ -938,6 +968,14 @@ void moveTubeToPosion(TubeTrackContext &ctx)
         ctx.scraptRoller.Clear();
     }
 
+    // if (ctx.walkingBeam.IsPositionEmpty(2))
+    // {
+    //     //刻印工位无管，释放步进梁
+    //     ctx.carvePos.ReleaseWB();
+    //     spdlog::warn("Carve position is empty, releasing walking beam");
+    //     return;
+    // }
+
     // 从步进梁弹出管子，推送到称重、刻印、喷印、色环、废料辊道工位
     ctx.weightPos.Push(ctx.walkingBeam.Pop(1));
     ctx.carvePos.Push(ctx.walkingBeam.Pop(2));
@@ -949,6 +987,16 @@ void moveTubeToPosion(TubeTrackContext &ctx)
     if (ctx.weightPos.IsEmpty())
     {
         ctx.weightPos.ReleaseWB();
+    }
+
+    if (ctx.carvePos.IsEmpty())
+    {
+        ctx.carvePos.ReleaseWB();
+    }
+
+    if (ctx.sprayPos.IsEmpty())
+    {
+        ctx.sprayPos.ReleaseWB();
     }
 
     unsigned int err;

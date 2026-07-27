@@ -189,6 +189,11 @@ ReadParameterSet()
 // 管子push进入刻印工位后触发刻印功能
 void CCarvePosition::EntryTrigger(const CTube &tube)
 {
+    StartCarve(tube);
+}
+
+void CCarvePosition::StartCarve(const CTube &tube)
+{
     unsigned int err;
     bool status = tube.length_ok && tube.weight_ok;
     write_plc_bool(m_ctx->gplatConn, "CARVE_ENABLE", status, &err);
@@ -208,7 +213,7 @@ void CCarvePosition::EntryTrigger(const CTube &tube)
     if (!needCarve)
     {
         ReleaseWB();
-        spdlog::info("刻印未使能或无料，释放步进梁");
+        spdlog::info("刻印未使能，释放步进梁");
         return;
     }
 
@@ -227,18 +232,32 @@ void CCarvePosition::EntryTrigger(const CTube &tube)
     // 将转换后的针刻印数据发送给PLC
     if (SendCarveRequestsToPlc(carveRequests))
     {
-        spdlog::info("发送PLC成功");
+        spdlog::info("发送PLC成功，等待刻印完成信号");
     }
     else
     {
         spdlog::error("发送PLC失败");
-        // 如果下发PLC失败，记录错误日志并释放步进梁封锁，允许管子通过
-        ReleaseWB();
+    }
+}
+
+void CCarvePosition::HandleManualCarve()
+{
+    if (!IsCarveEnable())
+    {
+        spdlog::warn("刻印未使能，无法执行人工刻印");
+        return;
     }
 
-    BlockWB();
-    spdlog::info("刻印数据发送完成，步进梁已封锁,等待刻印完成信号");
-    
+    if (m_tubes.empty())
+    {
+        spdlog::warn("刻印工位无管子，无法执行人工刻印");
+        return;
+    }
+
+    const CTube &tube = *m_tubes.front();
+    spdlog::info("人工刻印触发，管子信息: order_no={}, item_no={}, tube_no={}", tube.order_no, tube.item_no, tube.tube_no);
+
+    StartCarve(tube);
 }
 
 // 处理刻印完成后的逻辑

@@ -33,7 +33,7 @@ public:
     void HandleLengthReady(float actlength);     // 处理测长完成事件
     void StartSpray();                           // 启动喷印
     void SetBackBuffer(CBackBuffer *backBuffer); // 设置后缓冲区对象
-    void StartSprayManual();                     // 启动喷印（手动测长）
+    void HandleSprayManual();                     // 启动喷印（手动测长）
     void EntryTrigger(const CTube &tube) override;
     bool IsSprayEnable() { return spray_enable_; } // 返回喷印允许状态
     void HandleSprayFinish();                      // 处理喷印完成事件，status表示喷印结果状态

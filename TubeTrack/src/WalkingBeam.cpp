@@ -69,6 +69,15 @@ bool WalkingBeam::IsEmpty() const
     return true; // 所有工位都没有管子，步进梁为空
 }
 
+bool WalkingBeam::IsPositionEmpty(int position) const
+{
+    if (position < 1 || position > 5) {
+        spdlog::error("WalkingBeam: Invalid position {} for IsPositionEmpty", position);
+        return true; // 非法位置视为空
+    }
+    return m_tubes[position] == nullptr;
+}
+
 void WalkingBeam::Clear()
 {
     spdlog::info("WalkingBeam: Clearing all positions");

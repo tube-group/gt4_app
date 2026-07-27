@@ -13,10 +13,12 @@ public:
     bool IsCarveEnable() const { return carve_enable_; }  // 判断刻印是否允许
     void EntryTrigger(const CTube &tube) override;        // 重写触发器，进行刻印参数准备和PLC通信
     void HandleCarveFinish();                             // 处理刻印完成后的逻辑
+    void HandleManualCarve();                             // 处理人工刻印命令
 
 private:
     using CarveReqArray = std::array<std::string, 8>; // 刻印参数数组类型定义，参数个数是8个
 
+    void StartCarve(const CTube &tube); // 启动刻印功能
     void ReplaceAll(std::string &text, const std::string &from, const std::string &to) const; // 字符串替换工具函数
     void ConvertCarveRequests(CarveReqArray &requests) const;                                 // 刻印参数格式转换
     bool LoadCarveRequests(const CTube &tube, CarveReqArray &requests) const;                 // 从数据库加载刻印参数

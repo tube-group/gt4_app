@@ -97,6 +97,10 @@ void CSprayPosition::HandleLengthReady(float actlength)
         float length = actlength / 1000.0f - length_coupling_; // 喷印长度=实际长度-保护环长度
         // 按指定精度四舍五入
         length = std::round(length * std::pow(10, spray_length_precision_)) / std::pow(10, spray_length_precision_);
+
+        //debug: 测试环境下，使用理论重量代替实际重量
+        tube->weight = length * weight_per_meter_ + weight_ew_;
+
         if (tube)
         {
             tube->length = length;
@@ -175,15 +179,15 @@ void CSprayPosition::HandleLengthReady(float actlength)
         // 废管处理
         spdlog::warn("废管不喷印！");
         write_plc_bool(m_ctx->gplatConn, "SPRAY_WASTE_FLAG", true, &error);          // 废管标志
-        // write_plc_string(m_ctx->gplatConn, "SPRAY_STRING_TO_L1", "", &error);   // 喷印字符串清空
-        // write_plc_string(m_ctx->gplatConn, "BARCODE_STRING_TO_L1", "", &error); // 发送二维码喷印内容
-        write_plc_bool(m_ctx->gplatConn, "SPRAY_FINISH_NOUSE", false, &error);         // 喷印完成
-        write_plc_bool(m_ctx->gplatConn, "QUICK_MARK_FINISH", false, &error);         // 条码喷印完成
-        write_plc_bool(m_ctx->gplatConn, "SPRAY_FINISH", false, &error);         // 管体喷印完成
-        write_plc_bool(m_ctx->gplatConn, "SPRAY_START_NOUSE", true, &error);          // 发送标志位置位
+        write_plc_string(m_ctx->gplatConn, "SPRAY_STRING_TO_L1", "", &error);        // 喷印字符串清空
+        write_plc_string(m_ctx->gplatConn, "BARCODE_STRING_TO_L1", "", &error);      // 二维码喷印内容清空
+        write_plc_bool(m_ctx->gplatConn, "SPRAY_FINISH_NOUSE", false, &error);       // 喷印完成
+        write_plc_bool(m_ctx->gplatConn, "QUICK_MARK_FINISH", false, &error);        // 条码喷印完成
+        write_plc_bool(m_ctx->gplatConn, "SPRAY_FINISH", false, &error);             // 管体喷印完成
+        write_plc_bool(m_ctx->gplatConn, "SPRAY_START_NOUSE", true, &error);         // 发送标志位置位
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        write_plc_bool(m_ctx->gplatConn, "SPRAY_START", true, &error); // 启动管体喷印
-        write_plc_bool(m_ctx->gplatConn, "QUICK_MARK_START", true, &error); // 启动条码喷印
+        write_plc_bool(m_ctx->gplatConn, "SPRAY_START", true, &error);               // 启动管体喷印
+        write_plc_bool(m_ctx->gplatConn, "QUICK_MARK_START", true, &error);          // 启动条码喷印
         spdlog::info("流水号{}的管子长度{}m，重量{}kg，判定为废管", tube->flow_no, tube->length, tube->weight);
     }
     else
@@ -377,7 +381,7 @@ void CSprayPosition::StartSpray()
 }
 
 //---------------启动人工喷印-------------------------
-void CSprayPosition::StartSprayManual()
+void CSprayPosition::HandleSprayManual()
 {
     const CTube *tube = Peek();
     if (!tube || spray_enable_ == 0)

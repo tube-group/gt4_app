@@ -250,6 +250,7 @@ void SprayWorker::Run()
 				}
 				spdlog::warn("waitpostdata failed, err={}, reconnecting gPlat...", err);
 				// 断线重连逻辑
+				sleep(1);
 				continue;
 			}
 
@@ -385,8 +386,9 @@ std::string SprayWorker::MakeSprayString(const SprayJob &job) const
 
 void SprayWorker::SendSprayCommand(const SprayJob &job)
 {
+	unsigned int err;
 
-	std::string sprayText = " ";
+	std::string sprayText = "";
 	bool waste_flag;
 	if (job.length_ok && job.weight_ok)
 	{
@@ -398,20 +400,20 @@ void SprayWorker::SendSprayCommand(const SprayJob &job)
 	{
 		spdlog::warn("发送废管标志位1");
 		waste_flag = true;
-		// write_plc_string(ctx_.gplatConn, "BARCODE_STRING_TO_L1", "", &err);  // 发送二维码喷印内容
+		sprayText = "";
+		write_plc_string(ctx_.gplatConn, "BARCODE_STRING_TO_L1", "", &err);  // 发送二维码喷印内容
 	}
 
 	//  写PLC
-	unsigned int err;
-	write_plc_bool(ctx_.gplatConn, "SPRAY_WASTE_FLAG", waste_flag, &err);  // 废管标志位
+	write_plc_bool(ctx_.gplatConn, "SPRAY_WASTE_FLAG", waste_flag, &err);      // 废管标志位
 	write_plc_string(ctx_.gplatConn, "SPRAY_STRING_TO_L1", sprayText, &err);   // 发送喷印字符串
-	write_plc_bool(ctx_.gplatConn, "SPRAY_FINISH_NOUSE", true, &err);       // 喷印完成
-	write_plc_bool(ctx_.gplatConn, "QUICK_MARK_FINISH", true, &err);       // 条码喷印完成
-	write_plc_bool(ctx_.gplatConn, "SPRAY_FINISH", true, &err);       // 管体喷印完成
-	write_plc_bool(ctx_.gplatConn, "SPRAY_START_NOUSE", true, &err);        // 喷印发送标志位置位
+	write_plc_bool(ctx_.gplatConn, "SPRAY_FINISH_NOUSE", false, &err);         // 喷印完成
+	write_plc_bool(ctx_.gplatConn, "QUICK_MARK_FINISH", false, &err);          // 条码喷印完成
+	write_plc_bool(ctx_.gplatConn, "SPRAY_FINISH", false, &err);               // 管体喷印完成
+	write_plc_bool(ctx_.gplatConn, "SPRAY_START_NOUSE", true, &err);           // 喷印发送标志位置位
 	std::this_thread::sleep_for(std::chrono::seconds(1));
-	write_plc_bool(ctx_.gplatConn, "SPRAY_START", true, &err);        // 启动管体喷印
-	write_plc_bool(ctx_.gplatConn, "QUICK_MARK_START", true, &err);        // 启动条码喷印
+	write_plc_bool(ctx_.gplatConn, "SPRAY_START", true, &err);                 // 启动管体喷印
+	write_plc_bool(ctx_.gplatConn, "QUICK_MARK_START", true, &err);            // 启动条码喷印
 
 	// 用spdlog替代写PLC
 	spdlog::info("写PLC: SPRAY_WASTE_FLAG={}, SPRAY_STRING_TO_L1={}, SPRAY_FINISH_NOUSE=true, QUICK_MARK_FINISH=true, SPRAY_FINISH=true, SPRAY_START_NOUSE=true, SPRAY_START=true, QUICK_MARK_START=true",
@@ -439,4 +441,6 @@ void SprayWorker::SendSprayCommand(const SprayJob &job)
 		ctx_.redis->set("SPRAY_STRING", sprayText);
 		ctx_.redis->publish("RealDataChanged", "SPRAY_STRING");
 	}
+
+	//必须收到PLC的应答才释放步进梁，放在TubeTrack中实现
 }
