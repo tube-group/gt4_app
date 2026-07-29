@@ -12,5 +12,5 @@ public:
     void ReadParameterSet();            // 从数据库读取色环工位参数
     bool IsCircleEnable() { return circle_enable_; } // 色环允许
 private:
-    int circle_enable_; // 色环允许
+    int circle_enable_ = 1; // 色环允许
 };

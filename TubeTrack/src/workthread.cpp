@@ -37,6 +37,7 @@ void handleDeleteTubeCmd(TubeTrackContext &ctx, const char *value);         // �
 void handleSetCurrentContractCmd(TubeTrackContext &ctx, const char *value); // 处理设置当前合同命令
 void handleAddTubeCmd(TubeTrackContext &ctx, const char *value);            // 处理添加管子命令
 void autoBundle(TubeTrackContext &ctx);                                     // 自动打捆处理
+void handleWeiPosOnDelay(TubeTrackContext &ctx, const char *value); // 处理称重工位延时触发
 
 bool moveTubeBetween(CPositionBase &source,
                      CPositionBase &target,
@@ -84,6 +85,7 @@ void workThread(TubeTrackContext &ctx)
     subscribe(ctx.gplatConn, "timer_1s", &err);
     subscribe(ctx.gplatConn, "ALIGN_POS_ON", &err);
     subscribe(ctx.gplatConn, "WEIGHT_POS_ON", &err);
+    subscribedelaypost(ctx.gplatConn, "WEIGHT_POS_ON", "WEIGHT_POS_ON_DELAY", 2500, &err);
     subscribe(ctx.gplatConn, "CARVE_POS_ON", &err);
     subscribe(ctx.gplatConn, "SPRAY_POS_ON", &err);
     subscribe(ctx.gplatConn, "CIRCLE_POS_ON", &err);
@@ -260,6 +262,11 @@ void workThread(TubeTrackContext &ctx)
             {
                 // 处理称重工位检测信号
                 handleWeiPosOn(ctx, value);
+            }
+            else if (tagname == "WEIGHT_POS_ON_DELAY")
+            {
+                // 处理称重工位检测信号延时
+                handleWeiPosOnDelay(ctx, value);
             }
             else if (tagname == "CARVE_POS_ON")
             {
@@ -1119,6 +1126,28 @@ void handleWeiPosOn(TubeTrackContext &ctx, const char *value)
         moveTubeToPosion(ctx);
 
         // 管子进入称重工位后触发称重功能
+        // const CTube *tube = ctx.weightPos.Peek();
+        // if (tube != nullptr)
+        // {
+        //     unsigned int error;
+        //     int a = 1;
+        //     bool ret = writeb(ctx.gplatConn, "START_WEIGHT_EVENT", &a, sizeof(a), &error);
+        //     spdlog::info("启动称重");
+        // }
+        // else
+        // {
+        //     spdlog::warn("No tube in weight position to start weighing");
+        // }
+    }
+}
+
+void handleWeiPosOnDelay(TubeTrackContext &ctx, const char *value)
+{
+    bool isOn = read_value<bool>(value);
+
+    if (isOn)
+    {
+        // 管子进入称重工位后延时触发称重功能
         const CTube *tube = ctx.weightPos.Peek();
         if (tube != nullptr)
         {

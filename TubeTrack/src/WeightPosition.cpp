@@ -163,9 +163,9 @@ void CWeightPosition::SetTubeWeight(int weight)
             m_bWbReleased = false; // 封锁步进梁，等待人工处理
 
             //debug: 测试环境下置管子重量为500；
-            m_tubes[0]->weight = 500.0f; // 初始化重量为500.0f
-            m_tubes[0]->weight_ok = true; // 初始化重量合格状态为true
-            m_bWbReleased = true; // 释放步进梁，允许继续生产
+            // m_tubes[0]->weight = 500.0f; // 初始化重量为500.0f
+            // m_tubes[0]->weight_ok = true; // 初始化重量合格状态为true
+            // m_bWbReleased = true; // 释放步进梁，允许继续生产
 
             // 根据不同的错误码记录日志和报警
             if (weight == -1)

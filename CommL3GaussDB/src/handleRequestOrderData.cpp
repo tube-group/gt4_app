@@ -185,30 +185,37 @@ bool getOrderDataFromGaussDB(CommL3Context &ctx, const std::string &orderNo, con
             orderData.label_req_6 = row2.getString("lable_req_6");// 标签要求6
             orderData.label_req_7 = row2.getString("lable_req_7");// 标签要求7
             orderData.label_req_8 = row2.getString("lable_req_8");// 标签要求8
-            orderData.qual_special_req = "";// 质量特殊要求
+            orderData.qual_special_req = " ";// 质量特殊要求
             // orderData.produce_special_req = "中文";// 生产特殊要求
             orderData.produce_special_req = truncateUtf8ToBytes(
                 row2.getString("produce_special_req"),
                 decltype(orderData.produce_special_req)::capacity());// 生产特殊要求
-            orderData.std_pressure_mpa = 0;// 标准水压压力（MPA)
-            orderData.std_pressure_psi = 0;// 标准水压压力 (PSI)
-            orderData.stabilivolt_time_min = 0;// 最小稳压时间
-            orderData.anneal_flag = "";// 退火标志
+            
+            orderData.anneal_flag = " ";// 退火标志
             orderData.weight_per_meter = row2.getDouble("wt_per_meter");// 米重
             if (result3.getRowCount() > 0)
             {
                 auto row3 = result3.getRow(0);
                 orderData.weight_ew = row3.getDouble("wt_ew");// EW值
+                orderData.std_pressure_mpa = row3.getDouble("std_pressure_mpa");// 标准水压压力（MPA)
+                orderData.std_pressure_psi = row3.getDouble("std_pressure_psi");// 标准水压压力 (PSI)
+                orderData.stabilivolt_time_min = row3.getInt("ctl_stbl_volt_time_min");// 最小稳压时间
+                orderData.color_circle = row3.getString("color_ring");// 色环
+                orderData.color_circle_pos = row3.getString("color_ring_position");// 色环位置
             }
             else
             {
                 orderData.weight_ew = 0.1; // 如果没有查询到数据，设置为默认值
+                orderData.std_pressure_mpa = 0;// 标准水压压力（MPA)
+                orderData.std_pressure_psi = 0;// 标准水压压力 (PSI)
+                orderData.stabilivolt_time_min = 0;// 最小稳压时间
+                orderData.color_circle = " ";// 色环
+                orderData.color_circle_pos = " ";// 色环位置
             }
-            // orderData.weight_ew = row3.getDouble("wt_ew");// EW值
+
             orderData.theory_weight_eng = row2.getDouble("wt_l_eng");// 名义重量
-            orderData.order_no_old = "";// 原合同号
-            orderData.color_circle = "";// 色环
-            orderData.color_circle_pos = "";// 色环位置
+            orderData.order_no_old = " ";// 原合同号
+            
 
             orderData.diameter_down_ctrl = row2.getDouble("ctl_tube_dia_from");// 控制外径下限
             orderData.diameter_up_ctrl = row2.getDouble("ctl_tube_dia_to");// 控制外径上限

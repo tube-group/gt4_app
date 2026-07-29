@@ -13,7 +13,6 @@ public:
     int BundleCount();                                         // 计算当前成品料筐内管子数量是否满足打捆要求
     bool HasSpace() ;                                  // 判断成品料筐是否有空间放置新管子
     void EntryTrigger(const CTube &tube) override;     // 打捆触发函数
-    bool PushFront(unique_ptr<CTube> tube, int mode) override; // 重写PushFront方法，添加打捆逻辑
     bool Bundle();                                             // 执行打捆操作，成功后生成管捆信息并清空成品料筐
 
 private:

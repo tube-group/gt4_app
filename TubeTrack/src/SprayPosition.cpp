@@ -89,6 +89,11 @@ void CSprayPosition::HandleLengthReady(float actlength)
 {
     // 获取该工位的管子对象
     CTube *tube = const_cast<CTube *>(Peek());
+    if (!tube)
+    {
+        spdlog::error("无法处理测长完成事件: 喷印工位无管子, MEA_LEN={}", actlength);
+        return;
+    }
 
     // 测长允许
     if (length_enable_)

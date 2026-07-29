@@ -84,7 +84,7 @@ void handleApiBundleDataEvent(CommL3Context &ctx, const char *value)
                 gspa13_values["TUBE_NO"] = row["tube_no"].as<std::string>();                     // 管号
                 gspa13_values["TUBE_ACT_WT"] = row["weight"].as<double>() / 1000.0;              // 单根管子重量(吨)
                 gspa13_values["TUBE_ENG_WT"] = std::round(row["weight"].as<double>() * 2.204622 * 1000.0) / 1000.0; // 单根管子英制重量(保留小数点后三位)
-                gspa13_values["TUBE_THEORY_WT"] = std::round(row["length"].as<double>() * weight_per_meter * 1000.0) / 1000.0; // 单根管子理论重量(保留小数点后三位)
+                gspa13_values["TUBE_THEORY_WT"] = std::round(row["length"].as<double>() * weight_per_meter) / 1000.0; // 单根管子理论重量(吨，保留小数点后三位)
                 gspa13_values["TUBE_LEN"] = row["length"].as<double>();                          // 单根管子长度
                 gspa13_values["TUBE_ENG_LEN"] = std::round(row["length"].as<double>() * 3.280839 * 1000.0) / 1000.0; // 单根管子英制长度(保留小数点后三位)
                 gspa13_values["TUBE_THY_LEN"] = std::round(row["weight"].as<double>() / weight_per_meter * 1000.0) / 1000.0;   // 单根管子理论长度(保留小数点后三位)
@@ -147,7 +147,7 @@ std::unordered_map<std::string, json> build_gspa13_values(const pqxx::result::re
         {"BUNDLE_TYPE", row["bundle_type"].as<std::string>()},
         {"MAT_TUBE", row["tube"].as<int>()},
         {"MAT_ACT_WT", std::round(row["weight"].as<double>()) / 1000.0},
-        {"MAT_ENG_WT", row["weight_eng"].as<double>()},
+        {"MAT_ENG_WT", std::round(row["weight_eng"].as<double>() * 1000.0) / 1000.0},
         {"TOTAL_LEN", row["total_length"].as<double>()},
         {"ENG_TOTAL_LEN", row["length_eng"].as<double>()},
         {"LEN_FROM", row["length_from"].as<double>()},

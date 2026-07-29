@@ -28,7 +28,7 @@ namespace
 	constexpr std::size_t kWeightSecondStatusOffset = 2;
 	constexpr unsigned char kWeightStableMask = 0x08;
 	constexpr std::size_t kMaxPendingPayloadBytes = 1024;
- 
+
 	enum class WeightReadStatus
 	{
 		Success,
@@ -192,9 +192,9 @@ namespace
 			if (getSocketOptRet != 0 || connectErr != 0)
 			{
 				spdlog::warn("称重 TCP 连接建立失败, err={}, target={}:{}",
-					getSocketOptRet == 0 ? connectErr : GetSocketError(),
-					ctx.weightTcpHost,
-					ctx.weightTcpPort);
+							 getSocketOptRet == 0 ? connectErr : GetSocketError(),
+							 ctx.weightTcpHost,
+							 ctx.weightTcpPort);
 				CloseSocket(socketFd);
 				return kInvalidSocket;
 			}
@@ -391,7 +391,6 @@ void WeightWorker::Run()
 		throw; // 让Run函数的调用者决定如何处理订阅失败的情况
 	}
 
-
 	while (ctx_.running.load())
 	{
 
@@ -412,20 +411,19 @@ void WeightWorker::Run()
 				continue;
 			}
 
-			
 			if (tagname == "WAIT_TIMEOUT")
 			{
 				continue;
 			}
-			
+
 			if (tagname == "timer_500ms")
 			{
 				continue;
 			}
-			
-			if (tagname == "START_WEIGHT_EVENT" )
+
+			if (tagname == "START_WEIGHT_EVENT")
 			{
-			        int  startWeightEvent = read_value<int>(value);
+				int startWeightEvent = read_value<int>(value);
 				if (startWeightEvent == 1)
 				{
 					int weight = ReadWeightCentiKg();

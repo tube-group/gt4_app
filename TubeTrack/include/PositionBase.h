@@ -20,7 +20,7 @@ public:
 
 protected:
 	deque<unique_ptr<CTube>> m_tubes;
-	bool m_bOccupied;
+	bool m_bOccupied = false; // 工位有料无料状态
 	bool m_bTriggerEnabled;
 	bool m_bUpdateTagEnabled;
 

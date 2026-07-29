@@ -108,19 +108,6 @@ void CBasket::EntryTrigger(const CTube &tube)
     }
 }
 
-//---------------PushFront时触发打捆逻辑---------------
-bool CBasket::PushFront(unique_ptr<CTube> tube, int mode)
-{
-    bool ret = PushFront(std::move(tube), 0);
-
-    if (Count() == bundle_number_)
-    {
-        Bundle();
-        UpdateForm();
-    }
-    return ret;
-}
-
 //---------------执行打捆操作，生成管捆信息并清空成品料筐---------------
 bool CBasket::Bundle()
 {
