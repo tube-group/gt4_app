@@ -106,8 +106,7 @@ cpr::Response L2SndL3::PostMessage(const std::string &url,
 	const auto response = cpr::Post(
 		cpr::Url{url},
 		cpr::Header{{"Content-Type", "application/json"},
-					{"X-Message-Topic", topic},
-					{"X-Meaaage-Topic", topic}},
+					{"X-Message-Topic", topic}},
 		cpr::Body{payload.dump()});
 
 	spdlog::info("[SEND] status_code={}", response.status_code);

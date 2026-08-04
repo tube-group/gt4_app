@@ -321,14 +321,14 @@ struct OrderData {
 	PodString<50> oil_type; // 涂油正文
 	PodString<300> stamp_req; // 压印要求
 	PodString<400> stencil_req; // 喷印要求
-	PodString<50> label_req_1; // 标签要求1
-	PodString<50> label_req_2; // 标签要求2
-	PodString<50> label_req_3; // 标签要求3
-	PodString<50> label_req_4; // 标签要求4
-	PodString<50> label_req_5; // 标签要求5
-	PodString<50> label_req_6; // 标签要求6
-	PodString<50> label_req_7; // 标签要求7
-	PodString<50> label_req_8; // 标签要求8
+	PodString<80> label_req_1; // 标签要求1
+	PodString<80> label_req_2; // 标签要求2
+	PodString<80> label_req_3; // 标签要求3
+	PodString<80> label_req_4; // 标签要求4
+	PodString<80> label_req_5; // 标签要求5
+	PodString<80> label_req_6; // 标签要求6
+	PodString<80> label_req_7; // 标签要求7
+	PodString<80> label_req_8; // 标签要求8
 	PodString<100> qual_special_req; // 质量特殊要求
 	PodString<100> produce_special_req; // 生产特殊要求
 	double std_pressure_mpa; // 标准水压压力（MPA)

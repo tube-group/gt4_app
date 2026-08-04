@@ -239,10 +239,12 @@ void workThread(MonitorPlcDataContext &ctx, const AppConfig &app, volatile sig_a
         if (!ret)
         {
             spdlog::warn("waitpostdata 失败，准备重连，错误码: {}", error);
-            if (!reconnectAndResubscribe(ctx, app, running))
-            {
-                return;
-            }
+            sleep(1); // 等待1秒后重连，避免频繁重连
+            //reconnectAndResubscribe逻辑有问题，会断开redis连接，先注释掉
+            // if (!reconnectAndResubscribe(ctx, app, running))
+            // {
+            //     return;
+            // }
             continue;
         }
 

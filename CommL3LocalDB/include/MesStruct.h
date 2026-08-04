@@ -114,7 +114,7 @@ struct GSPA19
         make_field("MAT_TUBE", "材料根数", 'L', 7, 0),
         make_field("MAT_ACT_WT", "材料重量", 'D', 15, 6),
         make_field("TOTAL_LEN", "总长度", 'D', 9, 3),
-        make_field("TUBE_NO", "管号", 'C', 0, 0),
+        make_field("TUBE_NO", "管号", 'C', 7, 0),
         make_field("TUBE_LEN", "单根管子长度", 'D', 12, 3),
         make_field("TUBE_ACT_WT", "单根管子重量", 'D', 15, 6),
     };

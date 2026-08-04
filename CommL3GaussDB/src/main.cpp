@@ -562,13 +562,6 @@ int main(int argc, char *argv[])
     // 9. 统一注入上下文到所有工位
     ctx.Init();
 
-    // 启动工作线程
-    // L2RcvL3 httpWorker(ctx);
-    // L2SndL3 cprWorker(ctx);
-
-    // std::thread httpThread(&L2RcvL3::Run, &httpWorker);
-    // std::thread cprThread(&L2SndL3::Test, &cprWorker);
-
     std::thread workerThread(workThread, std::ref(ctx));
 
     // 主线程等待退出命令或信号
@@ -581,16 +574,6 @@ int main(int argc, char *argv[])
 
     // 通知工作线程退出，避免 join 阻塞。
     ctx.running.store(false);
-
-    // 等待所有线程结束
-    // if (httpThread.joinable())
-    // {
-    //     httpThread.join();
-    // }
-    // if (cprThread.joinable())
-    // {
-    //     cprThread.join();
-    // }
 
     // 等待所有线程结束
     if (workerThread.joinable()) {
