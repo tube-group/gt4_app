@@ -33,7 +33,7 @@ namespace
 } // namespace
 
 L2SndL3::L2SndL3()
-	: rest_in_url_("http://190.2.212.95:10007/api/v1/restin")
+	: rest_in_url_("http://10.81.7.179:10007/api/v1/restin")
 {
 }
 
