@@ -183,6 +183,8 @@ void CWeightPosition::SetTubeWeight(int weight)
                 spdlog::error("称重数据为0，未获得有效的重量数据，请尝试人工称重");
                 RaiseWeightAlarm(m_ctx, *m_tubes[0], weight, "称重数据为0，未获得有效的重量数据，请尝试人工称重");
             }
+
+            m_bWbReleased = false;
         }
         else
         {
@@ -193,6 +195,8 @@ void CWeightPosition::SetTubeWeight(int weight)
             // 没有长度数据，不进行管子判废
             spdlog::info("管子称重完成: 实际重量={}kg", actualWeight);
             ClearWeightAlarm(m_ctx, *m_tubes[0], weight, true);
+
+            m_bWbReleased = true;
         }
     }
     else

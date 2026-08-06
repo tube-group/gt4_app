@@ -589,16 +589,16 @@ namespace
             }
 
             const auto parameterRows = tx.exec(
-                "SELECT label_length_type FROM parameter_set WHERE order_no = $1 AND item_no = $2 LIMIT 1",
+                "SELECT spray_length_precision FROM parameter_set WHERE order_no = $1 AND item_no = $2 LIMIT 1",
                 pqxx::params{orderNo, itemNo});
 
             if (!parameterRows.empty())
             {
-                bundle.manualLengthPrecision = RowNumber<int>(parameterRows.front(), "label_length_type", 2);
+                bundle.manualLengthPrecision = RowNumber<int>(parameterRows.front(), "spray_length_precision", 2);
             }
             else
             {
-                spdlog::warn("parameter_set未找到标签长度格式，使用默认小数位: order_no={}, item_no={}, precision={}",
+                spdlog::warn("parameter_set未找到喷涂长度小数位，使用默认小数位: order_no={}, item_no={}, precision={}",
                              orderNo,
                              itemNo,
                              bundle.manualLengthPrecision);

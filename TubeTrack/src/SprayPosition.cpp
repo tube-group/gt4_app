@@ -104,7 +104,7 @@ void CSprayPosition::HandleLengthReady(float actlength)
         length = std::round(length * std::pow(10, spray_length_precision_)) / std::pow(10, spray_length_precision_);
 
         //debug: 测试环境下，使用理论重量代替实际重量
-        tube->weight = length * weight_per_meter_ + weight_ew_;
+        // tube->weight = length * weight_per_meter_ + weight_ew_;
 
         if (tube)
         {

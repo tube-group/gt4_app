@@ -153,15 +153,18 @@ namespace
 
 		if (yearFormat == 1)
 		{
+			return year.substr(3, 1);
+		}
+		else if (yearFormat == 2)
+		{
 			return year.substr(2, 2);
 		}
-
-		if (yearFormat == 2)
+		if (yearFormat == 3)
 		{
 			return sprayText.find("季") != std::string::npos ? year.substr(3, 1) : year.substr(2, 2);
 		}
 
-		return year.substr(3, 1);
+		return year.substr(2, 2);
 	}
 
 	std::string currentQuarterToken()
