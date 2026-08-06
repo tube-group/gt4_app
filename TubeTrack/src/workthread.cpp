@@ -25,6 +25,7 @@ void handleAlignPosOn(TubeTrackContext &ctx, const char *value);
 void handleWeiPosOn(TubeTrackContext &ctx, const char *value);
 void handlePrtPosOn(TubeTrackContext &ctx, const char *value);
 void handleSpyPosOn(TubeTrackContext &ctx, const char *value);
+void handleSpyPosOnDelay(TubeTrackContext &ctx, const char *value);
 void handleCirPosOn(TubeTrackContext &ctx, const char *value);
 void handleScrRollerOn(TubeTrackContext &ctx, const char *value);
 void handleWbBase(TubeTrackContext &ctx, const char *value);
@@ -88,6 +89,7 @@ void workThread(TubeTrackContext &ctx)
     subscribedelaypost(ctx.gplatConn, "WEIGHT_POS_ON", "WEIGHT_POS_ON_DELAY", 2500, &err);
     subscribe(ctx.gplatConn, "CARVE_POS_ON", &err);
     subscribe(ctx.gplatConn, "SPRAY_POS_ON", &err);
+    subscribedelaypost(ctx.gplatConn, "SPRAY_POS_ON", "SPRAY_POS_ON_DELAY", 5000, &err);
     subscribe(ctx.gplatConn, "CIRCLE_POS_ON", &err);
     subscribe(ctx.gplatConn, "SCRAPTROLLER_POS_ON", &err);
     subscribe(ctx.gplatConn, "WB_BASE", &err);
@@ -109,7 +111,7 @@ void workThread(TubeTrackContext &ctx)
     subscribe(ctx.gplatConn, "STAMP_START", &err);
     subscribedelaypost(ctx.gplatConn, "STAMP_START", "STAMP_START_DELAY", 3000, &err);
     subscribe(ctx.gplatConn, "LENGTH_START", &err);
-    subscribedelaypost(ctx.gplatConn, "LENGTH_START", "LENGTH_START_DELAY", 3000, &err);
+    subscribedelaypost(ctx.gplatConn, "LENGTH_START", "LENGTH_START_DELAY", 5000, &err);
     subscribe(ctx.gplatConn, "QUICK_MARK_START", &err);
     subscribedelaypost(ctx.gplatConn, "QUICK_MARK_START", "QUICK_MARK_START_DELAY", 3000, &err);
     subscribe(ctx.gplatConn, "SPRAY_START", &err);
@@ -277,6 +279,11 @@ void workThread(TubeTrackContext &ctx)
             {
                 // 处理喷印工位检测信号
                 handleSpyPosOn(ctx, value);
+            }
+            else if (tagname == "SPRAY_POS_ON_DELAY")
+            {
+                // 处理喷印工位检测信号延时
+                handleSpyPosOnDelay(ctx, value);
             }
             else if (tagname == "CIRCLE_POS_ON")
             {
@@ -1205,6 +1212,26 @@ void handleSpyPosOn(TubeTrackContext &ctx, const char *value)
         // 从步进梁弹出管子，推送到称重、刻印、喷印、色环，出废辊道工位
         moveTubeToPosion(ctx);
 
+        // spdlog::info("判断是否要启动测长");
+        // const CTube *tube = ctx.sprayPos.Peek();
+        // if (tube != nullptr)
+        // {
+        //     if (tube->length_ok && tube->weight_ok)
+        //     {
+        //         unsigned int err;
+        //         write_plc_bool(ctx.gplatConn, "LENGTH_START", true, &err); // 启动测长
+        //         spdlog::info("启动测长");
+        //     }
+        // }
+    }
+}
+
+void handleSpyPosOnDelay(TubeTrackContext &ctx, const char *value)
+{
+    bool isOn = read_value<bool>(value);
+
+    if (isOn)
+    {
         spdlog::info("判断是否要启动测长");
         const CTube *tube = ctx.sprayPos.Peek();
         if (tube != nullptr)
