@@ -46,7 +46,11 @@ void DoStatistics(TubeTrackContext &ctx)
         yieldStatis.lot_weight = 0.0f;
         yieldStatis.lot_length = 0.0f;
         yieldStatis.lot_count = 0;
+        yieldStatis.shift_weight = 0.0f;
+        yieldStatis.shift_length = 0.0f;
+        yieldStatis.shift_count = 0;
 
+        // 1. 查询合同完成量（从API_TUBE_DATA_T）
         // 连接pg数据库根据合同号和项目号查询weight、length生产完成量，并将结果赋值给yieldStatis对象
         const pqxx::result result2 = txn.exec(
             "SELECT COALESCE(sum(WEIGHT),0), COALESCE(sum(LENGTH),0), count(*) "
@@ -102,12 +106,13 @@ void DoStatistics(TubeTrackContext &ctx)
             // ctx.qbdConn.LogAlarm("yjg4_Alarm", temp, 9);
         }
 
+        // 2. 查询炉批完成量（从API_BUNDLE_DATA_T）
         // 连接pg数据库根据melt_no和lot_no查询米制重量、米制长度、根数完成量，并将结果赋值给yieldStatis对象
         const pqxx::result result3 = txn.exec(
             "SELECT COALESCE(sum(weight),0), COALESCE(sum(total_length),0), COALESCE(sum(tube),0) "
             "FROM API_BUNDLE_DATA_T "
-            "WHERE melt_no = $1 AND lot_no = $2",
-            pqxx::params{melt_no, lot_no});
+            "WHERE order_no = $1 AND item_no = $2 AND melt_no = $3 AND lot_no = $4",
+            pqxx::params{order_no, item_no, melt_no, lot_no});
         if (!result3.empty())
         {
             const auto &row = result3[0];
@@ -141,6 +146,48 @@ void DoStatistics(TubeTrackContext &ctx)
         yieldStatis.lot_length += totallength;
         yieldStatis.lot_count += totalcount;
 
+        // ============ 3. 查询当前班次完成量 ============
+        unsigned int err;
+        int ban_ci = 0; // 当前班次
+        if(!readb(ctx.gplatConn, "SHIFT_NO", &ban_ci, sizeof(ban_ci), &err))
+        {
+            spdlog::error("Failed to read SHIFT_NO from gPlat (connection={})", ctx.gplatConn);
+        }else
+        {
+            spdlog::info("当前班次: {}", ban_ci);
+
+            //计算当前时间12小时前的时间作为查询条件PRODUCE_TIME的边界
+            time_t now = time(nullptr);
+            time_t twelveHoursAgo = now - 12 * 60 * 60; // 12小时之前的时间戳
+            struct tm twelveHoursAgoTm;
+            localtime_r(&twelveHoursAgo, &twelveHoursAgoTm);
+            char produce_time_boundary[32];
+            strftime(produce_time_boundary, sizeof(produce_time_boundary), "%Y%m%d%H%M%S", &twelveHoursAgoTm);
+
+            //根据合同号、项目号、班次、生产时间查询当前班次的生产完成量
+            const pqxx::result result4 = txn.exec(
+                "SELECT COALESCE(sum(weight),0), COALESCE(sum(total_length),0), COALESCE(sum(tube),0) "
+                "FROM API_BUNDLE_DATA_T "
+                "WHERE order_no = $1 AND item_no = $2 AND ban_ci = $3 AND produce_time > $4",
+                pqxx::params{order_no, item_no, ban_ci, produce_time_boundary});
+            if (!result4.empty())
+            {
+                const auto &row = result4[0];
+
+                totalweight = row[0].as<float>(0.0f);
+                totallength = row[1].as<float>(0.0f);
+                totalcount = row[2].as<int>(0);
+
+                yieldStatis.shift_weight = totalweight / 1000.0f; // 转换为吨
+                yieldStatis.shift_length = totallength;
+                yieldStatis.shift_count = totalcount;
+
+                spdlog::info("当前班次生产完成量: weight={}吨, length={}米, count={}根", yieldStatis.shift_weight, yieldStatis.shift_length, yieldStatis.shift_count);
+
+            }
+        }
+
+
         // 连接pg数据库更新合同完成量
 
         txn.exec(
@@ -164,8 +211,10 @@ void DoStatistics(TubeTrackContext &ctx)
         spdlog::info("Lot Weight: {}", yieldStatis.lot_weight);
         spdlog::info("Lot Length: {}", yieldStatis.lot_length);
         spdlog::info("Lot Count: {}", yieldStatis.lot_count);
+        spdlog::info("Shift Weight: {}", yieldStatis.shift_weight);
+        spdlog::info("Shift Length: {}", yieldStatis.shift_length);
+        spdlog::info("Shift Count: {}", yieldStatis.shift_count);
 
-        unsigned int err = 0;
         if (writeb(ctx.gplatConn, "YIELD_STATISTICS", &yieldStatis, sizeof(yieldStatis), &err))
         {
             spdlog::info("Successfully wrote gPlat tag YIELD_STATISTICS (connection={}, bytes={})", ctx.gplatConn, sizeof(yieldStatis));
@@ -182,6 +231,9 @@ void DoStatistics(TubeTrackContext &ctx)
             j["lot_weight"] = yieldStatis.lot_weight;
             j["lot_length"] = yieldStatis.lot_length;
             j["lot_count"] = yieldStatis.lot_count;
+            j["shift_weight"] = yieldStatis.shift_weight;
+            j["shift_length"] = yieldStatis.shift_length;
+            j["shift_count"] = yieldStatis.shift_count;
             std::string jsonStr = j.dump();
             ctx.redis->set("YIELD_STATISTICS", jsonStr);
 
