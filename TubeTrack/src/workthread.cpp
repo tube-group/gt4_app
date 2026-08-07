@@ -600,7 +600,21 @@ void executeMoveTubeCmd(TubeTrackContext &ctx, const MoveTubeCmd &cmd)
     }
     else if (cmd.from == "backbuffer" && cmd.to == "scraptroller") // 反向：缓冲区 -> 废料辊道
     {
-        moveTubeBetween(ctx.backBuffer, ctx.scraptRoller, "Back buffer", "Scrapt roller");
+        if (!ctx.scraptRoller.IsEmpty())
+        {
+            spdlog::warn("Scrapt roller is not empty, cannot move tube from Back buffer");
+            return;
+        }
+
+        auto tube = ctx.backBuffer.PopBack();
+        if (!tube)
+        {
+            spdlog::warn("Back buffer is empty, no tube to move to Scrapt roller");
+            return;
+        }
+
+        ctx.scraptRoller.PushFront(std::move(tube));
+        ctx.scraptRoller.DebugOut();
     }
     else if (cmd.from == "scraptroller" && cmd.to == "scrapt") // 废料辊道 -> 废料筐
     {
@@ -979,7 +993,7 @@ void moveTubeToPosion(TubeTrackContext &ctx)
         spdlog::warn("Scrapt roller is not empty, cannot move tubes to positions");
         // mark
         ctx.scraptRoller.DebugOut();
-        ctx.scraptRoller.Clear();
+        // ctx.scraptRoller.Clear();
     }
 
     // if (ctx.walkingBeam.IsPositionEmpty(2))
@@ -1080,17 +1094,17 @@ void handleAlignPosOn(TubeTrackContext &ctx, const char *value)
     if (isOn)
     {
         // 执行对齐工位有料状态的相关操作
+        if (!ctx.alignPos.IsEmpty())
+        {
+            spdlog::warn("Align position is not empty, cannot move tube from Production plan");
+            return;
+        }
+
         auto tube = ctx.prodPlan.Pop();
 
         if (!tube)
         {
             spdlog::warn("Production plan is empty, no tube to move to align position");
-            return;
-        }
-
-        if (!ctx.alignPos.IsEmpty())
-        {
-            spdlog::warn("Align position is not empty, cannot move tube from Production plan");
             return;
         }
 

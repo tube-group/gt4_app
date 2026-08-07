@@ -238,59 +238,59 @@ bool CBasket::Bundle()
     string wal_thick_up_ctrl = "";
 
     const auto &row = orderResult[0];
-    weight_per_meter = row["weight_per_meter"].as<double>();       // 米重
-    weight_ew = row["weight_ew"].as<double>();                     // EW值
-    diameter = row["diameter"].as<double>();                       // 外径
-    wall_thickness = row["wall_thickness"].as<double>();           // 壁厚
+    weight_per_meter = row["weight_per_meter"].as<double>(); // 米重
+    weight_ew = row["weight_ew"].as<double>();               // EW值
+    diameter = row["diameter"].as<double>();                 // 外径
+    wall_thickness = row["wall_thickness"].as<double>();     // 壁厚
     spdlog::info("1");
-    prod_code = row["prod_code"].as<string>();                     // 品名细分类代码
+    prod_code = row["prod_code"].as<string>(); // 品名细分类代码
     spdlog::info("2");
-    prod_cname = row["prod_cname"].as<string>();                   // 品名细分类
+    prod_cname = row["prod_cname"].as<string>(); // 品名细分类
     spdlog::info("3");
-    mat_no = row["mat_no"].as<string>();                           // 材质号
+    mat_no = row["mat_no"].as<string>(); // 材质号
     spdlog::info("4");
-    mat_text = row["mat_text"].as<string>();                       // 材质正文
+    mat_text = row["mat_text"].as<string>(); // 材质正文
     spdlog::info("5");
-    std_sg_code = row["std_sg_code"].as<string>();                 // 标准钢级代码
+    std_sg_code = row["std_sg_code"].as<string>(); // 标准钢级代码
     spdlog::info("6");
-    sg_text = row["sg_text"].as<string>();                         // 钢级正文
+    sg_text = row["sg_text"].as<string>(); // 钢级正文
     spdlog::info("7");
-    std_text = row["std_text"].as<string>();                       // 标准正文
+    std_text = row["std_text"].as<string>(); // 标准正文
     spdlog::info("8");
-    end_type_code = row["end_type_code"].as<string>();             // 管端类型代码
+    end_type_code = row["end_type_code"].as<string>(); // 管端类型代码
     spdlog::info("9");
-    end_type_sign = row["end_type_sign"].as<string>();             // 管端类型符号
+    end_type_sign = row["end_type_sign"].as<string>(); // 管端类型符号
     spdlog::info("10");
-    thread_type_code = row["thread_type_code"].as<string>();       // 螺纹类型代码
+    thread_type_code = row["thread_type_code"].as<string>(); // 螺纹类型代码
     spdlog::info("11");
-    thread_type_sign = row["thread_type_sign"].as<string>();       // 螺纹类型符号
+    thread_type_sign = row["thread_type_sign"].as<string>(); // 螺纹类型符号
     spdlog::info("12");
-    coupling_type_code = row["coupling_type_code"].as<string>();   // 接箍类型代码
+    coupling_type_code = row["coupling_type_code"].as<string>(); // 接箍类型代码
     spdlog::info("13");
-    coupling_type_sign = row["coupling_type_sign"].as<string>();   // 接箍类型符号
+    coupling_type_sign = row["coupling_type_sign"].as<string>(); // 接箍类型符号
     spdlog::info("14");
-    order_no_old = row["order_no_old"].as<string>();               // 原合同号
+    order_no_old = row["order_no_old"].as<string>(); // 原合同号
     spdlog::info("15");
-    end_type = row["end_type"].as<string>();                       // 管端类型
+    end_type = row["end_type"].as<string>(); // 管端类型
     spdlog::info("16");
-    thread_type = row["thread_type"].as<string>();                 // 螺纹类型
+    thread_type = row["thread_type"].as<string>(); // 螺纹类型
     spdlog::info("17");
-    diameter_down_ctrl = row["diameter_down_ctrl"].as<string>();   // 外径下限_内控
+    diameter_down_ctrl = row["diameter_down_ctrl"].as<string>(); // 外径下限_内控
     spdlog::info("18");
-    diameter_up_ctrl = row["diameter_up_ctrl"].as<string>();       // 外径上限_内控
+    diameter_up_ctrl = row["diameter_up_ctrl"].as<string>(); // 外径上限_内控
     spdlog::info("19");
     wal_thick_down_ctrl = row["wal_thick_down_ctrl"].as<string>(); // 壁厚下限_内控
     spdlog::info("20");
-    wal_thick_up_ctrl = row["wal_thick_up_ctrl"].as<string>();     // 壁厚上限_内控
+    wal_thick_up_ctrl = row["wal_thick_up_ctrl"].as<string>(); // 壁厚上限_内控
     spdlog::info("21");
 
     // 计算派生字段
-    weightsum = std::round(weightsum);                                      // 总重量取整
-    double weight_eng = std::round(weightsum * 2.204622 * 1000.0) / 1000.0; // 英制重量
-    lengthsum = std::round(lengthsum * 1000.0) / 1000.0;                    // 保留3位小数                  // 最长
-    double length_eng = std::round(lengthsum * 3.280839 * 1000.0) / 1000.0; // 英制长度
-    double length_from = std::round(lengthmin * 100.0) / 100.0;             // 最短
-    double length_to = std::round(lengthmax * 100.0) / 100.0;
+    weightsum = std::round(weightsum);                                                              // 总重量取整
+    double weight_eng = std::round(weightsum * 2.204622 * 1000.0) / 1000.0;                         // 英制重量
+    lengthsum = std::round(lengthsum * 1000.0) / 1000.0;                                            // 保留3位小数
+    double length_eng = std::round(lengthsum * 3.280839 * 1000.0) / 1000.0;                         // 英制长度
+    double length_from = std::round(lengthmin * 1000.0) / 1000.0;                                   // 最短
+    double length_to = std::round(lengthmax * 1000.0) / 1000.0;                                     // 最长
     int theory_weight = static_cast<int>(std::round((lengthsum * (weight_per_meter + weight_ew)))); // 理论重量
     double theory_total_length = lengthsum;                                                         // 理论总长度
     int gross_weight = static_cast<int>(weightsum + weight_packaging_ / 100.0);                     // 毛重
