@@ -2,7 +2,53 @@
 #include "CarvePosition.h"
 #include "TubeTrackContext.h"
 #include "logging.h"
+#include <algorithm>
+#include <cerrno>
 #include <ctime>
+#include <iconv.h>
+#include <optional>
+
+namespace
+{
+    std::optional<std::string> ConvertUtf8ToGbk(const std::string &value)
+    {
+        iconv_t converter = iconv_open("GBK", "UTF-8");
+        if (converter == reinterpret_cast<iconv_t>(-1))
+        {
+            return std::nullopt;
+        }
+
+        std::size_t inputRemaining = value.size();
+        std::size_t outputRemaining = std::max<std::size_t>(64, value.size() * 4 + 16);
+        std::string output(outputRemaining, '\0');
+        char *input = const_cast<char *>(value.data());
+        char *outputBuffer = output.data();
+
+        while (true)
+        {
+            const std::size_t result = iconv(converter, &input, &inputRemaining, &outputBuffer, &outputRemaining);
+            if (result != static_cast<std::size_t>(-1))
+            {
+                break;
+            }
+
+            if (errno != E2BIG)
+            {
+                iconv_close(converter);
+                return std::nullopt;
+            }
+
+            const std::size_t used = output.size() - outputRemaining;
+            output.resize(output.size() * 2);
+            outputBuffer = output.data() + used;
+            outputRemaining = output.size() - used;
+        }
+
+        iconv_close(converter);
+        output.resize(output.size() - outputRemaining);
+        return output;
+    }
+}
 
 // 字符串替换工具函数
 void CCarvePosition::ReplaceAll(std::string &text, const std::string &from, const std::string &to) const
@@ -110,7 +156,15 @@ bool CCarvePosition::SendCarveRequestsToPlc(const CarveReqArray &requests) const
     // 依次写入刻印参数到PLC
     for (const auto &[tag, value] : writeRequests)
     {
-        if (write_plc_string(m_ctx->gplatConn, tag, value, &error))
+        //如果不转换编码，写到PLC里的中文会出现乱码
+        const auto gbkValue = ConvertUtf8ToGbk(value);
+        if (!gbkValue)
+        {
+            spdlog::error("刻印字符串编码转换失败，tag={}, value={}", tag, value);
+            return false;
+        }
+
+        if (write_plc_string(m_ctx->gplatConn, tag, *gbkValue, &error))
         {
             spdlog::info("写入刻印字符串成功，tag={}, value={}", tag, value);
         }

@@ -159,9 +159,9 @@ void workThread(TubeTrackContext &ctx)
                 if (loop >= 60)
                 {
                     DoStatistics(ctx);
-                    spdlog::info("开始自动打捆处理");
+                    // spdlog::info("开始自动打捆处理");
                     autoBundle(ctx); // 自动打捆处理
-                    spdlog::info("自动打捆处理完成");
+                    // spdlog::info("自动打捆处理完成");
                     loop = 0;
                 }
                 continue;
@@ -1331,7 +1331,7 @@ void autoBundle(TubeTrackContext &ctx)
     basketcount = ctx.basket.Count();
     bundlecount = ctx.basket.BundleCount();
 
-    spdlog::info("自动打捆: 缓冲区管子数={}, 成品料筐管子数={}, 打捆根数={}", buffercount, basketcount, bundlecount);
+    // spdlog::info("自动打捆: 缓冲区管子数={}, 成品料筐管子数={}, 打捆根数={}", buffercount, basketcount, bundlecount);
 
     // 如果缓冲区的管子数小于5支,或者成品料筐里有管子,或者缓冲区根数小于打捆根数则不启动自动打捆
     if (buffercount < 5 || basketcount > 0 || buffercount < bundlecount)
