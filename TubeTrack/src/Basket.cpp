@@ -291,7 +291,7 @@ bool CBasket::Bundle()
     double length_eng = std::round(lengthsum * 3.280839 * 1000.0) / 1000.0;                         // 英制长度
     double length_from = std::round(lengthmin * 1000.0) / 1000.0;                                   // 最短
     double length_to = std::round(lengthmax * 1000.0) / 1000.0;                                     // 最长
-    int theory_weight = static_cast<int>(std::round((lengthsum * (weight_per_meter + weight_ew)))); // 理论重量
+    int theory_weight = static_cast<int>(std::round((lengthsum * weight_per_meter) + weight_ew));   // 理论重量
     double theory_total_length = lengthsum;                                                         // 理论总长度
     int gross_weight = static_cast<int>(weightsum + weight_packaging_ / 100.0);                     // 毛重
     string ban_ci_str = std::to_string(ban_ci);                                                     // ban_ci是varchar(2)
