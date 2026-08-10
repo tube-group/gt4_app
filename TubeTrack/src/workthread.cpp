@@ -128,6 +128,8 @@ void workThread(TubeTrackContext &ctx)
 
     // DoStatistics(ctx);
 
+    // return;
+
     int loop = 0; // 用于统计1分钟的循环次数
     // 主循环：等待gPlat数据，处理TAG更新
     while (g_running)
