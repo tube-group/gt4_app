@@ -7,7 +7,7 @@ readonly SOURCE_DIR="$(cd -- "${SCRIPT_DIR}/../.." && pwd)"
 
 if [[ $# -ne 1 ]]; then
   echo "用法: $0 <部署目录>" >&2
-  echo "示例: $0 /data/app/gt4_app_test" >&2
+  echo "示例: $0 /data/app/gt4_app" >&2
   exit 1
 fi
 
