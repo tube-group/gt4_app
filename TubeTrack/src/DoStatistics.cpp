@@ -231,8 +231,8 @@ void DoStatistics(TubeTrackContext &ctx)
             j["lot_weight"] = yieldStatis.lot_weight;
             j["lot_length"] = yieldStatis.lot_length;
             j["lot_count"] = yieldStatis.lot_count;
-            j["shift_weight"] = yieldStatis.shift_weight;
-            j["shift_length"] = yieldStatis.shift_length;
+            j["shift_weight"] = static_cast<int>(yieldStatis.shift_weight * 10) / 10.0;
+            j["shift_length"] = static_cast<int>(yieldStatis.shift_length);
             j["shift_count"] = yieldStatis.shift_count;
             std::string jsonStr = j.dump();
             ctx.redis->set("YIELD_STATISTICS", jsonStr);
