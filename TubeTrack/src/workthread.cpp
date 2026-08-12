@@ -40,6 +40,40 @@ void handleAddTubeCmd(TubeTrackContext &ctx, const char *value);            // �
 void autoBundle(TubeTrackContext &ctx);                                     // 自动打捆处理
 void handleWeiPosOnDelay(TubeTrackContext &ctx, const char *value); // 处理称重工位延时触发
 
+std::unique_ptr<CTube> createManualTube(TubeTrackContext &ctx)
+{
+    auto tube = std::make_unique<CTube>();
+
+    {
+        pqxx::nontransaction transaction(*ctx.pgConn);
+        const pqxx::result result = transaction.exec(
+            "SELECT tube_no, order_no, item_no, roll_no, melt_no, lot_no, "
+            "lot_no_coupling, melt_no_coupling "
+            "FROM parameter_set "
+            "LIMIT 1");
+        if (result.empty())
+        {
+            spdlog::warn("No tube data found in database, cannot add tube");
+            return nullptr;
+        }
+
+        const auto row = result[0];
+        tube->tube_no = row["tube_no"].as<int>();
+        tube->order_no = row["order_no"].as<std::string>();
+        tube->item_no = row["item_no"].as<std::string>();
+        tube->roll_no = row["roll_no"].as<std::string>();
+        tube->melt_no = row["melt_no"].as<std::string>();
+        tube->lot_no = row["lot_no"].as<std::string>();
+        tube->lotno_coupling = row["lot_no_coupling"].as<std::string>();
+        tube->meltno_coupling = row["melt_no_coupling"].as<std::string>();
+    }
+
+    tube->flow_no = -1;
+    tube->length = 0.0;
+    tube->weight = 0.0;
+    return tube;
+}
+
 bool moveTubeBetween(CPositionBase &source,
                      CPositionBase &target,
                      const char *sourceName,
@@ -815,36 +849,10 @@ void handleAddTubeCmd(TubeTrackContext &ctx, const char *value)
     // 在此位置前插入管子，seq_no的值表示插入管子的位置，0表示第一个位置，1表示第二个位置，以此类推，-1代表在末尾添加
     if (cmd.position_name == "backbuffer")
     {
-        auto tube = std::make_unique<CTube>();
-
-        // 查找pg数据库，获取管子数据，填充到tube对象中
-        pqxx::nontransaction ntx(*ctx.pgConn);
-        const pqxx::result result = ntx.exec(
-            "SELECT tube_no, order_no, item_no, roll_no, melt_no, lot_no, "
-            "lot_no_coupling, melt_no_coupling "
-            "FROM parameter_set "
-            "LIMIT 1");
-        if (result.empty())
+        auto tube = createManualTube(ctx);
+        if (!tube)
         {
-            spdlog::warn("No tube data found in database, cannot add tube to back buffer");
             return;
-        }
-        else
-        {
-            const auto row = result[0];
-            tube->tube_no = row["tube_no"].as<int>();
-            tube->order_no = row["order_no"].as<std::string>();
-            tube->item_no = row["item_no"].as<std::string>();
-            tube->roll_no = row["roll_no"].as<std::string>();
-            tube->melt_no = row["melt_no"].as<std::string>();
-            tube->lot_no = row["lot_no"].as<std::string>();
-            tube->lotno_coupling = row["lot_no_coupling"].as<std::string>();
-            tube->meltno_coupling = row["melt_no_coupling"].as<std::string>();
-
-            // 其他字段使用默认值
-            tube->flow_no = -1; // 流水号为0,提示需要手动修改
-            tube->length = 0.0; // 长度（米）
-            tube->weight = 0.0; // 重量（KG）
         }
 
         ctx.backBuffer.PushAt(std::move(tube), cmd.seq_no);
@@ -852,36 +860,10 @@ void handleAddTubeCmd(TubeTrackContext &ctx, const char *value)
     }
     else if (cmd.position_name == "basket")
     {
-        auto tube = std::make_unique<CTube>();
-
-        // 查找pg数据库，获取管子数据，填充到tube对象中
-        pqxx::nontransaction ntx(*ctx.pgConn);
-        const pqxx::result result = ntx.exec(
-            "SELECT tube_no, order_no, item_no, roll_no, melt_no, lot_no, "
-            "lot_no_coupling, melt_no_coupling "
-            "FROM parameter_set "
-            "LIMIT 1");
-        if (result.empty())
+        auto tube = createManualTube(ctx);
+        if (!tube)
         {
-            spdlog::warn("No tube data found in database, cannot add tube to back buffer");
             return;
-        }
-        else
-        {
-            const auto row = result[0];
-            tube->tube_no = row["tube_no"].as<int>();
-            tube->order_no = row["order_no"].as<std::string>();
-            tube->item_no = row["item_no"].as<std::string>();
-            tube->roll_no = row["roll_no"].as<std::string>();
-            tube->melt_no = row["melt_no"].as<std::string>();
-            tube->lot_no = row["lot_no"].as<std::string>();
-            tube->lotno_coupling = row["lot_no_coupling"].as<std::string>();
-            tube->meltno_coupling = row["melt_no_coupling"].as<std::string>();
-
-            // 其他字段使用默认值
-            tube->flow_no = -1; // 流水号为-1,提示需要手动修改
-            tube->length = 0.0; // 长度（米）
-            tube->weight = 0.0; // 重量（KG）
         }
 
         ctx.basket.PushAt(std::move(tube), cmd.seq_no);
