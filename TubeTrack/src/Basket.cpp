@@ -4,6 +4,7 @@
 #include "logging.h"
 #include "cmath"
 #include "user_types.h"
+#include "CalculateShift.h"
 
 void CBasket::UpdateForm()
 {
@@ -153,20 +154,76 @@ bool CBasket::Bundle()
         spdlog::info("统计管子: roll_no={}", tube.roll_no);
     }
 
-    // mark 查询班次————————暂时取固定值：甲班，后续需要补充 (早/晚班+甲/乙/丙/丁班)
+    // 延迟交班逻辑
+    // 1. 获取延迟交班标志ShiftDelay
     unsigned int err;
-    int ban_ci = 0; // 当前班次
-    readb(m_ctx->gplatConn, "SHIFT_NO", &ban_ci, sizeof(ban_ci), &err);
-
+    bool ShiftDelay = false;
+    bool result = readb(m_ctx->gplatConn, "SHIFT_DELAY", &ShiftDelay, sizeof(ShiftDelay), &err);
+    if (!result)
+    {
+        spdlog::warn("读取SHIFT_DELAY失败，使用默认值: err={}", err);
+        ShiftDelay = false;
+    }
     // 获取当前日期时间
     struct tm t;
     GetDateTime(t);
+    int tm = t.tm_hour * 10000 + t.tm_min * 100 + t.tm_sec;
+
+    // 3. 判断是否在延迟交班有效区间内
+    bool inDelayWindow = false;
+    if (ShiftDelay) {
+        // 早晨交接窗口：07:45 ~ 08:30
+        // 傍晚交接窗口：19:45 ~ 20:30
+        if ((tm >= 74500 && tm <= 83000) || (tm >= 194500 && tm <= 203000)) {
+            inDelayWindow = true;
+        }
+    }
+    // 4. 计算班次和生产时间
+    int ban_ci;
     char produce_time_bundle[32];
     char produce_time_tube[32];
-    // 格式化输出生产时间字符串，格式为 YYYYMMDDHHMMSS
-    strftime(produce_time_bundle, sizeof(produce_time_bundle), "%Y%m%d%H%M%S", &t);
-    strftime(produce_time_tube, sizeof(produce_time_tube), "%Y-%m-%d %H:%M:%S", &t);
-    spdlog::info("生产时间: {}", produce_time_bundle);
+
+    if (inDelayWindow) 
+    {
+        // 延迟交班：按当前时间往前推3小时计算班次
+        time_t rawTime = mktime(&t);
+        rawTime -= 3 * 3600;  // 减3小时
+        struct tm* pAdjustedTime = localtime(&rawTime);
+        
+        // 计算班次（用调整后的时间）
+        std::string strBh;
+        CalcShift(*pAdjustedTime, strBh, ban_ci);
+        
+        // 打捆时间固定为 07:44:00 或 19:44:00
+        if (tm >= 74500 && tm <= 83000) 
+        {
+            // 早晨窗口：固定为 07:44:00
+            strftime(produce_time_bundle, sizeof(produce_time_bundle), "%Y%m%d074400", &t);
+            strftime(produce_time_tube, sizeof(produce_time_tube), "%Y-%m-%d 07:44:00", &t);
+        } else 
+        {
+            // 傍晚窗口：固定为 19:44:00
+            strftime(produce_time_bundle, sizeof(produce_time_bundle), "%Y%m%d194400", &t);
+            strftime(produce_time_tube, sizeof(produce_time_tube), "%Y-%m-%d 19:44:00", &t);
+        }
+        
+        spdlog::info("延迟交班模式：当前时间减3小时计算班次 ban_ci={}", ban_ci);
+
+    } else 
+    {
+        // 正常模式：按当前时间计算班次
+        readb(m_ctx->gplatConn, "SHIFT_NO", &ban_ci, sizeof(ban_ci), &err);
+        
+        strftime(produce_time_bundle, sizeof(produce_time_bundle), "%Y%m%d%H%M%S", &t);
+        strftime(produce_time_tube, sizeof(produce_time_tube), "%Y-%m-%d %H:%M:%S", &t);
+        
+        if (ShiftDelay) {
+            spdlog::info("延迟交班标记已开启，但当前不在有效时间窗口内，按正常逻辑处理");
+        }
+        spdlog::info("正常模式：按当前时间计算班次 ban_ci={}", ban_ci);
+    }
+
+    spdlog::info("生产时间: bundle表={}, tube表={}", produce_time_bundle, produce_time_tube);
 
     // 数据库操作
     // 1.查询合同数据————api_order_data_t
