@@ -157,7 +157,7 @@ bool CBasket::Bundle()
     // 延迟交班逻辑
     // 1. 获取延迟交班标志ShiftDelay
     unsigned int err;
-    int ShiftMode= 1;// 读取SHIFT_MODE标志，1表示正常交班，0表示延迟交班
+    int ShiftMode = 1; // 读取SHIFT_MODE标志，1表示正常交班，0表示延迟交班
     if (!readb(m_ctx->gplatConn, "SHIFT_MODE", &ShiftMode, sizeof(ShiftMode), &err))
     {
         spdlog::warn("读取SHIFT_MODE失败，使用默认值: err={}", err);
@@ -171,7 +171,7 @@ bool CBasket::Bundle()
     char toc_time[32];
     strftime(toc_time, sizeof(toc_time), "%Y-%m-%d %H:%M:%S", &t);
 
-    int currentTime  = t.tm_hour * 10000 + t.tm_min * 100 + t.tm_sec;
+    int currentTime = t.tm_hour * 10000 + t.tm_min * 100 + t.tm_sec;
 
     // 3. 判断是否在延迟交班有效区间内
     // 早晨交接窗口：07:45 ~ 08:30
@@ -182,38 +182,40 @@ bool CBasket::Bundle()
     int ban_ci;
     char produce_time_bundle[32];
 
-    if (inDelayWindow && ShiftMode == 0) 
+    if (inDelayWindow && ShiftMode == 0)
     {
         // 延迟交班：按当前时间往前推3小时计算班次
         time_t rawTime = mktime(&t);
-        rawTime -= 3 * 3600;  // 减3小时
-        struct tm* pAdjustedTime = localtime(&rawTime);
-        
+        rawTime -= 3 * 3600; // 减3小时
+        struct tm *pAdjustedTime = localtime(&rawTime);
+
         // 计算班次（用调整后的时间）
         std::string strBh;
         CalcShift(*pAdjustedTime, strBh, ban_ci);
-        
+
         // 打捆时间固定为 07:44:00 或 19:44:00
-        if (currentTime >= 74500 && currentTime <= 83000) 
+        if (currentTime >= 74500 && currentTime <= 83000)
         {
             // 早晨窗口：固定为 07:44:00
             strftime(produce_time_bundle, sizeof(produce_time_bundle), "%Y%m%d074400", pAdjustedTime);
-        } else 
+        }
+        else
         {
             // 傍晚窗口：固定为 19:44:00
             strftime(produce_time_bundle, sizeof(produce_time_bundle), "%Y%m%d194400", pAdjustedTime);
         }
-        
-        spdlog::info("延迟交班模式生效：当前时间减3小时计算班次 ban_ci={}", ban_ci);
 
-    } else 
+        spdlog::info("延迟交班模式生效：当前时间减3小时计算班次 ban_ci={}", ban_ci);
+    }
+    else
     {
         // 正常模式：按当前时间计算班次
         readb(m_ctx->gplatConn, "SHIFT_NO", &ban_ci, sizeof(ban_ci), &err);
-        
+
         strftime(produce_time_bundle, sizeof(produce_time_bundle), "%Y%m%d%H%M%S", &t);
-        
-        if (ShiftMode == 0) {
+
+        if (ShiftMode == 0)
+        {
             spdlog::info("延迟交班标记已开启，但当前不在有效时间窗口内，按正常逻辑处理");
         }
         spdlog::info("正常模式：按当前时间计算班次 ban_ci={}", ban_ci);
@@ -338,16 +340,16 @@ bool CBasket::Bundle()
     spdlog::info("21");
 
     // 计算派生字段
-    weightsum = std::round(weightsum);                                                              // 总重量取整
-    double weight_eng = std::round(weightsum * 2.204622 * 1000.0) / 1000.0;                         // 英制重量
-    lengthsum = std::round(lengthsum * 1000.0) / 1000.0;                                            // 保留3位小数
-    double length_eng = std::round(lengthsum * 3.280839 * 1000.0) / 1000.0;                         // 英制长度
-    double length_from = std::round(lengthmin * 1000.0) / 1000.0;                                   // 最短
-    double length_to = std::round(lengthmax * 1000.0) / 1000.0;                                     // 最长
-    int theory_weight = static_cast<int>(std::round((lengthsum * weight_per_meter) + weight_ew));   // 理论重量
-    double theory_total_length = lengthsum;                                                         // 理论总长度
-    int gross_weight = static_cast<int>(weightsum + weight_packaging_ / 100.0);                     // 毛重
-    string ban_ci_str = std::to_string(ban_ci);                                                     // ban_ci是varchar(2)
+    weightsum = std::round(weightsum);                                                            // 总重量取整
+    double weight_eng = std::round(weightsum * 2.204622 * 1000.0) / 1000.0;                       // 英制重量
+    lengthsum = std::round(lengthsum * 1000.0) / 1000.0;                                          // 保留3位小数
+    double length_eng = std::round(lengthsum * 3.280839 * 1000.0) / 1000.0;                       // 英制长度
+    double length_from = std::round(lengthmin * 1000.0) / 1000.0;                                 // 最短
+    double length_to = std::round(lengthmax * 1000.0) / 1000.0;                                   // 最长
+    int theory_weight = static_cast<int>(std::round((lengthsum * weight_per_meter) + weight_ew)); // 理论重量
+    double theory_total_length = lengthsum;                                                       // 理论总长度
+    int gross_weight = static_cast<int>(weightsum + weight_packaging_ / 100.0);                   // 毛重
+    string ban_ci_str = std::to_string(ban_ci);                                                   // ban_ci是varchar(2)
     spdlog::info("计算管捆信息: lengthsum={}, weightsum={}, weight_eng={}, length_eng={}, length_from={}, length_to={}, theory_weight={}, gross_weight={}",
                  lengthsum, weightsum, weight_eng, length_eng, length_from, length_to, theory_weight, gross_weight);
 

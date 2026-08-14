@@ -111,6 +111,43 @@ bool moveTubeBetween(CPositionBase &source,
     return true;
 }
 
+bool canMoveBackBufferTubeToBasket(TubeTrackContext &ctx)
+{
+    const CTube *tubeToMove = ctx.backBuffer.Peek();
+    if (tubeToMove == nullptr)
+    {
+        spdlog::warn("Back buffer is empty, no tube to move to basket");
+        return false;
+    }
+
+    if (ctx.basket.IsEmpty())
+    {
+        return true;
+    }
+
+    const CTube *basketTube = ctx.basket.Peek();
+    if (basketTube == nullptr)
+    {
+        spdlog::warn("Basket has no reference tube, cannot verify melt/lot consistency");
+        return false;
+    }
+
+    const bool sameMeltLot = tubeToMove->melt_no == basketTube->melt_no &&
+                             tubeToMove->lot_no == basketTube->lot_no;
+    if (!sameMeltLot)
+    {
+        spdlog::error(
+            "【炉批号不匹配】拒绝移动管子: 待移入 melt={}, lot={} | 筐内 melt={}, lot={}",
+            tubeToMove->melt_no,
+            tubeToMove->lot_no,
+            basketTube->melt_no,
+            basketTube->lot_no);
+        return false;
+    }
+
+    return true;
+}
+
 void workThread(TubeTrackContext &ctx)
 {
     unsigned int err = 0;
@@ -667,13 +704,18 @@ void executeMoveTubeCmd(TubeTrackContext &ctx, const MoveTubeCmd &cmd)
     }
     else if (cmd.from == "backbuffer" && cmd.to == "basket") // 缓冲区 -> 打包区(先进先出)
     {
-        auto tube = ctx.backBuffer.Pop(); // PopFront() - 取出最早进入的
+        if (!canMoveBackBufferTubeToBasket(ctx))
+        {
+            return;
+        }
 
+        auto tube = ctx.backBuffer.Pop();
         if (!tube)
         {
             spdlog::warn("Back buffer is empty, no tube to move to basket");
             return;
         }
+
         ctx.basket.Push(std::move(tube));
         ctx.basket.DebugOut();
     }
