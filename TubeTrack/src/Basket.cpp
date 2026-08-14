@@ -158,8 +158,7 @@ bool CBasket::Bundle()
     // 1. 获取延迟交班标志ShiftDelay
     unsigned int err;
     int ShiftMode= 1;// 读取SHIFT_MODE标志，1表示正常交班，0表示延迟交班
-    int result = readb(m_ctx->gplatConn, "SHIFT_MODE", &ShiftMode, sizeof(ShiftMode), &err);
-    if (result != 1)
+    if (!readb(m_ctx->gplatConn, "SHIFT_MODE", &ShiftMode, sizeof(ShiftMode), &err))
     {
         spdlog::warn("读取SHIFT_MODE失败，使用默认值: err={}", err);
         ShiftMode = 1;
@@ -167,23 +166,23 @@ bool CBasket::Bundle()
     // 获取当前日期时间
     struct tm t;
     GetDateTime(t);
-    int tm = t.tm_hour * 10000 + t.tm_min * 100 + t.tm_sec;
+
+    // 格式化 toc 字段（修改时间），始终使用当前真实时间
+    char toc_time[32];
+    strftime(toc_time, sizeof(toc_time), "%Y-%m-%d %H:%M:%S", &t);
+
+    int currentTime  = t.tm_hour * 10000 + t.tm_min * 100 + t.tm_sec;
 
     // 3. 判断是否在延迟交班有效区间内
-    bool inDelayWindow = false;
-    if (ShiftMode == 0) {
-        // 早晨交接窗口：07:45 ~ 08:30
-        // 傍晚交接窗口：19:45 ~ 20:30
-        if ((tm >= 74500 && tm <= 83000) || (tm >= 194500 && tm <= 203000)) {
-            inDelayWindow = true;
-        }
-    }
+    // 早晨交接窗口：07:45 ~ 08:30
+    // 傍晚交接窗口：19:45 ~ 20:30
+    bool inDelayWindow = ((currentTime >= 74500 && currentTime <= 83000) || (currentTime >= 194500 && currentTime <= 203000));
+
     // 4. 计算班次和生产时间
     int ban_ci;
     char produce_time_bundle[32];
-    char produce_time_tube[32];
 
-    if (inDelayWindow) 
+    if (inDelayWindow && ShiftMode == 0) 
     {
         // 延迟交班：按当前时间往前推3小时计算班次
         time_t rawTime = mktime(&t);
@@ -195,19 +194,17 @@ bool CBasket::Bundle()
         CalcShift(*pAdjustedTime, strBh, ban_ci);
         
         // 打捆时间固定为 07:44:00 或 19:44:00
-        if (tm >= 74500 && tm <= 83000) 
+        if (currentTime >= 74500 && currentTime <= 83000) 
         {
             // 早晨窗口：固定为 07:44:00
-            strftime(produce_time_bundle, sizeof(produce_time_bundle), "%Y%m%d074400", &t);
-            strftime(produce_time_tube, sizeof(produce_time_tube), "%Y-%m-%d 07:44:00", &t);
+            strftime(produce_time_bundle, sizeof(produce_time_bundle), "%Y%m%d074400", pAdjustedTime);
         } else 
         {
             // 傍晚窗口：固定为 19:44:00
-            strftime(produce_time_bundle, sizeof(produce_time_bundle), "%Y%m%d194400", &t);
-            strftime(produce_time_tube, sizeof(produce_time_tube), "%Y-%m-%d 19:44:00", &t);
+            strftime(produce_time_bundle, sizeof(produce_time_bundle), "%Y%m%d194400", pAdjustedTime);
         }
         
-        spdlog::info("延迟交班模式：当前时间减3小时计算班次 ban_ci={}", ban_ci);
+        spdlog::info("延迟交班模式生效：当前时间减3小时计算班次 ban_ci={}", ban_ci);
 
     } else 
     {
@@ -215,7 +212,6 @@ bool CBasket::Bundle()
         readb(m_ctx->gplatConn, "SHIFT_NO", &ban_ci, sizeof(ban_ci), &err);
         
         strftime(produce_time_bundle, sizeof(produce_time_bundle), "%Y%m%d%H%M%S", &t);
-        strftime(produce_time_tube, sizeof(produce_time_tube), "%Y-%m-%d %H:%M:%S", &t);
         
         if (ShiftMode == 0) {
             spdlog::info("延迟交班标记已开启，但当前不在有效时间窗口内，按正常逻辑处理");
@@ -223,7 +219,7 @@ bool CBasket::Bundle()
         spdlog::info("正常模式：按当前时间计算班次 ban_ci={}", ban_ci);
     }
 
-    spdlog::info("生产时间: bundle表={}, tube表={}", produce_time_bundle, produce_time_tube);
+    spdlog::info("生产时间: bundle表={}", produce_time_bundle);
 
     // 数据库操作
     // 1.查询合同数据————api_order_data_t
@@ -400,7 +396,7 @@ bool CBasket::Bundle()
                          length_from, length_to, tubecount, bundle_type_, produce_time_bundle, ban_ci_str,
                          theory_weight, theory_total_length, flow_no, end_type_code, end_type_sign,
                          thread_type_code, thread_type_sign, coupling_type_code, coupling_type_sign,
-                         order_no_old, produce_time_tube, gross_weight, end_type, thread_type,
+                         order_no_old, toc_time, gross_weight, end_type, thread_type,
                          diameter_down_ctrl, diameter_up_ctrl, wal_thick_down_ctrl, wal_thick_up_ctrl,
                          weight_per_meter, weight_ew, product_job_point_, direction_code_, melt_no_coupling_, lot_no_coupling_});
 
