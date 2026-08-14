@@ -29,3 +29,4 @@ create MMWE_TQMTIWEA13 mmwe_tqmtiwea13_t
 create API_BUNDLE_DATA_EVENT ApiBundleDataEvent
 create SHIFT_NO Int32
 create SHIFT_NAME string 10
+create SHIFT_MODE Int32

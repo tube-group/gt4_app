@@ -384,6 +384,19 @@ bool CMonitor::handleCommand(const std::string &message)
 			cmd.bundle_no = cmdPara["bundle_no"].get<std::string>();
 			writeb(ctx_.gplatConn, "API_BUNDLE_DATA_EVENT", &cmd, sizeof(cmd), &error);
 		}
+		else if (cmdName == "shift_delay_cmd")
+		{
+			const auto &cmdPara = requireCmdPara();
+
+			unsigned int error;
+			int value = cmdPara.get<int>();
+			writeb(ctx_.gplatConn, "SHIFT_MODE", &value, sizeof(value), &error);
+
+			spdlog::info("处理shift_delay_cmd命令: SHIFT_MODE={}", value);
+
+			ctx_.redis->set("SHIFT_MODE", std::to_string(value));
+			ctx_.redis->publish("RealDataChanged", "SHIFT_MODE");
+		}
 		else
 		{
 			spdlog::warn("未知的命令类型: {}", cmdName);
