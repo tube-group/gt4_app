@@ -202,9 +202,9 @@ bool getOrderDataFromGaussDB(CommL3Context &ctx, const std::string &orderNo, con
             orderData.height_down_ctrl = row2.getDouble("ctl_height_from");// 控制高度下限
             orderData.height_up_ctrl = row2.getDouble("ctl_height_to");// 控制高度上限
 
-            std::string whole_backlog = row2.getString("whole_backlog");
+            std::string backlog = row2.getString("backlog");
 
-            std::string query3 = "select * from qmto.tqmtotwh5 WHERE order_no = '" + orderNo + "' and whole_backlog = '" + whole_backlog + "'";
+            std::string query3 = "select * from qmto.tqmtotwh5 WHERE order_no = '" + orderNo + "' and backlog = '" + backlog + "'";
             auto result3 = ctx.gaussConn->execute(query3);
 
             if (result3.getRowCount() > 0)
@@ -223,14 +223,14 @@ bool getOrderDataFromGaussDB(CommL3Context &ctx, const std::string &orderNo, con
             {
                 //debug
                 spdlog::warn("No data found in qmto.tqmtotwh5 for order_no={}", orderNo);
-                // orderData.weight_ew = 0.1; // 如果没有查询到数据，设置为默认值
-                // orderData.std_pressure_mpa = 0;// 标准水压压力（MPA)
-                // orderData.std_pressure_psi = 0;// 标准水压压力 (PSI)
-                // orderData.stabilivolt_time_min = 0;// 最小稳压时间
-                // orderData.color_circle = " ";// 色环
-                // orderData.color_circle_pos = " ";// 色环位置
+                orderData.weight_ew = 0; // 如果没有查询到数据，设置为默认值
+                orderData.std_pressure_mpa = 0;// 标准水压压力（MPA)
+                orderData.std_pressure_psi = 0;// 标准水压压力 (PSI)
+                orderData.stabilivolt_time_min = 0;// 最小稳压时间
+                orderData.color_circle = " ";// 色环
+                orderData.color_circle_pos = " ";// 色环位置
 
-                return false;
+                return true;
             }
         }
         else
