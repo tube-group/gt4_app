@@ -238,6 +238,7 @@ static bool initRedis(TubeTrackContext& ctx)
         opts.host = config.GetStringDefault("redis_host", "127.0.0.1");
         opts.port = config.GetIntDefault("redis_port", 6379);
         opts.password = config.GetStringDefault("redis_password", "");
+        opts.socket_timeout = std::chrono::milliseconds(1000);
 
         ctx.redis = std::make_unique<sw::redis::Redis>(opts);
         ctx.redis->ping();
@@ -252,13 +253,13 @@ static bool initRedis(TubeTrackContext& ctx)
 
 static bool initAlarmPublisher(TubeTrackContext& ctx)
 {
-    if (!ctx.redis) {
-        spdlog::error("AlarmPublisher初始化失败: Redis连接未初始化");
+    if (!ctx.redis || !ctx.pgConn) {
+        spdlog::error("AlarmPublisher初始化失败: Redis或PostgreSQL连接未初始化");
         return false;
     }
 
     try {
-        ctx.alarmPublisher = std::make_unique<AlarmPublisher>(*ctx.redis);
+        ctx.alarmPublisher = std::make_unique<AlarmPublisher>(*ctx.pgConn, *ctx.redis);
         spdlog::info("AlarmPublisher初始化完成");
         return true;
     } catch (const std::exception& e) {
@@ -357,12 +358,6 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    if (!initAlarmPublisher(ctx)) {
-        ctx.Cleanup();
-        shutdownLogging();
-        return EXIT_FAILURE;
-    }
-
     // 7. 连接 gPlat
     if (!initGplat(ctx)) {
         ctx.Cleanup();
@@ -372,6 +367,12 @@ int main(int argc, char* argv[])
 
     // 8. 连接PostgreSQL
     if (!initPostgreSQL(ctx)) {
+        ctx.Cleanup();
+        shutdownLogging();
+        return EXIT_FAILURE;
+    }
+
+    if (!initAlarmPublisher(ctx)) {
         ctx.Cleanup();
         shutdownLogging();
         return EXIT_FAILURE;

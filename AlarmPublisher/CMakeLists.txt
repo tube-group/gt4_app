@@ -30,14 +30,9 @@ if(REDIS_INCLUDE_DIRS)
     target_include_directories(${PROJECT_NAME} PRIVATE ${REDIS_INCLUDE_DIRS})
 endif()
 
-get_target_property(JSON_INCLUDE_DIRS nlohmann_json::nlohmann_json INTERFACE_INCLUDE_DIRECTORIES)
-if(JSON_INCLUDE_DIRS)
-    target_include_directories(${PROJECT_NAME} PRIVATE ${JSON_INCLUDE_DIRS})
-endif()
-
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
+        libpqxx::pqxx
         redis++::redis++
-        nlohmann_json::nlohmann_json
         spdlog::spdlog
 )
