@@ -32,13 +32,13 @@ void handleWbBase(TubeTrackContext &ctx, const char *value);
 void moveTubeToWbase(TubeTrackContext &ctx);
 void moveTubeToPosion(TubeTrackContext &ctx);
 void handleMoveTubeCmd(TubeTrackContext &ctx, const char *value);           // 处理移动管子命令
-void executeMoveTubeCmd(TubeTrackContext &ctx, const MoveTubeCmd &cmd);      // 执行移动管子命令
+void executeMoveTubeCmd(TubeTrackContext &ctx, const MoveTubeCmd &cmd);     // 执行移动管子命令
 void handleModifyTubeCmd(TubeTrackContext &ctx, const char *value);         // 处理修改管子命令
 void handleDeleteTubeCmd(TubeTrackContext &ctx, const char *value);         // 处理删除管子命令
 void handleSetCurrentContractCmd(TubeTrackContext &ctx, const char *value); // 处理设置当前合同命令
 void handleAddTubeCmd(TubeTrackContext &ctx, const char *value);            // 处理添加管子命令
 void autoBundle(TubeTrackContext &ctx);                                     // 自动打捆处理
-void handleWeiPosOnDelay(TubeTrackContext &ctx, const char *value); // 处理称重工位延时触发
+void handleWeiPosOnDelay(TubeTrackContext &ctx, const char *value);         // 处理称重工位延时触发
 
 std::unique_ptr<CTube> createManualTube(TubeTrackContext &ctx)
 {
@@ -133,15 +133,16 @@ void workThread(TubeTrackContext &ctx)
     subscribe(ctx.gplatConn, "SET_CURRENT_CONTRACT_CMD", &err);
     subscribe(ctx.gplatConn, "ADD_TUBE_CMD", &err);
     subscribe(ctx.gplatConn, "FINISH_WEIGHT_EVENT", &err);
-    subscribe(ctx.gplatConn, "LENGTH_FINISH", &err); // 订阅测长完成事件
+    subscribe(ctx.gplatConn, "LENGTH_FINISH", &err);                                       // 订阅测长完成事件
+    subscribedelaypost(ctx.gplatConn, "LENGTH_FINISH", "LENGTH_FINISH_DELAY", 1000, &err); // 订阅测长完成事件
     // subscribe(ctx.gplatConn, "L2_WB_RELEASE", &err); //MonitorUserCmd已处理
     subscribe(ctx.gplatConn, "RELEASE_ALL_POS_CMD", &err);
     subscribe(ctx.gplatConn, "PARAMETER_SET_UPDATED", &err); // 订阅参数集更新事件
     subscribe(ctx.gplatConn, "MANUAL_SPRAY_CMD", &err);
     subscribe(ctx.gplatConn, "MANUAL_CARVE_CMD", &err);
     subscribe(ctx.gplatConn, "MANUAL_LENGTH_CMD", &err);
-    subscribe(ctx.gplatConn, "BUNDLE_CMD", &err);            // 订阅打捆命令
-    subscribe(ctx.gplatConn, "STAMP_FINISH", &err);          // 订阅刻印完成命令
+    subscribe(ctx.gplatConn, "BUNDLE_CMD", &err);   // 订阅打捆命令
+    subscribe(ctx.gplatConn, "STAMP_FINISH", &err); // 订阅刻印完成命令
     subscribe(ctx.gplatConn, "STAMP_START", &err);
     subscribedelaypost(ctx.gplatConn, "STAMP_START", "STAMP_START_DELAY", 3000, &err);
     subscribe(ctx.gplatConn, "LENGTH_START", &err);
@@ -243,7 +244,7 @@ void workThread(TubeTrackContext &ctx)
             {
                 spdlog::info("MANUAL_LENGTH_CMD received, triggering LENGTH_START");
                 unsigned int err = 0;
-                 write_plc_bool(ctx.gplatConn, "LENGTH_START", true, &err);
+                write_plc_bool(ctx.gplatConn, "LENGTH_START", true, &err);
             }
             else if (tagname == "QUICK_MARK_START")
             {
@@ -389,14 +390,33 @@ void workThread(TubeTrackContext &ctx)
                 if (!readb(ctx.gplatConn, "MEA_LEN", &meaLen, sizeof(meaLen), &err))
                 {
                     spdlog::warn("Read MEA_LEN failed, err={}", err);
-                    continue;
                 }
-
-                spdlog::info("Handling LENGTH_FINISH: MEA_LEN={}", meaLen);
-                ctx.sprayPos.HandleLengthReady(meaLen);
+                else
+                {
+                    spdlog::info("Handling LENGTH_FINISH: MEA_LEN={}", meaLen);
+                    // ctx.sprayPos.HandleLengthReady(meaLen);
+                }
 
                 // 复位启动测长信号
                 write_plc_bool(ctx.gplatConn, "LENGTH_START", false, &err);
+            }
+            else if (tagname == "LENGTH_FINISH_DELAY")
+            {
+                bool lengthFinishDelay = read_value<bool>(value);
+                if (lengthFinishDelay)
+                {
+                    float meaLen = 0.0f;
+                    unsigned int err = 0;
+                    if (!readb(ctx.gplatConn, "MEA_LEN", &meaLen, sizeof(meaLen), &err))
+                    {
+                        spdlog::warn("Read MEA_LEN failed, err={}", err);
+                    }
+                    else
+                    {
+                        spdlog::info("Handling LENGTH_FINISH_DELAY: MEA_LEN={}", meaLen);
+                        ctx.sprayPos.HandleLengthReady(meaLen);
+                    }
+                }
             }
             // else if (tagname == "L2_WB_RELEASE")    //MonitorUserCmd已处理
             // {
