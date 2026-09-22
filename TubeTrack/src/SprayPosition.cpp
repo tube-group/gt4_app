@@ -235,6 +235,7 @@ bool CSprayPosition::PrepairSpray()
         {
             m_bWbReleased = false; // 封锁步进梁，等待人工处理
             spdlog::error("流水号{}重复且已喷印过，禁止喷印！请确认是否需要人工补喷", tube->flow_no);
+            m_ctx->alarmPublisher->publish("流水号重复且已喷印过，禁止喷印！请确认是否需要人工补喷");
             return false; // 不允许喷印
         }
 
@@ -304,6 +305,7 @@ void CSprayPosition::StartSpray()
                 spdlog::error("流水号{}重复", tube->flow_no);
                 std::string temp = "流水号" + std::to_string(tube->flow_no) + "刚刚使用过，请重新选择一个新的流水号";
                 spdlog::error(temp);
+                m_ctx->alarmPublisher->publish(temp);
                 break;
             }
             tempQueue.pop();
@@ -319,6 +321,7 @@ void CSprayPosition::StartSpray()
             flowNoRepeated = true;
             m_bWbReleased = false;
             spdlog::error("缓冲区中存在相同流水号的管子，请重新指定一个新的流水号");
+            m_ctx->alarmPublisher->publish("缓冲区中存在相同流水号的管子，请重新指定一个新的流水号");
         }
         if (flowNoRepeated)
         {
@@ -346,6 +349,7 @@ void CSprayPosition::StartSpray()
             std::string temp = "流水号" + std::to_string(tube->flow_no) +
                                "在管捆" + bundle_no + "中已经使用，请重新指定一个新的流水号";
             spdlog::error(temp);
+            m_ctx->alarmPublisher->publish(temp);
         }
 
         if (flowNoRepeated)
@@ -397,12 +401,14 @@ void CSprayPosition::HandleSprayManual()
     {
         m_bWbReleased = false; // 封锁步进梁，等待人工处理
         spdlog::error("流水号为0，禁止喷印！");
+        m_ctx->alarmPublisher->publish("流水号为0，禁止喷印！");
         return;
     }
     if (!tube->length_ok && !tube->weight_ok)
     {
         m_bWbReleased = false; // 封锁步进梁，等待人工处理
         spdlog::error("废管禁止喷印！");
+        m_ctx->alarmPublisher->publish("废管禁止喷印！");
         return;
     }
 

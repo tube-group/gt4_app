@@ -3,25 +3,6 @@
 #include "TubeTrackContext.h"
 #include "logging.h"
 
-namespace {
-
-constexpr const char *kWeightAreaCode = "AREA-A";
-
-void PublishWeightAlarm(TubeTrackContext *ctx, const std::string &message)
-{
-    if (!ctx || !ctx->alarmPublisher)
-    {
-        return;
-    }
-
-    if (!ctx->alarmPublisher->publish(message, kWeightAreaCode))
-    {
-        spdlog::error("称重报警发布失败: {}", message);
-    }
-}
-
-} // namespace
-
 void CWeightPosition::UpdateForm()
 {
     // 刷新称重工位的界面显示
@@ -97,17 +78,17 @@ void CWeightPosition::SetTubeWeight(int weight)
             if (weight == -1)
             {
                 spdlog::error("称重乱码，未获得有效的重量数据，请尝试人工称重");
-                PublishWeightAlarm(m_ctx, "称重乱码，未获得有效的重量数据，请尝试人工称重");
+                m_ctx->alarmPublisher->publish("称重乱码，未获得有效的重量数据，请尝试人工称重");
             }
             else if (weight == -2)
             {
                 spdlog::error("称重超时，未获得有效的重量数据，请尝试人工称重");
-                PublishWeightAlarm(m_ctx, "称重超时，未获得有效的重量数据，请尝试人工称重");
+                m_ctx->alarmPublisher->publish("称重超时，未获得有效的重量数据，请尝试人工称重");
             }
             else if (weight == 0)
             {
                 spdlog::error("称重数据为0，未获得有效的重量数据，请尝试人工称重");
-                PublishWeightAlarm(m_ctx, "称重数据为0，未获得有效的重量数据，请尝试人工称重");
+                m_ctx->alarmPublisher->publish("称重数据为0，未获得有效的重量数据，请尝试人工称重");
             }
 
             m_bWbReleased = false;

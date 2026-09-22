@@ -46,7 +46,7 @@ std::unique_ptr<CTube> CProductionPlan::Pop(int /*mode*/)
     {
         //mark 后面要添加报警功能
         spdlog::error("投料支数为0，无法产生管子数据，请设置投料支数！");
-        // Program.qbdConnection.LogAlarm("yjg4_Alarm", "投料支数为0，无法产生管子数据，请设置投料支数！", 9);
+        m_ctx->alarmPublisher->publish("投料支数为0，无法产生管子数据，请设置投料支数！");
         return nullptr;
     }
 }

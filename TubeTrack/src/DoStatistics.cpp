@@ -149,14 +149,15 @@ void DoStatistics(TubeTrackContext &ctx)
         // ============ 3. 查询当前班次完成量 ============
         unsigned int err;
         int ban_ci = 0; // 当前班次
-        if(!readb(ctx.gplatConn, "SHIFT_NO", &ban_ci, sizeof(ban_ci), &err))
+        if (!readb(ctx.gplatConn, "SHIFT_NO", &ban_ci, sizeof(ban_ci), &err))
         {
             spdlog::error("Failed to read SHIFT_NO from gPlat (connection={})", ctx.gplatConn);
-        }else
+        }
+        else
         {
             spdlog::info("当前班次: {}", ban_ci);
 
-            //计算当前时间12小时前的时间作为查询条件PRODUCE_TIME的边界
+            // 计算当前时间12小时前的时间作为查询条件PRODUCE_TIME的边界
             time_t now = time(nullptr);
             time_t twelveHoursAgo = now - 12 * 60 * 60; // 12小时之前的时间戳
             struct tm twelveHoursAgoTm;
@@ -164,7 +165,7 @@ void DoStatistics(TubeTrackContext &ctx)
             char produce_time_boundary[32];
             strftime(produce_time_boundary, sizeof(produce_time_boundary), "%Y%m%d%H%M%S", &twelveHoursAgoTm);
 
-            //根据合同号、项目号、班次、生产时间查询当前班次的生产完成量
+            // 根据合同号、项目号、班次、生产时间查询当前班次的生产完成量
             const pqxx::result result4 = txn.exec(
                 "SELECT COALESCE(sum(weight),0), COALESCE(sum(total_length),0), COALESCE(sum(tube),0) "
                 "FROM API_BUNDLE_DATA_T "
@@ -183,10 +184,8 @@ void DoStatistics(TubeTrackContext &ctx)
                 yieldStatis.shift_count = totalcount;
 
                 spdlog::info("当前班次生产完成量: weight={}吨, length={}米, count={}根", yieldStatis.shift_weight, yieldStatis.shift_length, yieldStatis.shift_count);
-
             }
         }
-
 
         // 连接pg数据库更新合同完成量
 

@@ -63,10 +63,9 @@ bool AlarmPublisher::publish(const std::string &message, const std::string &area
     try
     {
         pqxx::work transaction(database_);
-        const pqxx::result result = transaction.exec_params(
+        const pqxx::result result = transaction.exec(
             "INSERT INTO public.alarm_event (message, area) VALUES ($1, $2) RETURNING id::text",
-            normalizedMessage,
-            normalizedArea);
+            pqxx::params{normalizedMessage, normalizedArea});
         eventId = result[0][0].as<std::string>();
         transaction.commit();
     }

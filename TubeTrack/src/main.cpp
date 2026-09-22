@@ -381,6 +381,8 @@ int main(int argc, char* argv[])
     // 9. 统一注入上下文到所有工位
     ctx.Init();
 
+    ctx.alarmPublisher->publish("系统启动完成");
+
     // 启动工作线程
     std::thread workerThread(workThread, std::ref(ctx));
 

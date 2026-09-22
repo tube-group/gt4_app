@@ -193,6 +193,9 @@ bool CBasket::Bundle()
                      order_no,
                      item_no,
                      bundleno);
+        // 构建告警消息
+        std::string message = fmt::format("检测到重复管捆号: order_no={}, item_no={}, bundle_no={}", order_no, item_no, bundleno);
+        m_ctx->alarmPublisher->publish(message);
         return false; // 直接返回失败，避免无限循环
     }
 
@@ -414,6 +417,9 @@ bool CBasket::Bundle()
     // 输出插入的主表信息
     spdlog::info("已插入管捆主表: order_no={}, item_no={}, bundle_no={}",
                  order_no, item_no, bundleno);
+
+    // string alarmMessage = "管捆已生成: " + bundleno;
+    // m_ctx->alarmPublisher->publish(alarmMessage);
 
     // 触发打标签事件
     unsigned int error;
