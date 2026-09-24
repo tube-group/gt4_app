@@ -31,6 +31,9 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 # 编译选项
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra)
 
+# 输出GAUSS_SDK_DIR
+message(STATUS "GAUSS_SDK_DIR: ${GAUSS_SDK_DIR}")
+
 # 添加头文件包含路径
 target_include_directories(${PROJECT_NAME}
     BEFORE

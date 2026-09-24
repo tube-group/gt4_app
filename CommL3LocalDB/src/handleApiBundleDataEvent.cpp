@@ -122,7 +122,7 @@ std::unordered_map<std::string, json> build_gspa13_values(const pqxx::result::re
         {"PROD_JOB_POINT", row["product_job_point"].as<std::string>()},
         {"DEST_CODE", row["direction_code"].as<std::string>()},
         {"ORDER_NO", row["order_no"].as<std::string>()},
-        {"ORDER_ITEM_NO", row["item_no"].as<std::string>()},
+        {"ORDER_ITEM_NO", row["item_no"].as<std::string>()=="x" ? " " : row["item_no"].as<std::string>()},
         {"PROD_CODE", row["prod_code"].as<std::string>()},
         {"PROD_CNAME", row["prod_cname"].as<std::string>()},
         {"ORDER_OUTER_DIA", row["diameter"].as<double>()},

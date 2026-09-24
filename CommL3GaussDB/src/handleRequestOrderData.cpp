@@ -127,7 +127,9 @@ bool getOrderDataFromGaussDB(CommL3Context &ctx, const std::string &orderNo, con
             auto row2 = result2.getRow(0);
             // auto row3 = result3.getRow(0);
             orderData.order_no = row1.getString("order_no");
-            orderData.item_no = row2.getString("order_item_no");
+            // orderData.item_no = row2.getString("order_item_no");
+            spdlog::info("Retrieved order_item_no: [{}]", row2.getString("order_item_no"));
+            orderData.item_no = row2.getString("order_item_no") == " " ? "x" : row2.getString("order_item_no");
             orderData.roll_no = row2.getString("current_rl_no");// 轧批号
             orderData.diameter = row2.getDouble("change_outer_dia");// 外径
             orderData.wall_thickness = row2.getDouble("change_wal_thick");// 壁厚
