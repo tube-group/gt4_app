@@ -250,6 +250,8 @@ bool CBasket::Bundle()
                      bundleno);
         // 构建告警消息
         std::string message = fmt::format("检测到重复管捆号: order_no={}, item_no={}, bundle_no={}", order_no, item_no, bundleno);
+        // AlarmPublisher 与本事务共用同一个 pg 连接，需先结束当前（仅查询的）事务
+        txn.abort();
         m_ctx->alarmPublisher->publish(message);
         return false; // 直接返回失败，避免无限循环
     }
@@ -371,6 +373,56 @@ bool CBasket::Bundle()
         }
         spdlog::info("已删除重复流水号的管子数据，共{}根", deleted_tube_rows);
 
+                spdlog::info("order_no: {}", order_no);
+        spdlog::info("item_no: {}", item_no);
+        spdlog::info("bundleno: {}", bundleno);
+        spdlog::info("roll_no: {}", roll_no);
+        spdlog::info("melt_no: {}", melt_no);
+        spdlog::info("lot_no: {}", lot_no);
+        spdlog::info("prod_code: {}", prod_code);
+        spdlog::info("prod_cname: {}", prod_cname);
+        spdlog::info("mat_no: {}", mat_no);
+        spdlog::info("mat_text: {}", mat_text);
+        spdlog::info("std_sg_code: {}", std_sg_code);
+        spdlog::info("std_text: {}", std_text);
+        spdlog::info("sg_text: {}", sg_text);
+        spdlog::info("diameter: {}", diameter);
+        spdlog::info("wall_thickness: {}", wall_thickness);
+        spdlog::info("weightsum: {}", weightsum);
+        spdlog::info("weight_eng: {}", weight_eng);
+        spdlog::info("lengthsum: {}", lengthsum);
+        spdlog::info("length_eng: {}", length_eng);
+        spdlog::info("length_from: {}", length_from);
+        spdlog::info("length_to: {}", length_to);
+        spdlog::info("tubecount: {}", tubecount);
+        spdlog::info("bundle_type_: {}", bundle_type_);
+        spdlog::info("produce_time_bundle: {}", produce_time_bundle);
+        spdlog::info("ban_ci_str: {}", ban_ci_str);
+        spdlog::info("theory_weight: {}", theory_weight);
+        spdlog::info("theory_total_length: {}", theory_total_length);
+        spdlog::info("flow_no: {}", flow_no);
+        spdlog::info("end_type_code: {}", end_type_code);
+        spdlog::info("end_type_sign: {}", end_type_sign);
+        spdlog::info("thread_type_code: {}", thread_type_code);
+        spdlog::info("thread_type_sign: {}", thread_type_sign);
+        spdlog::info("coupling_type_code: {}", coupling_type_code);
+        spdlog::info("coupling_type_sign: {}", coupling_type_sign);
+        spdlog::info("order_no_old: {}", order_no_old);
+        spdlog::info("toc_time: {}", toc_time);
+        spdlog::info("gross_weight: {}", gross_weight);
+        spdlog::info("end_type: {}", end_type);
+        spdlog::info("thread_type: {}", thread_type);
+        spdlog::info("diameter_down_ctrl: {}", diameter_down_ctrl);
+        spdlog::info("diameter_up_ctrl: {}", diameter_up_ctrl);
+        spdlog::info("wal_thick_down_ctrl: {}", wal_thick_down_ctrl);
+        spdlog::info("wal_thick_up_ctrl: {}", wal_thick_up_ctrl);
+        spdlog::info("weight_per_meter: {}", weight_per_meter);
+        spdlog::info("weight_ew: {}", weight_ew);
+        spdlog::info("product_job_point_: {}", product_job_point_);
+        spdlog::info("direction_code_: {}", direction_code_);
+        spdlog::info("melt_no_coupling_: {}", melt_no_coupling_);
+        spdlog::info("lot_no_coupling_: {}", lot_no_coupling_);
+
         // 在事务中同时插入管捆数据和插入管子数据
 
         // 3.1 插入管捆主表——————api_bundle_data_t
@@ -405,6 +457,8 @@ bool CBasket::Bundle()
                          diameter_down_ctrl, diameter_up_ctrl, wal_thick_down_ctrl, wal_thick_up_ctrl,
                          weight_per_meter, weight_ew, product_job_point_, direction_code_, melt_no_coupling_, lot_no_coupling_});
 
+        spdlog::info("Inserted bundle data for order_no: {}, item_no: {}, bundle_no: {}", order_no, item_no, bundleno);
+
         // 插入管子明细表
         // 循环插入每根管子数据
         for (const auto &tubePtr : Tubes())
@@ -423,6 +477,8 @@ bool CBasket::Bundle()
                     std::round(tube.length * 1000.0) / 1000.0,
                     tube.flow_no,
                     tube.tube_no});
+
+            spdlog::info("Inserted tube data for order_no: {}, item_no: {}, bundle_no: {}, tube_no: {}", tube.order_no, tube.item_no, bundleno, tube.tube_no);
         }
         // 更新parameter_set表中的bundle_flow_no，为下一次打捆做准备
         if (bundle_flow_no_ > 9998)
@@ -434,7 +490,9 @@ bool CBasket::Bundle()
             "UPDATE parameter_set SET bundle_flow_no = $1",
             pqxx::params{bundle_flow_no_});
 
+        spdlog::info("Updated parameter_set with bundle_flow_no: {}", bundle_flow_no_);
         // 所有操作成功，提交事务
+
         txn.commit();
 
         ApiBundleDataEvent bundleEvent;
