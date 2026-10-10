@@ -427,6 +427,7 @@ bool CBasket::Bundle()
 
         // 3.1 插入管捆主表——————api_bundle_data_t
         // 注意：这里的SQL语句需要根据实际的表结构进行调整，确保字段名称和顺序正确
+        // libpqxx treats char[N] as N-1 byte literals, not formatted C strings.
         const pqxx::result insertBundleResult = txn.exec(
             "INSERT INTO api_bundle_data_t ("
             "order_no, item_no, bundle_no, roll_no, melt_no, lot_no,"
@@ -450,10 +451,10 @@ bool CBasket::Bundle()
             pqxx::params{order_no, item_no, bundleno, roll_no, melt_no, lot_no,
                          prod_code, prod_cname, mat_no, mat_text, std_sg_code, std_text, sg_text,
                          diameter, wall_thickness, weightsum, weight_eng, lengthsum, length_eng,
-                         length_from, length_to, tubecount, bundle_type_, produce_time_bundle, ban_ci_str,
+                         length_from, length_to, tubecount, bundle_type_, std::string(produce_time_bundle), ban_ci_str,
                          theory_weight, theory_total_length, flow_no, end_type_code, end_type_sign,
                          thread_type_code, thread_type_sign, coupling_type_code, coupling_type_sign,
-                         order_no_old, toc_time, gross_weight, end_type, thread_type,
+                         order_no_old, std::string(toc_time), gross_weight, end_type, thread_type,
                          diameter_down_ctrl, diameter_up_ctrl, wal_thick_down_ctrl, wal_thick_up_ctrl,
                          weight_per_meter, weight_ew, product_job_point_, direction_code_, melt_no_coupling_, lot_no_coupling_});
 

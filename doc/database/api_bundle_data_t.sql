@@ -1,5 +1,8 @@
 -- public.api_bundle_data_t definition
 
+-- TubeTrack binds formatted produce_time/toc buffers as std::string parameters.
+-- Do not bind char[N] directly: libpqxx may treat it as an N-1 byte literal.
+
 -- Drop table
 
 -- DROP TABLE public.api_bundle_data_t;

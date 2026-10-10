@@ -170,7 +170,7 @@ void DoStatistics(TubeTrackContext &ctx)
                 "SELECT COALESCE(sum(weight),0), COALESCE(sum(total_length),0), COALESCE(sum(tube),0) "
                 "FROM API_BUNDLE_DATA_T "
                 "WHERE order_no = $1 AND item_no = $2 AND ban_ci = $3 AND produce_time > $4",
-                pqxx::params{order_no, item_no, ban_ci, produce_time_boundary});
+                pqxx::params{order_no, item_no, ban_ci, std::string(produce_time_boundary)});
             if (!result4.empty())
             {
                 const auto &row = result4[0];
