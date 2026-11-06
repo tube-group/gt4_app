@@ -148,10 +148,10 @@ void CProductionPlan::ReadParameterSet()
             this->order_no_ = row["order_no"].as<string>();                // 合同号
             this->item_no_ = row["item_no"].as<string>();                  // 项目号
             this->roll_no_ = row["roll_no"].as<string>();                  // 轧批号
-            this->melt_no_ = row["melt_no"].as<string>();                  // 炉号
-            this->lot_no_ = row["lot_no"].as<string>();                    // 试批号
-            this->lotno_coupling_ = row["lot_no_coupling"].as<string>();   // 接箍批号
-            this->meltno_coupling_ = row["melt_no_coupling"].as<string>(); // 接箍炉号
+            this->melt_no_ = row["melt_no"].as<string>("");                  // 炉号
+            this->lot_no_ = row["lot_no"].as<string>("");                    // 试批号
+            this->lotno_coupling_ = row["lot_no_coupling"].as<string>("");   // 接箍批号
+            this->meltno_coupling_ = row["melt_no_coupling"].as<string>(""); // 接箍炉号
             this->feed_num_ = row["feed_number"].as<int>();                // 投料支数
             this->tube_no_ = row["tube_no"].as<int>();                     // 管号
             this->flow_no_ = row["flow_no"].as<int>();                     // 流水号
